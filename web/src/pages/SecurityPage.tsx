@@ -1,0 +1,89 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api, ApiError } from '../lib/api';
+import { useAuth } from '../lib/auth';
+import { useToast } from '../components/Toast';
+import { PageHeader } from '../components/PageHeader';
+import { Card, CardHeader } from '../components/Card';
+import { Button } from '../components/Button';
+import { Badge } from '../components/Badge';
+import { TextField } from '../components/Form';
+import { Spinner } from '../components/Feedback';
+import shared from './shared.module.css';
+
+interface MfaStatus { enabled: boolean; enrolled: boolean }
+interface EnrollResponse { secret: string; otpauthUri: string }
+
+export function SecurityPage() {
+  const { user } = useAuth();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const status = useQuery({ queryKey: ['mfa-status'], queryFn: () => api<MfaStatus>('/api/auth/mfa/status') });
+
+  const [enroll, setEnroll] = useState<EnrollResponse | null>(null);
+  const [code, setCode] = useState('');
+  const [disableCode, setDisableCode] = useState('');
+
+  const beginEnroll = useMutation({
+    mutationFn: () => api<EnrollResponse>('/api/auth/mfa/enroll', { body: {} }),
+    onSuccess: (r) => setEnroll(r),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not start enrollment'),
+  });
+  const verify = useMutation({
+    mutationFn: () => api('/api/auth/mfa/verify', { body: { code: code.trim() } }),
+    onSuccess: () => { toast.success('Two-factor authentication enabled'); setEnroll(null); setCode(''); qc.invalidateQueries({ queryKey: ['mfa-status'] }); },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Verification failed'),
+  });
+  const disable = useMutation({
+    mutationFn: () => api('/api/auth/mfa/disable', { body: { code: disableCode.trim() } }),
+    onSuccess: () => { toast.success('Two-factor authentication disabled'); setDisableCode(''); qc.invalidateQueries({ queryKey: ['mfa-status'] }); },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not disable'),
+  });
+
+  const enabled = status.data?.enabled;
+
+  return (
+    <>
+      <PageHeader title="Security" description="Manage two-factor authentication for your account." />
+
+      <Card>
+        <CardHeader
+          title="Two-factor authentication (TOTP)"
+          subtitle="Protect your account with a time-based one-time password from an authenticator app."
+          actions={status.isLoading ? <Spinner /> : <Badge color={enabled ? 'green' : 'slate'}>{enabled ? 'Enabled' : 'Disabled'}</Badge>}
+        />
+        <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-4)', maxWidth: 560 }}>
+          {!enabled && !enroll && (
+            <>
+              <p className={shared.cellSub}>Use Google Authenticator, Authy, 1Password or any TOTP app. You'll be asked for a code at each sign-in.</p>
+              <div><Button variant="primary" onClick={() => beginEnroll.mutate()} loading={beginEnroll.isPending}>Enable two-factor authentication</Button></div>
+            </>
+          )}
+
+          {enroll && (
+            <>
+              <p className={shared.cellSub}>1. Add this account to your authenticator app — scan the URI as a QR code, or enter the secret manually.</p>
+              <TextField label="Account" value={`RIOS:${user?.email ?? ''}`} onChange={() => {}} />
+              <TextField label="Secret (manual entry)" value={enroll.secret} onChange={() => {}} />
+              <TextField label="otpauth URI" value={enroll.otpauthUri} onChange={() => {}} />
+              <p className={shared.cellSub}>2. Enter the 6-digit code your app shows to confirm.</p>
+              <TextField label="Authentication code" value={code} onChange={setCode} placeholder="123456" />
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <Button variant="primary" onClick={() => verify.mutate()} loading={verify.isPending} disabled={code.trim().length < 6}>Verify & enable</Button>
+                <Button variant="ghost" onClick={() => { setEnroll(null); setCode(''); }}>Cancel</Button>
+              </div>
+            </>
+          )}
+
+          {enabled && (
+            <>
+              <p className={shared.cellSub}>Two-factor authentication is active on your account. To turn it off, confirm a current code.</p>
+              <TextField label="Authentication code" value={disableCode} onChange={setDisableCode} placeholder="123456" />
+              <div><Button variant="danger" onClick={() => disable.mutate()} loading={disable.isPending} disabled={disableCode.trim().length < 6}>Disable two-factor authentication</Button></div>
+            </>
+          )}
+        </div>
+      </Card>
+    </>
+  );
+}

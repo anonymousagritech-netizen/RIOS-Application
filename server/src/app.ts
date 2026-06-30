@@ -6,7 +6,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { z } from 'zod';
-import { login, AuthError, requirePermission, authContext, authenticate } from './auth.js';
+import { login, completeMfaLogin, AuthError, requirePermission, authContext, authenticate } from './auth.js';
 import { runAs } from './db.js';
 import { observabilityPlugin } from './observability.js';
 import { referenceModule } from './modules/reference.js';
@@ -38,6 +38,7 @@ import { claimsAdvancedModule } from './modules/claimsAdvanced.js';
 import { payrollModule } from './modules/payroll.js';
 import { periodCloseModule } from './modules/periodClose.js';
 import { regulatoryAdvancedModule } from './modules/regulatoryAdvanced.js';
+import { securityModule } from './modules/security.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -66,8 +67,24 @@ export async function buildApp(): Promise<FastifyInstance> {
       return { error: 'Invalid login', details: parsed.error.flatten() };
     }
     try {
-      const { token, user } = await login(parsed.data.email, parsed.data.password, parsed.data.tenantCode);
-      return { token, user };
+      // Returns either { token, user } or, when MFA is enabled, { mfaRequired, mfaToken }.
+      return await login(parsed.data.email, parsed.data.password, parsed.data.tenantCode);
+    } catch (err) {
+      const e = err as AuthError;
+      reply.code(e.status ?? 401);
+      return { error: e.message };
+    }
+  });
+
+  // Second factor: exchange an MFA challenge token + TOTP code for an access token.
+  app.post<{ Body: { mfaToken: string; code: string } }>('/api/auth/mfa/login', async (req, reply) => {
+    const { mfaToken, code } = req.body ?? {};
+    if (!mfaToken || !code) {
+      reply.code(400);
+      return { error: 'mfaToken and code are required' };
+    }
+    try {
+      return await completeMfaLogin(mfaToken, String(code));
     } catch (err) {
       const e = err as AuthError;
       reply.code(e.status ?? 401);
@@ -158,6 +175,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(payrollModule);
   await app.register(periodCloseModule);
   await app.register(regulatoryAdvancedModule);
+  await app.register(securityModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);
