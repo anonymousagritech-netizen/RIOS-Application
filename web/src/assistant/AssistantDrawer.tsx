@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { AssistantAction } from '@rios/shared';
 import { Drawer } from '../components/Drawer';
 import { Button } from '../components/Button';
@@ -26,6 +27,7 @@ const SUGGESTIONS = [
 
 export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
+  const navigate = useNavigate();
   const ask = useAssistant();
   const confirm = useAssistantConfirm();
   const [turns, setTurns] = useState<ChatTurn[]>([]);
@@ -60,6 +62,13 @@ export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () 
   };
 
   const runAction = (action: AssistantAction) => {
+    // Navigation actions are non-mutating and handled client-side.
+    const route = (action.preview as { route?: string } | undefined)?.route;
+    if (action.kind === 'navigate' && route) {
+      navigate(route);
+      onClose();
+      return;
+    }
     if (action.requiresConfirmation) {
       setPending(action);
     } else {
