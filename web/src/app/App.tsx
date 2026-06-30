@@ -45,6 +45,7 @@ import { SearchPage } from '../pages/SearchPage';
 import { RetentionPage } from '../pages/RetentionPage';
 import { FieldSecurityPage } from '../pages/FieldSecurityPage';
 import { SchedulerPage } from '../pages/SchedulerPage';
+import { DelegationPage } from '../pages/DelegationPage';
 
 export function App() {
   const { status } = useAuth();
@@ -109,6 +110,7 @@ export function App() {
         <Route path="/retention" element={<RetentionPage />} />
         <Route path="/field-security" element={<FieldSecurityPage />} />
         <Route path="/scheduler" element={<SchedulerPage />} />
+        <Route path="/delegation" element={<DelegationPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

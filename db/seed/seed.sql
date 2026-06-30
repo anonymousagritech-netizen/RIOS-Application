@@ -479,6 +479,17 @@ insert into scheduled_job (tenant_id, key, name, job_type, interval_minutes, ena
 on conflict (tenant_id, key) do nothing;
 
 -- ---------------------------------------------------------------------------
+-- An approval delegation: the accountant delegates posting approval to the
+-- underwriter while away (§3). The "may act" decision is computed by @rios/domain.
+-- ---------------------------------------------------------------------------
+insert into approval_delegation (tenant_id, delegator_user_id, delegate_user_id, scope_permission, reason, active)
+select :'tenant_id'::uuid, acct.id, uw.id, 'accounting:post', 'Cover during leave', true
+from app_user acct, app_user uw
+where acct.tenant_id = :'tenant_id'::uuid and acct.email = 'acct@demo.rios'
+  and uw.tenant_id = :'tenant_id'::uuid and uw.email = 'uw@demo.rios'
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
 -- A catastrophe event and notified claims, so claims analytics & catastrophe
 -- summaries have real data to aggregate (§13). Claims are independent of the
 -- financial_event/statement reconciliation chain the integration tests assert.
