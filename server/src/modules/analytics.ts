@@ -115,6 +115,15 @@ const reportSchema = z.object({
   })).min(1),
 });
 
+const dashboardSchema = z.object({
+  key: z.string().min(1),
+  name: z.string().min(1),
+  widgets: z.array(z.object({
+    title: z.string().min(1),
+    reportKey: z.string().min(1),
+  })).min(1),
+});
+
 const pivotSchema = z.object({
   source: z.string(),
   dimensions: z.array(z.string()).default([]),
@@ -285,6 +294,78 @@ export async function analyticsModule(app: FastifyInstance): Promise<void> {
         const out = await executePivot(db, def.source, def.dimensions ?? [], def.measures);
         if ('error' in out) { reply.code(out.status); return { error: out.error }; }
         return { key: req.params.key, ...out.result };
+      });
+    },
+  );
+
+  // --- Dashboard Designer: dashboards composed of saved-report widget tiles ---
+
+  app.get('/api/analytics/dashboards', { preHandler: requirePermission('reporting:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query(
+        `select distinct on (key) key, version, body->>'name' as name, body
+           from config_document where kind = 'dashboard' order by key, version desc`,
+      );
+      return { dashboards: rows };
+    });
+  });
+
+  app.post('/api/analytics/dashboards', { preHandler: requirePermission('reporting:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const parsed = dashboardSchema.safeParse(req.body);
+    if (!parsed.success) {
+      reply.code(400);
+      return { error: 'Invalid dashboard', details: parsed.error.flatten() };
+    }
+    const def = parsed.data;
+    return runAs(ctx, async (db) => {
+      const next = await db.query<{ v: number }>(
+        `select coalesce(max(version),0)+1 as v from config_document where kind = 'dashboard' and key = $1`, [def.key],
+      );
+      await db.query(`update config_document set status='archived' where kind='dashboard' and key=$1 and status='published'`, [def.key]);
+      const { rows } = await db.query<{ id: string }>(
+        `insert into config_document (tenant_id, kind, key, version, status, body, created_by)
+         values ($1,'dashboard',$2,$3,'published',$4,$5) returning id`,
+        [ctx.tenantId, def.key, next.rows[0]!.v, JSON.stringify(def), ctx.userId],
+      );
+      await writeAudit(db, ctx, {
+        action: 'publish', entityType: 'config_document:dashboard', entityId: rows[0]!.id,
+        after: { key: def.key, version: next.rows[0]!.v }, actorLabel: req.auth?.displayName,
+      });
+      reply.code(201);
+      return { id: rows[0]!.id, key: def.key, version: next.rows[0]!.v };
+    });
+  });
+
+  // Render a dashboard: resolve each widget's report to a headline figure.
+  app.post<{ Params: { key: string } }>(
+    '/api/analytics/dashboards/:key/render',
+    { preHandler: requirePermission('reporting:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const dash = await db.query<{ body: { name: string; widgets: { title: string; reportKey: string }[] } }>(
+          `select body from config_document where kind='dashboard' and key=$1
+            order by (status='published') desc, version desc limit 1`,
+          [req.params.key],
+        );
+        if (!dash.rows[0]) { reply.code(404); return { error: 'Dashboard not found' }; }
+        const widgets = [];
+        for (const w of dash.rows[0].body.widgets ?? []) {
+          const rep = await db.query<{ body: { source: string; dimensions: string[]; measures: Measure[] } }>(
+            `select body from config_document where kind='report' and key=$1
+              order by (status='published') desc, version desc limit 1`,
+            [w.reportKey],
+          );
+          if (!rep.rows[0]) { widgets.push({ title: w.title, reportKey: w.reportKey, error: 'report not found' }); continue; }
+          const def = rep.rows[0].body;
+          const out = await executePivot(db, def.source, def.dimensions ?? [], def.measures);
+          if ('error' in out) { widgets.push({ title: w.title, reportKey: w.reportKey, error: out.error }); continue; }
+          const r = out.result as { totals: Record<string, number>; cells: unknown[]; factCount: number };
+          widgets.push({ title: w.title, reportKey: w.reportKey, total: r.totals.total ?? 0, groups: r.cells.length, factCount: r.factCount });
+        }
+        return { key: req.params.key, name: dash.rows[0].body.name, widgets };
       });
     },
   );

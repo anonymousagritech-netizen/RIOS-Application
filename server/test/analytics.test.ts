@@ -71,6 +71,27 @@ describe('Pivot / data warehouse', () => {
     expect(run.json().source).toBe('claim');
   });
 
+  it('saves a dashboard of report widgets and renders headline figures', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };
+    // Ensure the referenced report exists.
+    await app.inject({
+      method: 'POST', url: '/api/analytics/reports', headers: auth,
+      payload: { key: 'claims-by-status', name: 'Claims by status', source: 'claim', dimensions: ['status'], measures: [{ field: 'grossLossMinor', agg: 'sum', as: 'total' }] },
+    });
+    const save = await app.inject({
+      method: 'POST', url: '/api/analytics/dashboards', headers: auth,
+      payload: { key: 'claims-overview', name: 'Claims overview', widgets: [{ title: 'Gross by status', reportKey: 'claims-by-status' }] },
+    });
+    expect(save.statusCode).toBe(201);
+
+    const render = await app.inject({ method: 'POST', url: '/api/analytics/dashboards/claims-overview/render', headers: auth });
+    expect(render.statusCode).toBe(200);
+    expect(render.json().widgets).toHaveLength(1);
+    expect(render.json().widgets[0].title).toBe('Gross by status');
+    expect(render.json().widgets[0].groups).toBeGreaterThan(0);
+  });
+
   it('rejects a dimension outside the source whitelist', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };
