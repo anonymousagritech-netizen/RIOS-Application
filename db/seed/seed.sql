@@ -22,7 +22,9 @@ values
   (:'tenant_id'::uuid, 'admin@demo.rios', 'Demo Administrator', crypt('demo1234', gen_salt('bf'))),
   (:'tenant_id'::uuid, 'uw@demo.rios',    'Tara Underwood (Treaty UW)', crypt('demo1234', gen_salt('bf'))),
   (:'tenant_id'::uuid, 'acct@demo.rios',  'Alan Counts (Tech Accountant)', crypt('demo1234', gen_salt('bf'))),
-  (:'tenant_id'::uuid, 'claims@demo.rios','Carla Mims (Claims)', crypt('demo1234', gen_salt('bf')))
+  (:'tenant_id'::uuid, 'claims@demo.rios','Carla Mims (Claims)', crypt('demo1234', gen_salt('bf'))),
+  (:'tenant_id'::uuid, 'broker@demo.rios','Morgan Vale (Meridian Brokers)', crypt('demo1234', gen_salt('bf'))),
+  (:'tenant_id'::uuid, 'cedent@demo.rios','Priya Rao (Atlantic Mutual)', crypt('demo1234', gen_salt('bf')))
 on conflict (tenant_id, email) do nothing;
 
 -- ---------------------------------------------------------------------------
@@ -77,14 +79,16 @@ insert into permission (code, module, action, description) values
   ('asset:read',       'asset',      'read',   'View assets, licenses & entitlements'),
   ('asset:write',      'asset',      'write',  'Manage assets, licenses & entitlements'),
   ('ops:read',         'ops',        'read',   'View operations, audit & SLA'),
-  ('ops:write',        'ops',        'write',  'Manage SLA targets & operations')
+  ('ops:write',        'ops',        'write',  'Manage SLA targets & operations'),
+  ('portal:read',      'portal',     'read',   'Access an external counterparty portal')
 on conflict (code) do nothing;
 
 insert into role (tenant_id, code, name, is_system) values
   (:'tenant_id'::uuid, 'ADMIN',   'Administrator', true),
   (:'tenant_id'::uuid, 'TREATY_UW', 'Treaty Underwriter', true),
   (:'tenant_id'::uuid, 'ACCOUNTANT', 'Technical Accountant', true),
-  (:'tenant_id'::uuid, 'CLAIMS', 'Claims Handler', true)
+  (:'tenant_id'::uuid, 'CLAIMS', 'Claims Handler', true),
+  (:'tenant_id'::uuid, 'PORTAL', 'External Portal User', true)
 on conflict (tenant_id, code) do nothing;
 
 -- Admin gets everything
@@ -118,6 +122,14 @@ from role r join permission p on p.code in
 where r.tenant_id = :'tenant_id'::uuid and r.code = 'CLAIMS'
 on conflict do nothing;
 
+-- Portal (external counterparty): only the portal projection endpoints; the
+-- portal_grant rows further restrict every read to a single party.
+insert into role_permission (tenant_id, role_id, permission)
+select :'tenant_id'::uuid, r.id, p.code
+from role r join permission p on p.code in ('portal:read')
+where r.tenant_id = :'tenant_id'::uuid and r.code = 'PORTAL'
+on conflict do nothing;
+
 -- Assign roles to the demo users
 insert into user_role (tenant_id, user_id, role_id)
 select :'tenant_id'::uuid, u.id, r.id from app_user u join role r on r.tenant_id = u.tenant_id
@@ -125,7 +137,9 @@ where u.tenant_id = :'tenant_id'::uuid and (
   (u.email='admin@demo.rios'  and r.code='ADMIN') or
   (u.email='uw@demo.rios'     and r.code='TREATY_UW') or
   (u.email='acct@demo.rios'   and r.code='ACCOUNTANT') or
-  (u.email='claims@demo.rios' and r.code='CLAIMS'))
+  (u.email='claims@demo.rios' and r.code='CLAIMS') or
+  (u.email='broker@demo.rios' and r.code='PORTAL') or
+  (u.email='cedent@demo.rios' and r.code='PORTAL'))
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
@@ -245,6 +259,19 @@ where p.tenant_id = :'tenant_id'::uuid and (
   (p.short_name='Meridian Brokers' and r.role_code='broker') or
   (p.short_name='Coral Bay'        and r.role_code='cedent') or
   (p.short_name='Synd 4242'        and r.role_code='reinsurer'))
+on conflict do nothing;
+
+-- Portal grants: bind the demo portal users to a party + portal surface.
+insert into portal_grant (tenant_id, user_id, party_id, portal_type)
+select :'tenant_id'::uuid, u.id, p.id, g.portal_type
+from app_user u
+  join party p on p.tenant_id = :'tenant_id'::uuid
+  cross join (values
+    ('broker@demo.rios','Meridian Brokers','broker'),
+    ('cedent@demo.rios','Atlantic Mutual','cedent')
+  ) as g(email, party_name, portal_type)
+where u.tenant_id = :'tenant_id'::uuid
+  and u.email = g.email and p.short_name = g.party_name
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
