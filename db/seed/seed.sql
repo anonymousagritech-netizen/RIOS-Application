@@ -90,7 +90,11 @@ insert into permission (code, module, action, description) values
   ('pii:view',         'pii',        'view',   'View unmasked PII / sensitive fields'),
   ('fls:write',        'fls',        'write',  'Manage field-level security policies'),
   ('product:read',     'product',    'read',   'View insurance products'),
-  ('product:write',    'product',    'write',  'Author products & drive lifecycle')
+  ('product:write',    'product',    'write',  'Author products & drive lifecycle'),
+  ('platform:read',    'platform',   'read',   'View companies, offices, feature flags'),
+  ('platform:write',   'platform',   'write',  'Manage companies, offices, feature flags'),
+  ('cost:read',        'cost',       'read',   'View cost & capacity'),
+  ('cost:write',       'cost',       'write',  'Manage cost & capacity records')
 on conflict (code) do nothing;
 
 insert into role (tenant_id, code, name, is_system) values
@@ -563,5 +567,42 @@ select :'tenant_id'::uuid, 'CLM-2026-000003', c.id,
 from contract c
 where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
 on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Platform & org: companies, offices, feature flags, cost/capacity (§9.1, §13).
+-- ---------------------------------------------------------------------------
+insert into company (tenant_id, code, name, country, base_currency, status) values
+  (:'tenant_id'::uuid,'CO-GRP','Demo Reinsurance Group','US','USD','active'),
+  (:'tenant_id'::uuid,'CO-EU','Demo Re Europe SE','DE','EUR','active'),
+  (:'tenant_id'::uuid,'CO-UK','Demo Re (UK) Ltd','GB','GBP','active')
+on conflict (tenant_id, code) do nothing;
+
+update company set parent_id = g.id
+from (select id from company where tenant_id=:'tenant_id'::uuid and code='CO-GRP') g
+where company.tenant_id=:'tenant_id'::uuid and company.code in ('CO-EU','CO-UK');
+
+insert into office (tenant_id, company_id, code, name, city, country, is_head_office, status)
+select :'tenant_id'::uuid, c.id, v.code, v.name, v.city, v.country, v.hq, 'open'
+from (values
+  ('CO-GRP','OFF-NYC','New York HQ','New York','US', true),
+  ('CO-EU','OFF-MUC','Munich Office','Munich','DE', true),
+  ('CO-UK','OFF-LON','London Office','London','GB', true)
+) as v(co, code, name, city, country, hq)
+join company c on c.tenant_id=:'tenant_id'::uuid and c.code = v.co
+on conflict (tenant_id, code) do nothing;
+
+insert into feature_flag (tenant_id, key, name, enabled, seat_limit, plan) values
+  (:'tenant_id'::uuid,'ai-assistant','AI Assistant', true, null, 'enterprise'),
+  (:'tenant_id'::uuid,'portals','External Portals', true, 50, 'enterprise'),
+  (:'tenant_id'::uuid,'voice-assistant','Voice Assistant', false, null, 'enterprise'),
+  (:'tenant_id'::uuid,'advanced-analytics','Advanced Analytics', true, null, 'enterprise')
+on conflict (tenant_id, key) do nothing;
+
+insert into cost_record (tenant_id, category, period, amount_minor, currency, capacity_provisioned, capacity_used, capacity_unit) values
+  (:'tenant_id'::uuid,'compute','2026-06', 1850000,'USD', 32, 21, 'vCPU'),
+  (:'tenant_id'::uuid,'storage','2026-06',  420000,'USD', 2000, 1340, 'GB'),
+  (:'tenant_id'::uuid,'licenses','2026-06', 980000,'USD', 50, 38, 'seats'),
+  (:'tenant_id'::uuid,'staff','2026-06',  12500000,'USD', null, null, null)
+on conflict (tenant_id, category, period) do nothing;
 
 commit;

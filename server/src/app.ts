@@ -51,6 +51,8 @@ import { schedulerModule } from './modules/scheduler.js';
 import { delegationModule } from './modules/delegation.js';
 import { performanceModule } from './modules/performance.js';
 import { productsModule } from './modules/products.js';
+import { platformModule } from './modules/platform.js';
+import { costModule } from './modules/cost.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -200,6 +202,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(delegationModule);
   await app.register(performanceModule);
   await app.register(productsModule);
+  await app.register(platformModule);
+  await app.register(costModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);
