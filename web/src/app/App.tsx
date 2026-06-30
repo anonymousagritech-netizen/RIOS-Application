@@ -22,6 +22,10 @@ import { StatementsPage } from '../pages/StatementsPage';
 import { FinancePage } from '../pages/FinancePage';
 import { RegulatoryPage } from '../pages/RegulatoryPage';
 import { WorkflowPage } from '../pages/WorkflowPage';
+import { DocumentsPage } from '../pages/DocumentsPage';
+import { ReportsPage } from '../pages/ReportsPage';
+import { CrmPage } from '../pages/CrmPage';
+import { IntegrationPage } from '../pages/IntegrationPage';
 
 export function App() {
   const { status } = useAuth();
@@ -63,6 +67,10 @@ export function App() {
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/regulatory" element={<RegulatoryPage />} />
         <Route path="/workflow" element={<WorkflowPage />} />
+        <Route path="/documents" element={<DocumentsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/crm" element={<CrmPage />} />
+        <Route path="/integration" element={<IntegrationPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
