@@ -239,6 +239,51 @@ from _cl c join code_list cl on cl.tenant_id = :'tenant_id'::uuid and cl.key = c
 on conflict (code_list_id, code, effective_from) do nothing;
 
 -- ---------------------------------------------------------------------------
+-- Designer surfaces: a published workflow definition & a business rule set
+-- (§10.3). These live in config_document and are interpreted by @rios/domain.
+-- ---------------------------------------------------------------------------
+insert into config_document (tenant_id, kind, key, version, status, body)
+values (:'tenant_id'::uuid, 'workflow', 'treaty.lifecycle', 1, 'published', jsonb_build_object(
+  'key','treaty.lifecycle',
+  'name','Treaty lifecycle',
+  'initial','DRAFT',
+  'states', jsonb_build_array('DRAFT','QUOTED','PLACING','BOUND','ACTIVE','CANCELLED'),
+  'finalStates', jsonb_build_array('CANCELLED'),
+  'transitions', jsonb_build_array(
+    jsonb_build_object('event','quote','from','DRAFT','to','QUOTED','label','Quote'),
+    jsonb_build_object('event','place','from','QUOTED','to','PLACING','label','Place'),
+    jsonb_build_object('event','bind','from','PLACING','to','BOUND','permission','treaty:bind','label','Bind'),
+    jsonb_build_object('event','activate','from','BOUND','to','ACTIVE','label','Activate'),
+    jsonb_build_object('event','cancel','from','DRAFT','to','CANCELLED','label','Cancel'),
+    jsonb_build_object('event','cancel','from','QUOTED','to','CANCELLED','label','Cancel')
+  )))
+on conflict (tenant_id, kind, key, version) do nothing;
+
+insert into config_document (tenant_id, kind, key, version, status, body)
+values (:'tenant_id'::uuid, 'rule', 'treaty.bind.guards', 1, 'published', jsonb_build_object(
+  'key','treaty.bind.guards',
+  'name','Treaty bind guards',
+  'rules', jsonb_build_array(
+    jsonb_build_object(
+      'id','premium-required',
+      'when', jsonb_build_object('field','premiumMinor','op','empty'),
+      'then', jsonb_build_array(jsonb_build_object('type','error','message','Premium is required before binding.'))),
+    jsonb_build_object(
+      'id','large-line-referral',
+      'when', jsonb_build_object('all', jsonb_build_array(
+        jsonb_build_object('field','premiumMinor','op','gte','value',10000000),
+        jsonb_build_object('field','lob','op','in','value', jsonb_build_array('PROPERTY','MARINE')))),
+      'then', jsonb_build_array(
+        jsonb_build_object('type','route','target','senior-uw'),
+        jsonb_build_object('type','flag','target','large-line'))),
+    jsonb_build_object(
+      'id','default-brokerage',
+      'when', jsonb_build_object('field','brokeragePct','op','empty'),
+      'then', jsonb_build_array(jsonb_build_object('type','set','target','brokeragePct','value',10)))
+  )))
+on conflict (tenant_id, kind, key, version) do nothing;
+
+-- ---------------------------------------------------------------------------
 -- Parties (one entity can hold several roles — §7 implication)
 -- ---------------------------------------------------------------------------
 insert into party (tenant_id, reference, legal_name, short_name, kind, country, identifiers) values
@@ -351,6 +396,44 @@ insert into gl_account (tenant_id, code, name, type, is_control) values
   (:'tenant_id'::uuid,'5000','Commission Expense','expense',false),
   (:'tenant_id'::uuid,'5100','Claims / Loss Expense','expense',false),
   (:'tenant_id'::uuid,'1000','Cash at Bank','asset',false)
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- A catastrophe event and notified claims, so claims analytics & catastrophe
+-- summaries have real data to aggregate (§13). Claims are independent of the
+-- financial_event/statement reconciliation chain the integration tests assert.
+-- ---------------------------------------------------------------------------
+insert into cat_event (tenant_id, event_code, name, peril, region, event_date, status) values
+  (:'tenant_id'::uuid,'WS-2026-ATLANTIC','2026 Atlantic Windstorm','Windstorm','North Atlantic', date '2026-03-14','OPEN')
+on conflict (tenant_id, event_code) do nothing;
+
+insert into claim (tenant_id, reference, contract_id, cat_event_id, description, loss_date,
+                   currency, gross_loss_minor, outstanding_minor, paid_minor, status)
+select :'tenant_id'::uuid, 'CLM-2026-000001', c.id, ce.id,
+       'Windstorm property damage — coastal portfolio', date '2026-03-14',
+       'USD', 750000000, 500000000, 250000000, 'RESERVED'
+from contract c
+  join cat_event ce on ce.tenant_id=:'tenant_id'::uuid and ce.event_code='WS-2026-ATLANTIC'
+where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+insert into claim (tenant_id, reference, contract_id, cat_event_id, description, loss_date,
+                   currency, gross_loss_minor, outstanding_minor, paid_minor, status)
+select :'tenant_id'::uuid, 'CLM-2026-000002', c.id, ce.id,
+       'Windstorm — secondary surge losses', date '2026-03-15',
+       'USD', 320000000, 320000000, 0, 'NOTIFIED'
+from contract c
+  join cat_event ce on ce.tenant_id=:'tenant_id'::uuid and ce.event_code='WS-2026-ATLANTIC'
+where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+insert into claim (tenant_id, reference, contract_id, description, loss_date,
+                   currency, gross_loss_minor, outstanding_minor, paid_minor, status)
+select :'tenant_id'::uuid, 'CLM-2026-000003', c.id,
+       'Attritional fire loss', date '2026-02-02',
+       'USD', 90000000, 0, 90000000, 'SETTLED'
+from contract c
+where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
 on conflict do nothing;
 
 commit;
