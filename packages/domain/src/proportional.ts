@@ -257,3 +257,45 @@ export function proportionalAccountBalance(args: {
 }): Money {
   return subtract(subtract(args.cededPremium, args.totalCommission), args.cededLosses);
 }
+
+// ---------------------------------------------------------------------------
+// Portfolio entry / withdrawal (§7.2 — proportional treaty inception/expiry)
+// ---------------------------------------------------------------------------
+
+export interface PortfolioTransferTerms {
+  /** Premium-portfolio percentage of the unearned premium reserve transferred (e.g. 35 = 35%). */
+  premiumPortfolioPct: number;
+  /** Loss-portfolio percentage of the outstanding reserves transferred (e.g. 90 = 90%). */
+  lossPortfolioPct: number;
+  /** 'entry' at inception (reinsurer assumes the in-force book), 'withdrawal' at expiry (reinsurer releases it). */
+  direction: 'entry' | 'withdrawal';
+}
+
+export interface PortfolioTransferResult {
+  premiumTransfer: Money;
+  lossTransfer: Money;
+  /** Net cash effect from the reinsurer's perspective: a portfolio entry receives premium and assumes losses. */
+  netTransfer: Money;
+}
+
+/**
+ * Portfolio transfer at the start (entry) or end (withdrawal) of a proportional
+ * treaty. On entry the reinsurer receives a premium-portfolio amount (UPR share)
+ * and assumes a loss-portfolio amount (outstanding share); on withdrawal the
+ * signs reverse. Net = premium − loss for an entry; the inverse for a withdrawal.
+ */
+export function portfolioTransfer(
+  unearnedPremium: Money,
+  outstandingLosses: Money,
+  terms: PortfolioTransferTerms,
+): PortfolioTransferResult {
+  const premiumTransfer = percentOf(unearnedPremium, terms.premiumPortfolioPct);
+  const lossTransfer = percentOf(outstandingLosses, terms.lossPortfolioPct);
+  const sign = terms.direction === 'entry' ? 1 : -1;
+  const net = (premiumTransfer.amount - lossTransfer.amount) * sign;
+  return {
+    premiumTransfer: money(premiumTransfer.amount * sign, premiumTransfer.currency),
+    lossTransfer: money(lossTransfer.amount * sign, lossTransfer.currency),
+    netTransfer: money(net, premiumTransfer.currency),
+  };
+}

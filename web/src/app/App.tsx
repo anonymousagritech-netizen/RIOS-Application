@@ -30,6 +30,11 @@ import { HrmsPage } from '../pages/HrmsPage';
 import { ProcurementPage } from '../pages/ProcurementPage';
 import { AssetsPage } from '../pages/AssetsPage';
 import { OperationsPage } from '../pages/OperationsPage';
+import { PayrollPage } from '../pages/PayrollPage';
+import { PeriodClosePage } from '../pages/PeriodClosePage';
+import { TreatyAdjustmentsPage } from '../pages/TreatyAdjustmentsPage';
+import { ClaimsRecoveriesPage } from '../pages/ClaimsRecoveriesPage';
+import { RegulatoryReturnsPage } from '../pages/RegulatoryReturnsPage';
 
 export function App() {
   const { status } = useAuth();
@@ -79,6 +84,11 @@ export function App() {
         <Route path="/procurement" element={<ProcurementPage />} />
         <Route path="/assets" element={<AssetsPage />} />
         <Route path="/operations" element={<OperationsPage />} />
+        <Route path="/payroll" element={<PayrollPage />} />
+        <Route path="/period-close" element={<PeriodClosePage />} />
+        <Route path="/adjustments" element={<TreatyAdjustmentsPage />} />
+        <Route path="/recoveries" element={<ClaimsRecoveriesPage />} />
+        <Route path="/returns" element={<RegulatoryReturnsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
