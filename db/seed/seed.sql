@@ -616,4 +616,25 @@ insert into connector (tenant_id, key, name, kind, config, enabled, last_status)
     '{"host":"sftp.example.com","username":"rios","password":"s3cr3t"}'::jsonb, true, null)
 on conflict (tenant_id, key) do nothing;
 
+-- ---------------------------------------------------------------------------
+-- Security & resilience: i18n locale messages, a backup marker, a SAML provider.
+-- ---------------------------------------------------------------------------
+insert into locale_message (tenant_id, locale, key, message) values
+  (:'tenant_id'::uuid,'en-US','app.title','Reinsurance Intelligent Operating System'),
+  (:'tenant_id'::uuid,'en-US','nav.dashboard','Dashboard'),
+  (:'tenant_id'::uuid,'en-US','action.bind','Bind treaty'),
+  (:'tenant_id'::uuid,'fr-FR','app.title','Système d''exploitation intelligent de réassurance'),
+  (:'tenant_id'::uuid,'fr-FR','nav.dashboard','Tableau de bord'),
+  (:'tenant_id'::uuid,'ar-SA','app.title','نظام التشغيل الذكي لإعادة التأمين'),
+  (:'tenant_id'::uuid,'ar-SA','nav.dashboard','لوحة التحكم')
+on conflict (tenant_id, locale, key) do nothing;
+
+insert into backup_run (tenant_id, kind, status, location, size_bytes, note, finished_at)
+values (:'tenant_id'::uuid,'snapshot','completed','s3://rios-backups/demo/snapshot', 524288000,'Nightly snapshot', now())
+on conflict do nothing;
+
+insert into identity_provider (tenant_id, key, name, type, issuer, enabled)
+values (:'tenant_id'::uuid,'okta-saml','Okta (SAML)','saml','https://demo.okta.com', true)
+on conflict (tenant_id, key) do nothing;
+
 commit;

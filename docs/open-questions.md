@@ -141,6 +141,35 @@ deployment, is the external **sink**:
 These are integration points, not missing logic: the queue, relay, registry and key
 lifecycle are exercised by the server test-suite.
 
+## 12. KMS, SAML & backup: real mechanics, managed providers (§14, §15)
+
+- **KMS** — envelope encryption is real (AES-256-GCM; a per-alias DEK is generated,
+  wrapped by a master key and stored wrapped; encrypt/decrypt round-trip is tested).
+  The **dev master key is derived from `JWT_SECRET`**; production injects a managed
+  HSM/KMS master key and never derives it from app config.
+- **SAML** — SP metadata is served and providers are configurable (reusing
+  `identity_provider`). The **assertion-consumer handshake (XML-signature
+  validation) is provider-wired** — a deployment plugs a SAML library into the ACS
+  endpoint. (OIDC SSO is fully wired.) WebAuthn remains designed-for.
+- **Backup/DR** — the run **catalog** (markers, status, restore points) is real and
+  tested; the actual snapshot/restore is driven by the **DB/infra layer**, not the app.
+
+## 13. AI & channels: real reasoning, external sensors (§5, §9.4, §9.11)
+
+- **OCR / document intelligence** — deterministic **field extraction from text** is
+  implemented and tested; the **image/PDF → text** step is an external OCR engine.
+- **Voice assistant** — a transcript is normalised and routed through the existing
+  deterministic assistant; **speech-to-text and text-to-speech** are captured
+  on-device / by a managed speech service.
+- **AI prediction & insights** — renewal-likelihood scoring is a **transparent,
+  unit-tested heuristic** (no black box); an optional LLM may narrate it.
+- **AI generation** — executive summaries are produced by **template-merge over live
+  KPIs**; the optional LLM layer (already wired for the assistant) can elaborate.
+- **Mobile portal** — a condensed projection + PWA manifest served to the responsive
+  web client; a **native shell** is out of scope.
+- Still genuinely deferred: **WebAuthn** (needs an authenticator), and the
+  **API Marketplace** (brief §26 marks it ▷ later-phase).
+
 ## Assumptions
 
 - This is a **foundation/vertical-slice**, intended to prove correctness, security, audit, and the
