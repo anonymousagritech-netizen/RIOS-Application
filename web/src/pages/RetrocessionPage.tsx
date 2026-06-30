@@ -28,7 +28,7 @@ interface RetroItem {
   status: string;
   retrocessionaireName?: string | null;
 }
-interface RetroListResponse { treaties: RetroItem[] }
+interface RetroListResponse { retrocession: RetroItem[] }
 
 interface NetPosition { currency: string; grossMinor: number; cededMinor: number; netMinor: number }
 interface NetPositionResponse { positions: NetPosition[] }
@@ -135,11 +135,11 @@ export function RetrocessionPage() {
 
       <Card padded={false}>
         <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
-          <CardHeader title="Outwards retrocession contracts" subtitle={`${data?.treaties.length ?? 0} contract${(data?.treaties.length ?? 0) === 1 ? '' : 's'}`} />
+          <CardHeader title="Outwards retrocession contracts" subtitle={`${data?.retrocession?.length ?? 0} contract${(data?.retrocession?.length ?? 0) === 1 ? '' : 's'}`} />
         </div>
         <Table
           columns={columns}
-          rows={data?.treaties}
+          rows={data?.retrocession}
           loading={isLoading}
           rowKey={(r) => r.id}
           empty={<EmptyState title="No retrocession contracts" message="Create a new retrocession to protect your net account." icon={<ArrowLeftRight size={16} />} />}

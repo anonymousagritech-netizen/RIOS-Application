@@ -28,7 +28,7 @@ interface FacultativeItem {
   insuredName?: string | null;
   cedentName?: string | null;
 }
-interface FacultativeListResponse { treaties: FacultativeItem[] }
+interface FacultativeListResponse { facultative: FacultativeItem[] }
 
 const STATUSES = ['DRAFT', 'QUOTED', 'PLACING', 'BOUND', 'ACTIVE', 'EXPIRING', 'RUNOFF', 'COMMUTED', 'CANCELLED'];
 
@@ -98,12 +98,12 @@ export function FacultativePage() {
             </Select>
           </div>
           <div className={shared.spacer} />
-          <span className={shared.cellSub}>{data?.treaties.length ?? 0} result{(data?.treaties.length ?? 0) === 1 ? '' : 's'}</span>
+          <span className={shared.cellSub}>{data?.facultative?.length ?? 0} result{(data?.facultative?.length ?? 0) === 1 ? '' : 's'}</span>
         </div>
 
         <Table
           columns={columns}
-          rows={data?.treaties}
+          rows={data?.facultative}
           loading={isLoading}
           rowKey={(r) => r.id}
           empty={<EmptyState title="No facultative cessions" message="Create a new cession to place a single risk facultatively." icon={<FileCheck2 size={16} />} />}

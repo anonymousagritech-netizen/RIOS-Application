@@ -49,7 +49,7 @@ export function PartiesPage() {
       header: 'Roles',
       render: (p) => (
         <div className={shared.checkGroup}>
-          {p.roles?.length ? p.roles.map((r) => <Badge key={r} color="indigo">{titleCase(r)}</Badge>) : <span className={shared.cellSub}>-</span>}
+          {Array.isArray(p.roles) && p.roles.length ? p.roles.map((r) => <Badge key={r} color="indigo">{titleCase(r)}</Badge>) : <span className={shared.cellSub}>-</span>}
         </div>
       ),
     },

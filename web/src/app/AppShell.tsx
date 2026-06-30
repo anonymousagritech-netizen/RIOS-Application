@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, PanelLeftClose, PanelLeftOpen, Sparkles } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Sparkles } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { NAV_GROUPS } from './nav';
 import { TopBar } from './TopBar';
@@ -29,23 +29,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       })).filter((g) => g.items.length > 0),
     [hasPermission],
   );
-
-  const activeGroup = useMemo(
-    () => groups.find((g) => g.items.some((i) => location.pathname.startsWith(i.to)))?.label,
-    [groups, location.pathname],
-  );
-
-  // Accordion state: every group is open by default (all nav links reachable);
-  // users may collapse individual groups, tracked here.
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
-
-  const toggleGroup = (label: string) =>
-    setCollapsedGroups((s) => {
-      const next = new Set(s);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
 
   const setCollapsedPersist = (v: boolean) => {
     setCollapsed(v);
@@ -89,51 +72,28 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className={styles.nav} aria-label="Primary">
-          {groups.map((group) => {
-            const open = collapsed || !collapsedGroups.has(group.label);
-            const isActiveGroup = group.label === activeGroup;
-            return (
-              <div key={group.label} className={styles.navGroup}>
-                {collapsed ? (
-                  <span className={styles.collapsedDivider} aria-hidden />
-                ) : (
-                  <button
-                    type="button"
-                    className={`${styles.groupHeader} ${isActiveGroup ? styles.groupHeaderActive : ''}`}
-                    onClick={() => toggleGroup(group.label)}
-                    aria-expanded={open}
-                  >
-                    <group.icon className={styles.groupIcon} size={16} />
-                    <span className={styles.groupLabel}>{group.label}</span>
-                    <ChevronDown
-                      className={`${styles.groupChevron} ${open ? styles.groupChevronOpen : ''}`}
-                      size={15}
-                    />
-                  </button>
-                )}
-
-                <div className={`${styles.groupItems} ${open ? styles.groupItemsOpen : ''}`}>
-                  <div className={styles.groupItemsInner}>
-                    {group.items.map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        title={collapsed ? item.label : undefined}
-                        className={({ isActive }) =>
-                          `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
-                        }
-                      >
-                        <span className={styles.navIcon} aria-hidden>
-                          <item.icon size={18} strokeWidth={2} />
-                        </span>
-                        <span className={styles.navLabel}>{item.label}</span>
-                      </NavLink>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {groups.map((group) => (
+            <div key={group.label} className={styles.navGroup}>
+              {collapsed
+                ? <span className={styles.groupRule} aria-hidden />
+                : <span className={styles.caption}>{group.label}</span>}
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  title={collapsed ? item.label : undefined}
+                  className={({ isActive }) =>
+                    `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+                  }
+                >
+                  <span className={styles.navIcon} aria-hidden>
+                    <item.icon size={18} strokeWidth={1.9} />
+                  </span>
+                  <span className={styles.navLabel}>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          ))}
         </nav>
 
         <div className={styles.sidebarFooter}>

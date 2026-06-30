@@ -27,7 +27,7 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
         const { rows } = await db.query(
           `select p.id, p.reference, p.legal_name as "legalName", p.short_name as "shortName",
                   p.kind, p.country, p.status,
-                  coalesce(array_agg(pr.role_code) filter (where pr.role_code is not null), '{}') as roles
+                  coalesce(array_agg(pr.role_code::text) filter (where pr.role_code is not null), '{}') as roles
              from party p
              left join party_role pr on pr.party_id = p.id and pr.is_active
             where not p.is_deleted
@@ -52,7 +52,7 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
         const { rows } = await db.query(
           `select p.id, p.reference, p.legal_name as "legalName", p.short_name as "shortName",
                   p.kind, p.country, p.status, p.identifiers,
-                  coalesce(array_agg(pr.role_code) filter (where pr.role_code is not null), '{}') as roles
+                  coalesce(array_agg(pr.role_code::text) filter (where pr.role_code is not null), '{}') as roles
              from party p left join party_role pr on pr.party_id = p.id and pr.is_active
             where p.id = $1 and not p.is_deleted group by p.id`,
           [req.params.id],
