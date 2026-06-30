@@ -97,6 +97,7 @@ export async function hrmsModule(app: FastifyInstance): Promise<void> {
           `select e.id, e.employee_no as "employeeNo", e.first_name as "firstName", e.last_name as "lastName",
                   e.email, e.department_id as "departmentId", e.position, e.manager_id as "managerId",
                   e.hire_date as "hireDate", e.base_salary_minor as "baseSalaryMinor", e.currency, e.status,
+                  e.employment_type as "employmentType",
                   d.name as "departmentName"
              from employee e
              left join department d on d.id = e.department_id
@@ -121,6 +122,7 @@ export async function hrmsModule(app: FastifyInstance): Promise<void> {
           `select e.id, e.employee_no as "employeeNo", e.first_name as "firstName", e.last_name as "lastName",
                   e.email, e.department_id as "departmentId", e.position, e.manager_id as "managerId",
                   e.hire_date as "hireDate", e.base_salary_minor as "baseSalaryMinor", e.currency, e.status,
+                  e.employment_type as "employmentType",
                   d.name as "departmentName"
              from employee e
              left join department d on d.id = e.department_id
@@ -137,7 +139,25 @@ export async function hrmsModule(app: FastifyInstance): Promise<void> {
              from leave_request where employee_id = $1 order by created_at desc`,
           [req.params.id],
         );
-        return { ...rows[0], leaveRequests: leave.rows };
+        // System role(s) from the Permission Engine, surfaced alongside the HR
+        // designation/title so an employee's access is visible in HR context.
+        const roles = await db.query(
+          `select r.code, r.name from user_role ur join role r on r.id = ur.role_id
+            where ur.user_id = (select user_id from employee where id = $1) order by r.name`,
+          [req.params.id],
+        );
+        // Audited status-change history (active/on-leave/suspended/exited).
+        const history = await db.query(
+          `select from_status as "fromStatus", to_status as "toStatus", reason, changed_at as "changedAt"
+             from employee_status_history where employee_id = $1 order by changed_at desc limit 20`,
+          [req.params.id],
+        );
+        return {
+          ...rows[0],
+          leaveRequests: leave.rows,
+          systemRoles: roles.rows,
+          statusHistory: history.rows,
+        };
       });
     },
   );

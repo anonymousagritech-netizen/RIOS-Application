@@ -58,3 +58,4 @@ export {
 export * from './simulation.js';
 export * from './geofence.js';
 export * from './parametric.js';
+export * from './attendanceStatus.js';
