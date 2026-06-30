@@ -26,3 +26,4 @@ export * from './retention.js';
 export * from './masking.js';
 export * from './scheduler.js';
 export * from './delegation.js';
+export * from './performance.js';

@@ -49,6 +49,7 @@ import { retentionModule } from './modules/retention.js';
 import { fieldSecurityModule } from './modules/fieldSecurity.js';
 import { schedulerModule } from './modules/scheduler.js';
 import { delegationModule } from './modules/delegation.js';
+import { performanceModule } from './modules/performance.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -196,6 +197,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(fieldSecurityModule);
   await app.register(schedulerModule);
   await app.register(delegationModule);
+  await app.register(performanceModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);

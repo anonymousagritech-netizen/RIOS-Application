@@ -490,6 +490,29 @@ where acct.tenant_id = :'tenant_id'::uuid and acct.email = 'acct@demo.rios'
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
+-- A couple of employees and a performance review (§14). The overall rating is
+-- computed by @rios/domain from the weighted goals.
+-- ---------------------------------------------------------------------------
+insert into employee (tenant_id, employee_no, first_name, last_name, email, position, user_id, hire_date, status)
+select :'tenant_id'::uuid, 'EMP-90001','Tara','Underwood','uw@demo.rios','Treaty Underwriter', u.id, date '2021-04-01','active'
+from app_user u where u.tenant_id=:'tenant_id'::uuid and u.email='uw@demo.rios'
+on conflict (tenant_id, employee_no) do nothing;
+
+insert into employee (tenant_id, employee_no, first_name, last_name, email, position, user_id, hire_date, status)
+select :'tenant_id'::uuid, 'EMP-90002','Alan','Counts','acct@demo.rios','Technical Accountant', u.id, date '2020-09-15','active'
+from app_user u where u.tenant_id=:'tenant_id'::uuid and u.email='acct@demo.rios'
+on conflict (tenant_id, employee_no) do nothing;
+
+insert into performance_review (tenant_id, employee_id, period, status, goals, overall_score, band, summary)
+select :'tenant_id'::uuid, e.id, 'FY2026','in_review',
+  '[{"title":"Portfolio profitability","weight":3,"score":4},
+    {"title":"Renewal retention","weight":2,"score":4},
+    {"title":"Compliance & audit","weight":1,"score":3}]'::jsonb,
+  3.83,'meets','Strong technical year; develop leadership exposure.'
+from employee e where e.tenant_id=:'tenant_id'::uuid and e.employee_no='EMP-90001'
+on conflict (tenant_id, employee_id, period) do nothing;
+
+-- ---------------------------------------------------------------------------
 -- A catastrophe event and notified claims, so claims analytics & catastrophe
 -- summaries have real data to aggregate (§13). Claims are independent of the
 -- financial_event/statement reconciliation chain the integration tests assert.
