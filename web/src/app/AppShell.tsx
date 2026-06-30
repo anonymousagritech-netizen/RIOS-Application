@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { PanelLeftClose, PanelLeftOpen, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronsLeft, PanelLeftOpen, Sparkles } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { NAV_GROUPS } from './nav';
 import { TopBar } from './TopBar';
@@ -20,7 +20,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     () => typeof localStorage !== 'undefined' && localStorage.getItem(COLLAPSE_KEY) === '1',
   );
 
-  // Groups the current user is allowed to see (permission-filtered).
   const groups = useMemo(
     () =>
       NAV_GROUPS.map((g) => ({
@@ -30,12 +29,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     [hasPermission],
   );
 
+  // Sections are open by default; users can collapse individual ones.
+  const [closed, setClosed] = useState<Set<string>>(() => new Set());
+  const toggleGroup = (label: string) =>
+    setClosed((s) => {
+      const next = new Set(s);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+
   const setCollapsedPersist = (v: boolean) => {
     setCollapsed(v);
     try { localStorage.setItem(COLLAPSE_KEY, v ? '1' : '0'); } catch { /* ignore */ }
   };
 
-  // Cmd/Ctrl-K opens the command palette.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -47,7 +55,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Close the mobile drawer whenever the route changes.
   useEffect(() => { setNavOpen(false); }, [location.pathname]);
 
   return (
@@ -58,42 +65,54 @@ export function AppShell({ children }: { children: ReactNode }) {
           {!collapsed && (
             <div className={styles.brandText}>
               <strong>RIOS</strong>
-              <span>Reinsurance OS</span>
+              <span>Reinsurance Intelligent OS</span>
             </div>
           )}
-          <button
-            className={styles.collapseBtn}
-            onClick={() => setCollapsedPersist(!collapsed)}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={collapsed ? 'Expand' : 'Collapse'}
-          >
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          </button>
         </div>
 
         <nav className={styles.nav} aria-label="Primary">
-          {groups.map((group) => (
-            <div key={group.label} className={styles.navGroup}>
-              {collapsed
-                ? <span className={styles.groupRule} aria-hidden />
-                : <span className={styles.caption}>{group.label}</span>}
-              {group.items.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  title={collapsed ? item.label : undefined}
-                  className={({ isActive }) =>
-                    `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
-                  }
-                >
-                  <span className={styles.navIcon} aria-hidden>
-                    <item.icon size={18} strokeWidth={1.9} />
-                  </span>
-                  <span className={styles.navLabel}>{item.label}</span>
-                </NavLink>
-              ))}
-            </div>
-          ))}
+          {groups.map((group) => {
+            const open = collapsed || !closed.has(group.label);
+            return (
+              <div key={group.label} className={styles.navGroup}>
+                {collapsed ? (
+                  <span className={styles.groupRule} aria-hidden />
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.caption}
+                    onClick={() => toggleGroup(group.label)}
+                    aria-expanded={open}
+                  >
+                    <span>{group.label}</span>
+                    <ChevronDown
+                      className={`${styles.captionChevron} ${open ? '' : styles.captionChevronClosed}`}
+                      size={14}
+                    />
+                  </button>
+                )}
+                <div className={`${styles.items} ${open ? styles.itemsOpen : ''}`}>
+                  <div className={styles.itemsInner}>
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        title={collapsed ? item.label : undefined}
+                        className={({ isActive }) =>
+                          `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+                        }
+                      >
+                        <span className={styles.navIcon} aria-hidden>
+                          <item.icon size={18} strokeWidth={2} />
+                        </span>
+                        <span className={styles.navLabel}>{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </nav>
 
         <div className={styles.sidebarFooter}>
@@ -104,6 +123,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Sparkles size={18} className={styles.assistantSpark} />
             {!collapsed && <span>Ask RIOS Assistant</span>}
+          </button>
+          <button
+            className={styles.collapseBtn}
+            onClick={() => setCollapsedPersist(!collapsed)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand' : 'Collapse'}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <ChevronsLeft size={18} />}
           </button>
         </div>
       </aside>

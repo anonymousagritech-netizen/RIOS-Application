@@ -33,3 +33,26 @@ export * from './integration.js';
 export * from './i18n.js';
 export * from './ocr.js';
 export * from './prediction.js';
+// New reinsurance math. Several symbols (profitCommission, exposureRate,
+// burningCost, rateOnLine, minimumAndDepositPremium, reinstatementPremium) are
+// already provided by proportional/nonproportional/pricing; we re-export only
+// the genuinely-new functions here to avoid duplicate-export ambiguity.
+export {
+  flatCedingCommission, slidingScaleCommission, overridingCommission, brokerage,
+  type SlidingScaleInput, type SlidingScaleResult,
+} from './commission.js';
+export {
+  burningCostRate, interpolateExposureCurve, ilf, premiumAtLimit, premiumFromRol,
+  catLoadFromModel,
+  type ExposureCurvePoint, type ExposureRateInput, type ExposureRateResult,
+  type IlfCurvePoint, type CatLoadInput, type CatLoadResult,
+} from './rating.js';
+export {
+  perRiskRecovery, perOccurrenceRecovery, aggregateXlRecovery, stopLossRecovery,
+  layerReinstatementCapacity,
+  type PerRiskRecoveryInput, type PerOccurrenceRecoveryInput,
+  type AggregateXlRecoveryInput, type AggregateXlRecoveryResult,
+  type StopLossRecoveryInput, type StopLossRecoveryResult,
+  type Reinstatement, type ReinstatementChargeDetail, type LayerReinstatementCapacityInput,
+} from './xlStructures.js';
+export * from './simulation.js';
