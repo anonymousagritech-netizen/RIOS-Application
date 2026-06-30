@@ -57,8 +57,17 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: 'Corporate',
+    items: [
+      { label: 'People', to: '/hr', icon: '☻', permission: 'hr:read' },
+      { label: 'Procurement', to: '/procurement', icon: '⊞', permission: 'procurement:read' },
+      { label: 'Assets', to: '/assets', icon: '▢', permission: 'asset:read' },
+    ],
+  },
+  {
     label: 'Platform',
     items: [
+      { label: 'Operations', to: '/operations', icon: '◍', permission: 'ops:read' },
       { label: 'Integration', to: '/integration', icon: '⇲', permission: 'integration:read' },
       { label: 'Admin', to: '/admin', icon: '⚙', permission: 'admin:manage' },
     ],
