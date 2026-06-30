@@ -58,6 +58,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Regulatory', to: '/regulatory', icon: '§', permission: 'regulatory:read' },
       { label: 'Returns', to: '/returns', icon: '⊟', permission: 'regulatory:read' },
       { label: 'Workflow', to: '/workflow', icon: '◉', permission: 'workflow:read' },
+      { label: 'Designer', to: '/designer', icon: '✦', permission: 'config:read' },
     ],
   },
   {

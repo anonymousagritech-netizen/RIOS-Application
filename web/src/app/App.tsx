@@ -37,6 +37,7 @@ import { ClaimsRecoveriesPage } from '../pages/ClaimsRecoveriesPage';
 import { RegulatoryReturnsPage } from '../pages/RegulatoryReturnsPage';
 import { SecurityPage } from '../pages/SecurityPage';
 import { PortalPage } from '../pages/PortalPage';
+import { DesignerPage } from '../pages/DesignerPage';
 
 export function App() {
   const { status } = useAuth();
@@ -93,6 +94,7 @@ export function App() {
         <Route path="/returns" element={<RegulatoryReturnsPage />} />
         <Route path="/security" element={<SecurityPage />} />
         <Route path="/portal" element={<PortalPage />} />
+        <Route path="/designer" element={<DesignerPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

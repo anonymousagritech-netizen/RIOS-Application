@@ -239,6 +239,51 @@ from _cl c join code_list cl on cl.tenant_id = :'tenant_id'::uuid and cl.key = c
 on conflict (code_list_id, code, effective_from) do nothing;
 
 -- ---------------------------------------------------------------------------
+-- Designer surfaces: a published workflow definition & a business rule set
+-- (§10.3). These live in config_document and are interpreted by @rios/domain.
+-- ---------------------------------------------------------------------------
+insert into config_document (tenant_id, kind, key, version, status, body)
+values (:'tenant_id'::uuid, 'workflow', 'treaty.lifecycle', 1, 'published', jsonb_build_object(
+  'key','treaty.lifecycle',
+  'name','Treaty lifecycle',
+  'initial','DRAFT',
+  'states', jsonb_build_array('DRAFT','QUOTED','PLACING','BOUND','ACTIVE','CANCELLED'),
+  'finalStates', jsonb_build_array('CANCELLED'),
+  'transitions', jsonb_build_array(
+    jsonb_build_object('event','quote','from','DRAFT','to','QUOTED','label','Quote'),
+    jsonb_build_object('event','place','from','QUOTED','to','PLACING','label','Place'),
+    jsonb_build_object('event','bind','from','PLACING','to','BOUND','permission','treaty:bind','label','Bind'),
+    jsonb_build_object('event','activate','from','BOUND','to','ACTIVE','label','Activate'),
+    jsonb_build_object('event','cancel','from','DRAFT','to','CANCELLED','label','Cancel'),
+    jsonb_build_object('event','cancel','from','QUOTED','to','CANCELLED','label','Cancel')
+  )))
+on conflict (tenant_id, kind, key, version) do nothing;
+
+insert into config_document (tenant_id, kind, key, version, status, body)
+values (:'tenant_id'::uuid, 'rule', 'treaty.bind.guards', 1, 'published', jsonb_build_object(
+  'key','treaty.bind.guards',
+  'name','Treaty bind guards',
+  'rules', jsonb_build_array(
+    jsonb_build_object(
+      'id','premium-required',
+      'when', jsonb_build_object('field','premiumMinor','op','empty'),
+      'then', jsonb_build_array(jsonb_build_object('type','error','message','Premium is required before binding.'))),
+    jsonb_build_object(
+      'id','large-line-referral',
+      'when', jsonb_build_object('all', jsonb_build_array(
+        jsonb_build_object('field','premiumMinor','op','gte','value',10000000),
+        jsonb_build_object('field','lob','op','in','value', jsonb_build_array('PROPERTY','MARINE')))),
+      'then', jsonb_build_array(
+        jsonb_build_object('type','route','target','senior-uw'),
+        jsonb_build_object('type','flag','target','large-line'))),
+    jsonb_build_object(
+      'id','default-brokerage',
+      'when', jsonb_build_object('field','brokeragePct','op','empty'),
+      'then', jsonb_build_array(jsonb_build_object('type','set','target','brokeragePct','value',10)))
+  )))
+on conflict (tenant_id, kind, key, version) do nothing;
+
+-- ---------------------------------------------------------------------------
 -- Parties (one entity can hold several roles — §7 implication)
 -- ---------------------------------------------------------------------------
 insert into party (tenant_id, reference, legal_name, short_name, kind, country, identifiers) values

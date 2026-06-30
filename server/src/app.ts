@@ -40,6 +40,7 @@ import { periodCloseModule } from './modules/periodClose.js';
 import { regulatoryAdvancedModule } from './modules/regulatoryAdvanced.js';
 import { securityModule } from './modules/security.js';
 import { portalsModule } from './modules/portals.js';
+import { designerModule } from './modules/designer.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -178,6 +179,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(regulatoryAdvancedModule);
   await app.register(securityModule);
   await app.register(portalsModule);
+  await app.register(designerModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);
