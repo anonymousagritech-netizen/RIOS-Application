@@ -34,13 +34,14 @@ export function AnalyticsPage() {
       <PageHeader title="Analytics" description="Pivot the data warehouse and model catastrophe loss — built on pure, reconcilable engines." />
       <Card>
         <Tabs
-          tabs={[{ id: 'pivot', label: 'Data warehouse' }, { id: 'reports', label: 'Reports' }, { id: 'cat', label: 'Catastrophe' }, { id: 'forecast', label: 'Forecast' }]}
+          tabs={[{ id: 'pivot', label: 'Data warehouse' }, { id: 'reports', label: 'Reports' }, { id: 'dashboards', label: 'Dashboards' }, { id: 'cat', label: 'Catastrophe' }, { id: 'forecast', label: 'Forecast' }]}
           active={tab}
           onChange={setTab}
         />
         <div style={{ padding: 'var(--space-5)' }}>
           {tab === 'pivot' && <PivotBuilder />}
           {tab === 'reports' && <ReportsConsole />}
+          {tab === 'dashboards' && <DashboardsConsole />}
           {tab === 'cat' && <CatConsole />}
           {tab === 'forecast' && <ForecastConsole />}
         </div>
@@ -396,6 +397,96 @@ function ReportsConsole() {
               </FormField>
             </div>
             <Button variant="primary" onClick={() => save.mutate()} loading={save.isPending} disabled={keyFromName.length < 2}>Save report</Button>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ----------------------------- Dashboards ----------------------------- */
+
+interface DashboardDef { key: string; name: string; body: { name: string; widgets: { title: string; reportKey: string }[] } }
+interface RenderedWidget { title: string; reportKey: string; total?: number; groups?: number; factCount?: number; error?: string }
+
+function DashboardsConsole() {
+  const { hasPermission } = useAuth();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const canWrite = hasPermission('reporting:write');
+  const dashboards = useQuery({ queryKey: ['analytics-dashboards'], queryFn: () => api<{ dashboards: DashboardDef[] }>('/api/analytics/dashboards') });
+  const reports = useQuery({ queryKey: ['analytics-reports'], queryFn: () => api<{ reports: { key: string; name: string }[] }>('/api/analytics/reports') });
+  const [rendered, setRendered] = useState<{ name: string; widgets: RenderedWidget[] } | null>(null);
+
+  const [name, setName] = useState('');
+  const [picked, setPicked] = useState<string[]>([]);
+
+  const render = useMutation({
+    mutationFn: (key: string) => api<{ name: string; widgets: RenderedWidget[] }>(`/api/analytics/dashboards/${key}/render`, { body: {} }),
+    onSuccess: (r) => setRendered(r),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not render'),
+  });
+  const save = useMutation({
+    mutationFn: () => api('/api/analytics/dashboards', {
+      body: {
+        key: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        name: name.trim(),
+        widgets: picked.map((rk) => ({ title: reports.data?.reports.find((r) => r.key === rk)?.name ?? rk, reportKey: rk })),
+      },
+    }),
+    onSuccess: () => { toast.success('Dashboard saved'); setName(''); setPicked([]); qc.invalidateQueries({ queryKey: ['analytics-dashboards'] }); },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not save dashboard'),
+  });
+
+  if (dashboards.isLoading) return <PageLoader label="Loading dashboards…" />;
+
+  return (
+    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+      <Card>
+        <CardHeader title="Dashboards" subtitle="Composed of saved-report widget tiles." />
+        <div style={{ padding: 'var(--space-4)' }}>
+          <Table
+            columns={[
+              { key: 'name', header: 'Dashboard', render: (d: DashboardDef) => <span className={shared.cellMain}>{d.name}</span> },
+              { key: 'widgets', header: 'Widgets', align: 'right', render: (d: DashboardDef) => String((d.body.widgets ?? []).length) },
+              { key: 'act', header: '', align: 'right', render: (d: DashboardDef) => <Button variant="primary" onClick={() => render.mutate(d.key)} loading={render.isPending}>Render</Button> },
+            ]}
+            rows={dashboards.data?.dashboards}
+            rowKey={(d) => d.key}
+            empty={<EmptyState title="No dashboards" message="No dashboards saved yet." />}
+          />
+        </div>
+      </Card>
+
+      {rendered && (
+        <Card>
+          <CardHeader title={rendered.name} />
+          <div className={shared.kpiGrid} style={{ padding: 'var(--space-4)' }}>
+            {rendered.widgets.map((w) => (
+              <KpiCard key={w.title} label={w.title} value={w.error ? '—' : formatMoney(w.total)} hint={w.error ?? `${w.groups} groups · ${w.factCount} facts`} icon="▦" />
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {canWrite && (
+        <Card>
+          <CardHeader title="Compose a dashboard" subtitle="Name it and pick the saved reports to show as tiles." />
+          <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-3)' }}>
+            <div style={{ maxWidth: 320 }}><FormField label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Claims overview" /></FormField></div>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              {(reports.data?.reports ?? []).map((r) => {
+                const on = picked.includes(r.key);
+                return (
+                  <button key={r.key} type="button" onClick={() => setPicked((p) => on ? p.filter((k) => k !== r.key) : [...p, r.key])}
+                    style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }}>
+                    <Badge color={on ? 'green' : 'slate'}>{r.name}</Badge>
+                  </button>
+                );
+              })}
+              {(reports.data?.reports ?? []).length === 0 && <span className={shared.cellSub}>Save a report first (Reports tab).</span>}
+            </div>
+            <div><Button variant="primary" onClick={() => save.mutate()} loading={save.isPending} disabled={!name.trim() || picked.length === 0}>Save dashboard</Button></div>
           </div>
         </Card>
       )}
