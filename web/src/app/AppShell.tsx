@@ -35,14 +35,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     [groups, location.pathname],
   );
 
-  // Accordion state: the group holding the active route opens automatically.
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set());
-  useEffect(() => {
-    if (activeGroup) setOpenGroups((s) => (s.has(activeGroup) ? s : new Set(s).add(activeGroup)));
-  }, [activeGroup]);
+  // Accordion state: every group is open by default (all nav links reachable);
+  // users may collapse individual groups, tracked here.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
 
   const toggleGroup = (label: string) =>
-    setOpenGroups((s) => {
+    setCollapsedGroups((s) => {
       const next = new Set(s);
       if (next.has(label)) next.delete(label);
       else next.add(label);
@@ -92,7 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className={styles.nav} aria-label="Primary">
           {groups.map((group) => {
-            const open = collapsed || openGroups.has(group.label);
+            const open = collapsed || !collapsedGroups.has(group.label);
             const isActiveGroup = group.label === activeGroup;
             return (
               <div key={group.label} className={styles.navGroup}>
