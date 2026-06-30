@@ -12,6 +12,16 @@ import { ClaimsPage } from '../pages/ClaimsPage';
 import { ClaimDetailPage } from '../pages/ClaimDetailPage';
 import { AccountingPage } from '../pages/AccountingPage';
 import { AdminPage } from '../pages/AdminPage';
+import { FacultativePage } from '../pages/FacultativePage';
+import { RetrocessionPage } from '../pages/RetrocessionPage';
+import { PlacementPage } from '../pages/PlacementPage';
+import { PricingPage } from '../pages/PricingPage';
+import { BordereauxPage } from '../pages/BordereauxPage';
+import { ExposurePage } from '../pages/ExposurePage';
+import { StatementsPage } from '../pages/StatementsPage';
+import { FinancePage } from '../pages/FinancePage';
+import { RegulatoryPage } from '../pages/RegulatoryPage';
+import { WorkflowPage } from '../pages/WorkflowPage';
 
 export function App() {
   const { status } = useAuth();
@@ -43,6 +53,16 @@ export function App() {
         <Route path="/claims" element={<ClaimsPage />} />
         <Route path="/claims/:id" element={<ClaimDetailPage />} />
         <Route path="/accounting" element={<AccountingPage />} />
+        <Route path="/facultative" element={<FacultativePage />} />
+        <Route path="/retrocession" element={<RetrocessionPage />} />
+        <Route path="/placement" element={<PlacementPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/bordereaux" element={<BordereauxPage />} />
+        <Route path="/exposure" element={<ExposurePage />} />
+        <Route path="/statements" element={<StatementsPage />} />
+        <Route path="/finance" element={<FinancePage />} />
+        <Route path="/regulatory" element={<RegulatoryPage />} />
+        <Route path="/workflow" element={<WorkflowPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

@@ -1,0 +1,43 @@
+.tabBar { padding: 0 var(--space-4); }
+.tabBody { padding: var(--space-5); }
+.stack { display: flex; flex-direction: column; gap: var(--space-5); }
+.rowGap { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+.balanceBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: 0 var(--space-5) var(--space-4);
+}
+.totals { display: flex; gap: var(--space-5); flex-wrap: wrap; }
+.total { display: flex; flex-direction: column; gap: var(--space-1); }
+.totalLabel { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.totalValue { font-size: var(--text-lg); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+
+.notifList { display: flex; flex-direction: column; gap: var(--space-3); }
+.notif {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.notifUnread { border-color: var(--primary); background: var(--primary-soft); }
+.notifMain { flex: 1; display: flex; flex-direction: column; gap: var(--space-1); }
+.notifSubject { font-weight: var(--weight-medium); color: var(--text); }
+.notifBody { font-size: var(--text-sm); color: var(--text-muted); }
+.notifMeta { font-size: var(--text-xs); color: var(--text-faint); }
+.unreadDot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--primary); margin-top: 6px; flex-shrink: 0;
+}
+
+.measureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-4);
+}
