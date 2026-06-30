@@ -18,6 +18,17 @@
 }
 .cols { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-5); align-items: start; }
 
+/* Premium KPI summary row - auto-fit cards with breathing room below. */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+/* Vertical page rhythm wrapper - calm spacing between sections. */
+.stack { display: flex; flex-direction: column; gap: var(--space-5); }
+.tableWrap { padding: var(--space-4) var(--space-5) var(--space-5); }
+
 .cellMain { font-weight: var(--weight-medium); color: var(--text); }
 .cellSub { font-size: var(--text-xs); color: var(--text-muted); }
 .cellRef { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); }

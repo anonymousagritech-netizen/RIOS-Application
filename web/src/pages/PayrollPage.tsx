@@ -4,15 +4,17 @@ import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
-import { Card } from '../components/Card';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select } from '../components/Form';
-import { formatMoney, formatDate, titleCase } from '../lib/format';
-import { Banknote } from 'lucide-react';
+import { formatMoney, formatDate, formatNumber, titleCase } from '../lib/format';
+import { Banknote, Users, Wallet, Landmark } from 'lucide-react';
+import { KpiCard } from '../components/KpiCard';
+import { Card, CardHeader } from '../components/Card';
 import shared from './shared.module.css';
+import styles from './PayrollPage.module.css';
 
 /* ---------------- Types ---------------- */
 interface PayrollRun {
@@ -99,6 +101,10 @@ export function PayrollPage() {
 
   const { data, isLoading } = usePayrollRuns();
   const runs = data?.runs ?? [];
+  const primaryCurrency = runs[0]?.currency ?? 'USD';
+  const totalHeadcount = runs.reduce((acc, r) => acc + (r.headcount ?? 0), 0);
+  const totalGross = runs.reduce((acc, r) => acc + (r.totalGrossMinor ?? 0), 0);
+  const totalNet = runs.reduce((acc, r) => acc + (r.totalNetMinor ?? 0), 0);
   const [showRun, setShowRun] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const approve = useApproveRun();
@@ -147,6 +153,7 @@ export function PayrollPage() {
       <PageHeader
         title="Payroll"
         description="Run gross-to-net payroll across the active workforce and approve for payment."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Payroll' }]}
         actions={
           canWrite ? (
             <Button variant="primary" onClick={() => setShowRun(true)} icon={<span aria-hidden>+</span>}>
@@ -156,19 +163,31 @@ export function PayrollPage() {
         }
       />
 
-      <Card padded={false}>
-        <div className={shared.toolbar} style={{ padding: 'var(--space-4)' }}>
-          <div className={shared.spacer} />
-          <span className={shared.cellSub}>{runs.length} run{runs.length === 1 ? '' : 's'}</span>
+      <div className={styles.page}>
+        <div className={styles.kpis}>
+          <KpiCard label="Payroll runs" value={formatNumber(runs.length)} hint="Across all periods" icon={<Banknote size={20} />} accent="var(--primary)" loading={isLoading} />
+          <KpiCard label="Total gross" value={formatMoney(totalGross, primaryCurrency)} hint="Cumulative gross pay" icon={<Wallet size={20} />} accent="var(--accent-violet)" loading={isLoading} />
+          <KpiCard label="Total net" value={formatMoney(totalNet, primaryCurrency)} hint="Paid to employees" icon={<Landmark size={20} />} accent="var(--accent-cyan)" loading={isLoading} />
+          <KpiCard label="Headcount" value={formatNumber(totalHeadcount)} hint="Payslips generated" icon={<Users size={20} />} accent="var(--accent-emerald)" loading={isLoading} />
         </div>
-        <Table
-          columns={columns}
-          rows={data?.runs}
-          loading={isLoading}
-          rowKey={(r) => r.id}
-          empty={<EmptyState title="No payroll runs" message="Run payroll to generate payslips for the workforce." icon={<Banknote size={16} />} />}
-        />
-      </Card>
+
+        <Card padded={false}>
+          <div className={styles.cardHead}>
+            <CardHeader
+              title="Payroll runs"
+              subtitle="Each run computes payslips for every active, salaried employee, then approves for payment."
+              actions={<span className={shared.cellSub}>{runs.length} run{runs.length === 1 ? '' : 's'}</span>}
+            />
+          </div>
+          <Table
+            columns={columns}
+            rows={data?.runs}
+            loading={isLoading}
+            rowKey={(r) => r.id}
+            empty={<EmptyState title="No payroll runs" message="Run payroll to generate payslips for the workforce." icon={<Banknote size={28} />} />}
+          />
+        </Card>
+      </div>
 
       <RunPayrollModal open={showRun} onClose={() => setShowRun(false)} />
       <PayslipsModal id={detailId} onClose={() => setDetailId(null)} />
@@ -351,10 +370,19 @@ function PayslipsModal({ id, onClose }: { id: string | null; onClose: () => void
       footer={<Button variant="ghost" onClick={onClose}>Close</Button>}
     >
       {data && (
-        <div className={shared.toolbar} style={{ marginBottom: 'var(--space-4)' }}>
-          <span className={shared.cellSub}>Total gross {formatMoney(data.totalGrossMinor, currency)}</span>
-          <div className={shared.spacer} />
-          <span className={shared.cellSub}>Total net {formatMoney(data.totalNetMinor, currency)}</span>
+        <div className={styles.payslipTotals}>
+          <div className={styles.totalBlock}>
+            <span className={styles.totalLabel}>Total gross</span>
+            <span className={styles.totalValue}>{formatMoney(data.totalGrossMinor, currency)}</span>
+          </div>
+          <div className={styles.totalBlock}>
+            <span className={styles.totalLabel}>Total tax</span>
+            <span className={styles.totalValue}>{formatMoney(data.totalTaxMinor, currency)}</span>
+          </div>
+          <div className={styles.totalBlock}>
+            <span className={styles.totalLabel}>Total net</span>
+            <span className={`${styles.totalValue} ${styles.totalNet}`}>{formatMoney(data.totalNetMinor, currency)}</span>
+          </div>
         </div>
       )}
       <Table

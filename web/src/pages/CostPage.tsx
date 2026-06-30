@@ -44,38 +44,44 @@ export function CostPage() {
 
   return (
     <>
-      <PageHeader title="Cost & capacity" description="Spend by category with capacity utilisation, and live operational throughput." />
+      <PageHeader
+        title="Cost & capacity"
+        description="Spend by category with capacity utilisation, and live operational throughput."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Cost & capacity' }]}
+      />
 
       <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
-        <KpiCard label="Total spend" value={formatMoney(cost.data?.totalSpendMinor)} icon={<DollarSign size={20} />} />
-        <KpiCard label="Audit events" value={formatNumber(perf.data?.totals.auditEvents)} icon={<BookOpen size={20} />} />
-        <KpiCard label="Financial events" value={formatNumber(perf.data?.totals.financialEvents)} icon={<Receipt size={20} />} />
-        <KpiCard label="Claims" value={formatNumber(perf.data?.totals.claims)} icon={<ShieldAlert size={20} />} />
-        <KpiCard label="Contracts" value={formatNumber(perf.data?.totals.contracts)} icon={<FileText size={20} />} />
+        <KpiCard label="Total spend" value={formatMoney(cost.data?.totalSpendMinor)} loading={cost.isLoading} icon={<DollarSign size={20} />} accent="var(--primary)" />
+        <KpiCard label="Audit events" value={formatNumber(perf.data?.totals.auditEvents)} loading={perf.isLoading} icon={<BookOpen size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label="Financial events" value={formatNumber(perf.data?.totals.financialEvents)} loading={perf.isLoading} icon={<Receipt size={20} />} accent="var(--accent-cyan)" />
+        <KpiCard label="Claims" value={formatNumber(perf.data?.totals.claims)} loading={perf.isLoading} icon={<ShieldAlert size={20} />} accent="var(--accent-emerald)" />
+        <KpiCard label="Contracts" value={formatNumber(perf.data?.totals.contracts)} loading={perf.isLoading} icon={<FileText size={20} />} accent="var(--accent-orange)" />
       </div>
 
-      <Card>
-        <CardHeader title="Cost & capacity by category" />
-        <div style={{ padding: 'var(--space-4)' }}>
-          <Table columns={cols} rows={cost.data?.records} rowKey={(r) => r.id}
-            empty={<EmptyState title="No cost records" message="No cost records yet." />} />
-        </div>
-      </Card>
+      <div className={shared.stack}>
+        <Card padded={false}>
+          <CardHeader title="Cost & capacity by category" subtitle="Spend and capacity utilisation across operational categories." />
+          <div className={shared.tableWrap}>
+            <Table columns={cols} rows={cost.data?.records} rowKey={(r) => r.id}
+              empty={<EmptyState title="No cost records" message="No cost records yet." />} />
+          </div>
+        </Card>
 
-      <Card>
-        <CardHeader title="Activity throughput (last 14 days)" subtitle="Audited events per day." />
-        <div style={{ padding: 'var(--space-4)' }}>
-          <Table
-            columns={[
-              { key: 'day', header: 'Day', render: (d: { day: string; events: number }) => d.day },
-              { key: 'events', header: 'Events', align: 'right', render: (d: { day: string; events: number }) => formatNumber(d.events) },
-            ]}
-            rows={perf.data?.auditByDay}
-            rowKey={(d) => d.day}
-            empty={<EmptyState title="No activity" message="No audited activity recorded yet." />}
-          />
-        </div>
-      </Card>
+        <Card padded={false}>
+          <CardHeader title="Activity throughput (last 14 days)" subtitle="Audited events per day." />
+          <div className={shared.tableWrap}>
+            <Table
+              columns={[
+                { key: 'day', header: 'Day', render: (d: { day: string; events: number }) => d.day },
+                { key: 'events', header: 'Events', align: 'right', render: (d: { day: string; events: number }) => formatNumber(d.events) },
+              ]}
+              rows={perf.data?.auditByDay}
+              rowKey={(d) => d.day}
+              empty={<EmptyState title="No activity" message="No audited activity recorded yet." />}
+            />
+          </div>
+        </Card>
+      </div>
     </>
   );
 }

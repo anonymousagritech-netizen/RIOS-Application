@@ -4,7 +4,7 @@
  * suite. Both exercise the live engines server-side.
  */
 
-import { CheckCircle2, Hash } from 'lucide-react';
+import { CircleCheckBig, GitBranch, Hash, Workflow, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
@@ -18,7 +18,7 @@ import { Button } from '../components/Button';
 import { Tabs } from '../components/Tabs';
 import { FormField, Select, Textarea } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
-import { formatPercent } from '../lib/format';
+import { formatNumber, formatPercent } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './AutomationStudioPage.module.css';
 
@@ -26,7 +26,12 @@ export function AutomationStudioPage() {
   const [tab, setTab] = useState('flows');
   return (
     <>
-      <PageHeader title="Automation Studio" description="Trigger→rule→action flows, and the assistant evaluation suite." />
+      <PageHeader
+        title="Automation Studio"
+        description="Trigger→rule→action flows, and the assistant evaluation suite."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Automation Studio' }]}
+        actions={<Badge color="violet">Live engines</Badge>}
+      />
       <Card>
         <Tabs tabs={[{ id: 'flows', label: 'Automation flows' }, { id: 'eval', label: 'Assistant eval' }]} active={tab} onChange={setTab} />
         <div className={styles.tabBody}>
@@ -55,6 +60,9 @@ function Flows() {
 
   if (q.isLoading) return <PageLoader label="Loading flows…" />;
   const active = flowKey || q.data?.flows[0]?.key || '';
+  const flows = q.data?.flows ?? [];
+  const triggerCount = new Set(flows.map((f) => f.body.trigger?.eventType).filter(Boolean)).size;
+  const ruleSetCount = new Set(flows.map((f) => f.body.ruleSetKey).filter(Boolean)).size;
 
   const cols: Column<Flow>[] = [
     { key: 'name', header: 'Flow', render: (f) => <span className={shared.cellMain}>{f.name}</span> },
@@ -65,7 +73,17 @@ function Flows() {
 
   return (
     <div className={styles.sectionWide}>
-      <Table columns={cols} rows={q.data?.flows} rowKey={(f) => f.key} empty={<EmptyState title="No flows" message="No automation flows defined." />} />
+      <div className={shared.kpiGrid}>
+        <KpiCard label="Flows" value={formatNumber(flows.length)} hint="Configured automations" icon={<Workflow size={20} />} accent="var(--primary)" />
+        <KpiCard label="Triggers" value={formatNumber(triggerCount)} hint="Distinct event types" icon={<Zap size={20} />} accent="var(--accent-orange)" />
+        <KpiCard label="Rule sets" value={formatNumber(ruleSetCount)} hint="Referenced rule sets" icon={<GitBranch size={20} />} accent="var(--accent-violet)" />
+      </div>
+      <Card padded={false}>
+        <div className={styles.cardHead}>
+          <CardHeader title="Automation flows" subtitle="Trigger → rule set → action pipelines defined for this tenant." />
+        </div>
+        <Table columns={cols} rows={q.data?.flows} rowKey={(f) => f.key} empty={<EmptyState title="No flows" message="No automation flows defined." icon={<Workflow size={28} />} />} />
+      </Card>
       <Card>
         <CardHeader title="Run a flow" subtitle="Evaluate the rule set against a sample event context." />
         <div className={styles.runForm}>
@@ -105,8 +123,8 @@ function Eval() {
       {result && (
         <>
           <div className={shared.kpiGrid}>
-            <KpiCard label="Score" value={formatPercent(result.score)} accent={result.score >= 0.8 ? 'var(--c-green)' : 'var(--c-amber)'} icon={<CheckCircle2 size={20} />} />
-            <KpiCard label="Passed" value={`${result.passed} / ${result.total}`} icon={<Hash size={20} />} />
+            <KpiCard label="Score" value={formatPercent(result.score)} accent={result.score >= 0.8 ? 'var(--accent-emerald)' : 'var(--accent-orange)'} icon={<CircleCheckBig size={20} />} />
+            <KpiCard label="Passed" value={`${result.passed} / ${result.total}`} icon={<Hash size={20} />} accent="var(--primary)" />
           </div>
           <Table
             columns={[

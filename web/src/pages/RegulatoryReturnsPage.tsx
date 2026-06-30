@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Scale, FileSpreadsheet } from 'lucide-react';
+import { Scale, FileSpreadsheet, Layers, FileCheck2, Clock } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -9,6 +9,7 @@ import { Card, CardHeader } from '../components/Card';
 import { Tabs } from '../components/Tabs';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
+import { KpiCard } from '../components/KpiCard';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select } from '../components/Form';
@@ -165,20 +166,35 @@ export function RegulatoryReturnsPage() {
   const canRun = hasPermission('regulatory:run');
   const [tab, setTab] = useState('ifrs17');
 
+  const groupsQuery = useIfrs17Groups();
+  const returnsQuery = useReturns('');
+
+  const returns = returnsQuery.data?.returns ?? [];
+  const approved = returns.filter((r) => r.status === 'approved').length;
+  const awaiting = returns.filter((r) => r.status !== 'approved').length;
+
   return (
-    <>
+    <div className={shared.stack}>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Regulatory returns' }]}
         title="Regulatory returns"
         description="IFRS 17 GMM/VFA measurement and governed regulatory return packs."
         actions={canRun ? <Badge color="green">regulatory:run granted</Badge> : <Badge color="slate">read-only</Badge>}
       />
+
+      <div className={shared.kpiRow}>
+        <KpiCard label="IFRS 17 groups" value={groupsQuery.data?.groups.length ?? 0} loading={groupsQuery.isLoading} icon={<Layers size={20} />} accent="var(--primary)" />
+        <KpiCard label="Return packs" value={returns.length} loading={returnsQuery.isLoading} icon={<FileSpreadsheet size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label="Awaiting approval" value={awaiting} loading={returnsQuery.isLoading} icon={<Clock size={20} />} accent="var(--accent-orange)" />
+        <KpiCard label="Approved" value={approved} loading={returnsQuery.isLoading} icon={<FileCheck2 size={20} />} accent="var(--accent-emerald)" />
+      </div>
 
       <Card padded={false}>
         <div className={styles.tabBar}><Tabs tabs={TABS} active={tab} onChange={setTab} /></div>
         {tab === 'ifrs17' && <Ifrs17Tab canRun={canRun} />}
         {tab === 'returns' && <ReturnsTab canRun={canRun} />}
       </Card>
-    </>
+    </div>
   );
 }
 

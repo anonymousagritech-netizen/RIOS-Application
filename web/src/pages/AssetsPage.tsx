@@ -1,18 +1,19 @@
-import { BadgeCheck, FileText, Package, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { BadgeCheck, FileText, HardDrive, Key, Package, Plus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Tabs } from '../components/Tabs';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
-import { formatMoney, formatDate, titleCase } from '../lib/format';
+import { formatMoney, formatDate, formatNumber, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
 import css from './AssetsPage.module.css';
@@ -154,36 +155,61 @@ const TABS = [
 export function AssetsPage() {
   const { hasPermission } = useAuth();
   const [tab, setTab] = useState('assets');
+  const [createSignal, setCreateSignal] = useState(0);
   const canWrite = hasPermission('asset:write');
+
+  const assets = useAssets('');
+  const licenses = useLicenses();
+  const entitlements = useEntitlements();
+
+  const assetCount = assets.data?.assets.length ?? 0;
+  const inUse = (assets.data?.assets ?? []).filter((a) => a.status === 'in_use').length;
+  const seatsUsed = (licenses.data?.licenses ?? []).reduce((acc, l) => acc + l.seatsUsed, 0);
+  const seatsTotal = (licenses.data?.licenses ?? []).reduce((acc, l) => acc + l.seatsTotal, 0);
+  const enabledFeatures = (entitlements.data?.entitlements ?? []).filter((e) => e.isEnabled).length;
+
+  const createLabel = tab === 'licenses' ? 'New license' : tab === 'entitlements' ? 'Add entitlement' : 'New asset';
 
   return (
     <>
       <PageHeader
         title="Assets & entitlements"
         description="Hardware and software inventory, seat utilisation, and per-tenant feature entitlements toggled without a deploy."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Assets & entitlements' }]}
         actions={
           canWrite
-            ? <Badge color="green">asset:write granted</Badge>
+            ? <Button variant="primary" icon={<Plus size={16} />} onClick={() => setCreateSignal((n) => n + 1)}>{createLabel}</Button>
             : <Badge color="slate">read-only</Badge>
         }
       />
 
-      <Card padded={false}>
-        <div className={styles.tabBar}><Tabs tabs={TABS} active={tab} onChange={setTab} /></div>
-        {tab === 'assets' && <AssetsTab canWrite={canWrite} />}
-        {tab === 'licenses' && <LicensesTab canWrite={canWrite} />}
-        {tab === 'entitlements' && <EntitlementsTab canWrite={canWrite} />}
-      </Card>
+      <div className={css.page}>
+        <div className={css.kpis}>
+          <KpiCard label="Assets" value={formatNumber(assetCount)} hint="Tracked hardware items" icon={<Package size={20} />} accent="var(--primary)" loading={assets.isLoading} />
+          <KpiCard label="In use" value={formatNumber(inUse)} hint="Currently assigned" icon={<HardDrive size={20} />} accent="var(--accent-emerald)" loading={assets.isLoading} />
+          <KpiCard label="License seats" value={`${formatNumber(seatsUsed)} / ${formatNumber(seatsTotal)}`} hint="Used of total" icon={<Key size={20} />} accent="var(--accent-violet)" loading={licenses.isLoading} />
+          <KpiCard label="Features enabled" value={formatNumber(enabledFeatures)} hint="Active entitlements" icon={<BadgeCheck size={20} />} accent="var(--accent-cyan)" loading={entitlements.isLoading} />
+        </div>
+
+        <Card padded={false}>
+          <div className={styles.tabBar}><Tabs tabs={TABS} active={tab} onChange={setTab} /></div>
+          {tab === 'assets' && <AssetsTab canWrite={canWrite} createSignal={createSignal} />}
+          {tab === 'licenses' && <LicensesTab canWrite={canWrite} createSignal={createSignal} />}
+          {tab === 'entitlements' && <EntitlementsTab canWrite={canWrite} createSignal={createSignal} />}
+        </Card>
+      </div>
     </>
   );
 }
 
 /* ---------------- Assets ---------------- */
-function AssetsTab({ canWrite }: { canWrite: boolean }) {
+function AssetsTab({ canWrite, createSignal }: { canWrite: boolean; createSignal: number }) {
   const [status, setStatus] = useState('');
   const { data, isLoading } = useAssets(status);
   const [creating, setCreating] = useState(false);
   const [assignTarget, setAssignTarget] = useState<Asset | null>(null);
+
+  useEffect(() => { if (createSignal > 0 && canWrite) setCreating(true); }, [createSignal, canWrite]);
 
   const rows = data?.assets ?? [];
 
@@ -216,7 +242,6 @@ function AssetsTab({ canWrite }: { canWrite: boolean }) {
         </div>
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} asset{rows.length === 1 ? '' : 's'}</span>
-        {canWrite && <Button size="sm" variant="primary" onClick={() => setCreating(true)} icon={<Plus size={16} />}>New asset</Button>}
       </div>
       <Table
         columns={columns}
@@ -362,9 +387,10 @@ function AssignModal({ asset, onClose }: { asset: Asset | null; onClose: () => v
 }
 
 /* ---------------- Licenses ---------------- */
-function LicensesTab({ canWrite }: { canWrite: boolean }) {
+function LicensesTab({ canWrite, createSignal }: { canWrite: boolean; createSignal: number }) {
   const { data, isLoading } = useLicenses();
   const [creating, setCreating] = useState(false);
+  useEffect(() => { if (createSignal > 0 && canWrite) setCreating(true); }, [createSignal, canWrite]);
   const rows = data?.licenses ?? [];
 
   const columns: Column<License>[] = [
@@ -389,7 +415,6 @@ function LicensesTab({ canWrite }: { canWrite: boolean }) {
         <CardHeader title="Software licenses" subtitle="Seat utilisation and renewal windows." />
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} license{rows.length === 1 ? '' : 's'}</span>
-        {canWrite && <Button size="sm" variant="primary" onClick={() => setCreating(true)} icon={<Plus size={16} />}>New license</Button>}
       </div>
       <Table
         columns={columns}
@@ -486,11 +511,12 @@ function NewLicenseModal({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 /* ---------------- Entitlements ---------------- */
-function EntitlementsTab({ canWrite }: { canWrite: boolean }) {
+function EntitlementsTab({ canWrite, createSignal }: { canWrite: boolean; createSignal: number }) {
   const { data, isLoading } = useEntitlements();
   const toast = useToast();
   const upsert = useUpsertEntitlement();
   const [adding, setAdding] = useState(false);
+  useEffect(() => { if (createSignal > 0 && canWrite) setAdding(true); }, [createSignal, canWrite]);
 
   const rows = data?.entitlements ?? [];
 
@@ -547,7 +573,6 @@ function EntitlementsTab({ canWrite }: { canWrite: boolean }) {
         <CardHeader title="Feature entitlements" subtitle="Toggle a feature per tenant instantly - no deployment required." />
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} feature{rows.length === 1 ? '' : 's'}</span>
-        {canWrite && <Button size="sm" variant="primary" onClick={() => setAdding(true)} icon={<Plus size={16} />}>Add entitlement</Button>}
       </div>
       <Table
         columns={columns}

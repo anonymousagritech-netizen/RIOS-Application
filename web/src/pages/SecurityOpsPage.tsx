@@ -19,16 +19,22 @@ import { Tabs } from '../components/Tabs';
 import { FormField, Select, Input } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatDateTime, formatNumber, titleCase } from '../lib/format';
-import { Shield } from 'lucide-react';
+import { Shield, Activity, KeyRound, DatabaseBackup, Languages, Building2, Info } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './SecurityOpsPage.module.css';
+
+const SOC_ACCENTS = ['var(--primary)', 'var(--accent-violet)', 'var(--accent-cyan)', 'var(--accent-orange)'];
 
 export function SecurityOpsPage() {
   const [tab, setTab] = useState('soc');
   return (
     <>
-      <PageHeader title="Security & resilience" description="Security monitoring, key management, backups, localization and SAML." />
-      <Card>
+      <PageHeader
+        title="Security & resilience"
+        description="Security monitoring, key management, backups, localization and SAML."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Security & resilience' }]}
+      />
+      <Card padded={false}>
         <Tabs
           tabs={[{ id: 'soc', label: 'Security feed' }, { id: 'kms', label: 'Key management' }, { id: 'backup', label: 'Backup & DR' }, { id: 'i18n', label: 'Localization' }, { id: 'saml', label: 'SAML' }]}
           active={tab}
@@ -52,20 +58,25 @@ function Soc() {
   if (q.isLoading) return <PageLoader label="Loading security feed…" />;
   return (
     <div className={styles.section}>
-      <div className={shared.kpiGrid}>
-        {(q.data?.byAction ?? []).slice(0, 4).map((a) => <KpiCard key={a.action} label={titleCase(a.action.replace(/_/g, ' '))} value={formatNumber(a.n)} icon={<Shield size={20} />} />)}
+      <div className={styles.kpiRow}>
+        {(q.data?.byAction ?? []).slice(0, 4).map((a, i) => (
+          <KpiCard key={a.action} label={titleCase(a.action.replace(/_/g, ' '))} value={formatNumber(a.n)} accent={SOC_ACCENTS[i % SOC_ACCENTS.length]} icon={<Shield size={20} />} />
+        ))}
       </div>
-      <Table
-        columns={[
-          { key: 'ts', header: 'When', render: (e: SocEvent) => formatDateTime(e.occurredAt) },
-          { key: 'actor', header: 'Actor', render: (e: SocEvent) => e.actor ?? '-' },
-          { key: 'action', header: 'Action', render: (e: SocEvent) => <Badge color="slate">{e.action}</Badge> },
-          { key: 'entity', header: 'Entity', render: (e: SocEvent) => <span className={shared.cellRef}>{e.entityType}</span> },
-        ]}
-        rows={q.data?.events}
-        rowKey={(e) => e.id}
-        empty={<EmptyState title="No events" message="No security-relevant activity recorded." />}
-      />
+      <Card padded={false}>
+        <CardHeader title="Security feed" subtitle="Recent security-relevant activity from the audit trail." />
+        <Table
+          columns={[
+            { key: 'ts', header: 'When', render: (e: SocEvent) => formatDateTime(e.occurredAt) },
+            { key: 'actor', header: 'Actor', render: (e: SocEvent) => e.actor ?? '-' },
+            { key: 'action', header: 'Action', render: (e: SocEvent) => <Badge color="slate">{e.action}</Badge> },
+            { key: 'entity', header: 'Entity', align: 'right', render: (e: SocEvent) => <span className={shared.cellRef}>{e.entityType}</span> },
+          ]}
+          rows={q.data?.events}
+          rowKey={(e) => e.id}
+          empty={<EmptyState title="No events" message="No security-relevant activity recorded." icon={<Activity size={16} />} />}
+        />
+      </Card>
     </div>
   );
 }
@@ -91,17 +102,20 @@ function Kms() {
 
   return (
     <div className={styles.sectionWide}>
-      <Table
-        columns={[
-          { key: 'alias', header: 'Alias', render: (k: KmsKey) => <span className={shared.cellMain}>{k.alias}</span> },
-          { key: 'v', header: 'Version', align: 'right', render: (k: KmsKey) => `v${k.version}` },
-          { key: 'algo', header: 'Algorithm', render: (k: KmsKey) => k.algorithm },
-          { key: 'status', header: 'Status', render: (k: KmsKey) => <Badge color={k.status === 'active' ? 'green' : 'gray'}>{titleCase(k.status)}</Badge> },
-        ]}
-        rows={q.data?.keys}
-        rowKey={(k) => k.id}
-        empty={<EmptyState title="No keys" message="No KMS keys yet." />}
-      />
+      <Card padded={false}>
+        <CardHeader title="Data keys" subtitle="Envelope-encryption keys managed by the KMS, with version and status." />
+        <Table
+          columns={[
+            { key: 'alias', header: 'Alias', render: (k: KmsKey) => <span className={shared.cellMain}>{k.alias}</span> },
+            { key: 'v', header: 'Version', align: 'right', render: (k: KmsKey) => `v${k.version}` },
+            { key: 'algo', header: 'Algorithm', render: (k: KmsKey) => <span className={shared.cellRef}>{k.algorithm}</span> },
+            { key: 'status', header: 'Status', align: 'right', render: (k: KmsKey) => <Badge color={k.status === 'active' ? 'green' : 'gray'}>{titleCase(k.status)}</Badge> },
+          ]}
+          rows={q.data?.keys}
+          rowKey={(k) => k.id}
+          empty={<EmptyState title="No keys" message="No KMS keys yet." icon={<KeyRound size={16} />} />}
+        />
+      </Card>
       <Card>
         <CardHeader title="Envelope crypto demo" subtitle="Encrypt then decrypt with an alias's data key (AES-256-GCM)." />
         <div className={styles.cryptoForm}>
@@ -133,19 +147,25 @@ function Backup() {
   if (q.isLoading) return <PageLoader label="Loading backups…" />;
   return (
     <div className={styles.section}>
-      {canWrite && <div><Button variant="primary" onClick={() => run.mutate('snapshot')} loading={run.isPending}>Take snapshot</Button></div>}
-      <Table
-        columns={[
-          { key: 'kind', header: 'Kind', render: (r: BackupRun) => <Badge color="slate">{titleCase(r.kind)}</Badge> },
-          { key: 'status', header: 'Status', render: (r: BackupRun) => <Badge color={r.status === 'completed' ? 'green' : r.status === 'failed' ? 'red' : 'amber'}>{titleCase(r.status)}</Badge> },
-          { key: 'loc', header: 'Location', render: (r: BackupRun) => <span className={shared.cellRef}>{r.location ?? '-'}</span> },
-          { key: 'size', header: 'Size', align: 'right', render: (r: BackupRun) => r.sizeBytes ? `${(r.sizeBytes / 1048576).toFixed(0)} MB` : '-' },
-          { key: 'when', header: 'Started', render: (r: BackupRun) => formatDateTime(r.startedAt) },
-        ]}
-        rows={q.data?.runs}
-        rowKey={(r) => r.id}
-        empty={<EmptyState title="No backups" message="No backup runs recorded." />}
-      />
+      <Card padded={false}>
+        <CardHeader
+          title="Backup & DR runs"
+          subtitle="Snapshot and disaster-recovery history for the tenant database."
+          actions={canWrite ? <Button variant="primary" onClick={() => run.mutate('snapshot')} loading={run.isPending}>Take snapshot</Button> : undefined}
+        />
+        <Table
+          columns={[
+            { key: 'kind', header: 'Kind', render: (r: BackupRun) => <Badge color="slate">{titleCase(r.kind)}</Badge> },
+            { key: 'status', header: 'Status', render: (r: BackupRun) => <Badge color={r.status === 'completed' ? 'green' : r.status === 'failed' ? 'red' : 'amber'}>{titleCase(r.status)}</Badge> },
+            { key: 'loc', header: 'Location', render: (r: BackupRun) => <span className={shared.cellRef}>{r.location ?? '-'}</span> },
+            { key: 'size', header: 'Size', align: 'right', render: (r: BackupRun) => r.sizeBytes ? `${(r.sizeBytes / 1048576).toFixed(0)} MB` : '-' },
+            { key: 'when', header: 'Started', align: 'right', render: (r: BackupRun) => formatDateTime(r.startedAt) },
+          ]}
+          rows={q.data?.runs}
+          rowKey={(r) => r.id}
+          empty={<EmptyState title="No backups" message="No backup runs recorded." icon={<DatabaseBackup size={16} />} />}
+        />
+      </Card>
     </div>
   );
 }
@@ -168,15 +188,18 @@ function I18n() {
         </div>
         {bundle.data && <Badge color={bundle.data.direction === 'rtl' ? 'violet' : 'slate'}>{bundle.data.direction.toUpperCase()}</Badge>}
       </div>
-      <Table
-        columns={[
-          { key: 'k', header: 'Key', render: (e: [string, string]) => <span className={shared.cellRef}>{e[0]}</span> },
-          { key: 'v', header: 'Message', render: (e: [string, string]) => <span dir={bundle.data?.direction}>{e[1]}</span> },
-        ]}
-        rows={Object.entries(bundle.data?.bundle ?? {})}
-        rowKey={(e) => e[0]}
-        empty={<EmptyState title="No messages" message="No messages for this locale." />}
-      />
+      <Card padded={false}>
+        <CardHeader title="Message bundle" subtitle="Localized UI strings served for the selected locale." />
+        <Table
+          columns={[
+            { key: 'k', header: 'Key', render: (e: [string, string]) => <span className={shared.cellRef}>{e[0]}</span> },
+            { key: 'v', header: 'Message', render: (e: [string, string]) => <span dir={bundle.data?.direction}>{e[1]}</span> },
+          ]}
+          rows={Object.entries(bundle.data?.bundle ?? {})}
+          rowKey={(e) => e[0]}
+          empty={<EmptyState title="No messages" message="No messages for this locale." icon={<Languages size={16} />} />}
+        />
+      </Card>
     </div>
   );
 }
@@ -188,20 +211,24 @@ function Saml() {
   const providers = useQuery({ queryKey: ['saml-providers'], queryFn: () => api<{ providers: SamlProvider[] }>('/api/auth/saml/providers'), enabled: admin });
   return (
     <div className={styles.section}>
-      <p className={shared.cellSub}>
-        Register RIOS with your IdP using the SP metadata at <span className={shared.cellRef}>/api/auth/saml/metadata</span>. Provider config is managed via SSO settings.
+      <p className={styles.intro}>
+        <Info size={16} aria-hidden />
+        <span>Register RIOS with your IdP using the SP metadata at <span className={shared.cellRef}>/api/auth/saml/metadata</span>. Provider config is managed via SSO settings.</span>
       </p>
       {admin && (
-        <Table
-          columns={[
-            { key: 'name', header: 'Provider', render: (p: SamlProvider) => <span className={shared.cellMain}>{p.name}</span> },
-            { key: 'issuer', header: 'Issuer', render: (p: SamlProvider) => <span className={shared.cellRef}>{p.issuer ?? '-'}</span> },
-            { key: 'enabled', header: 'Status', render: (p: SamlProvider) => <Badge color={p.enabled ? 'green' : 'gray'}>{p.enabled ? 'Enabled' : 'Disabled'}</Badge> },
-          ]}
-          rows={providers.data?.providers}
-          rowKey={(p) => p.id}
-          empty={<EmptyState title="No SAML providers" message="No SAML identity providers configured." />}
-        />
+        <Card padded={false}>
+          <CardHeader title="Identity providers" subtitle="SAML identity providers configured for single sign-on." />
+          <Table
+            columns={[
+              { key: 'name', header: 'Provider', render: (p: SamlProvider) => <span className={shared.cellMain}>{p.name}</span> },
+              { key: 'issuer', header: 'Issuer', render: (p: SamlProvider) => <span className={shared.cellRef}>{p.issuer ?? '-'}</span> },
+              { key: 'enabled', header: 'Status', align: 'right', render: (p: SamlProvider) => <Badge color={p.enabled ? 'green' : 'gray'}>{p.enabled ? 'Enabled' : 'Disabled'}</Badge> },
+            ]}
+            rows={providers.data?.providers}
+            rowKey={(p) => p.id}
+            empty={<EmptyState title="No SAML providers" message="No SAML identity providers configured." icon={<Building2 size={16} />} />}
+          />
+        </Card>
       )}
     </div>
   );

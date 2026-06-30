@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Scale, ShieldCheck, Sigma, Coins, Percent } from 'lucide-react';
+import { Scale, ShieldCheck, Sigma, Coins, Percent, Layers, AlertTriangle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -14,7 +14,7 @@ import { Modal } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
 import { DefinitionList } from '../components/Feedback';
-import { formatMoney, formatNumber, formatPercent, formatDate, titleCase } from '../lib/format';
+import { formatMoney, formatMoneyCompact, formatNumber, formatPercent, formatDate, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
 import local from './RegulatoryPage.module.css';
@@ -127,9 +127,19 @@ export function RegulatoryPage() {
   const [tab, setTab] = useState('ifrs17');
   const canRun = hasPermission('regulatory:run');
 
+  const groupsQuery = useIfrs17Groups();
+  const runsQuery = useSolvency2Runs();
+
+  const groups = groupsQuery.data?.groups ?? [];
+  const onerous = groups.filter((g) => g.latestMeasurement?.onerous).length;
+  const measured = groups.filter((g) => g.latestMeasurement);
+  const liabilityCurrency = measured[0]?.currency ?? 'USD';
+  const totalLiability = measured.reduce((sum, g) => sum + (g.latestMeasurement?.totalLiability ?? 0), 0);
+
   return (
-    <>
+    <div className={shared.stack}>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Regulatory' }]}
         title="Regulatory"
         description="IFRS 17 measurement and Solvency II capital reporting."
         actions={
@@ -139,12 +149,19 @@ export function RegulatoryPage() {
         }
       />
 
+      <div className={shared.kpiRow}>
+        <KpiCard label="IFRS 17 groups" value={groups.length} loading={groupsQuery.isLoading} icon={<Layers size={20} />} accent="var(--primary)" />
+        <KpiCard label="Total liability" value={measured.length ? formatMoneyCompact(totalLiability, liabilityCurrency) : '-'} hint={`${measured.length} measured`} loading={groupsQuery.isLoading} icon={<Scale size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label="Onerous groups" value={onerous} loading={groupsQuery.isLoading} icon={<AlertTriangle size={20} />} accent="var(--accent-orange)" />
+        <KpiCard label="Solvency II runs" value={runsQuery.data?.runs.length ?? 0} loading={runsQuery.isLoading} icon={<ShieldCheck size={20} />} accent="var(--accent-cyan)" />
+      </div>
+
       <Card padded={false}>
         <div className={styles.tabBar}><Tabs tabs={TABS} active={tab} onChange={setTab} /></div>
         {tab === 'ifrs17' && <Ifrs17Tab canRun={canRun} />}
         {tab === 'solvency2' && <Solvency2Tab canRun={canRun} />}
       </Card>
-    </>
+    </div>
   );
 }
 

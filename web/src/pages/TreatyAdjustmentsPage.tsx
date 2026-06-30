@@ -5,13 +5,14 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/Modal';
 import { FormField, Input, Select, Textarea } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
-import { SlidersHorizontal, DollarSign } from 'lucide-react';
+import { SlidersHorizontal, DollarSign, Percent, ArrowLeftRight, FileSignature, Handshake, Activity } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './TreatyAdjustmentsPage.module.css';
 
@@ -84,8 +85,9 @@ export function TreatyAdjustmentsPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Treaties', to: '/treaties' }, { label: 'Adjustments' }]}
         title="Treaty adjustments"
-        description="Profit commission, portfolio transfers, endorsements and commutation - an adjustments workbench."
+        description="Profit commission, portfolio transfers, endorsements and commutation — a guardrailed adjustments workbench."
         actions={canWrite ? <Badge color="green">treaty:write granted</Badge> : <Badge color="slate">read-only</Badge>}
       />
 
@@ -102,6 +104,7 @@ export function TreatyAdjustmentsPage() {
           </FormField>
           {selected && (
             <div className={`${shared.toolbar} ${styles.selectedToolbar}`}>
+              <span className={shared.cellRef}>{selected.reference}</span>
               <span className={shared.cellSub}>Currency {selected.currency}</span>
               <div className={shared.spacer} />
               <StatusPill status={selected.status} />
@@ -111,16 +114,24 @@ export function TreatyAdjustmentsPage() {
       </Card>
 
       {!selected ? (
-        <Card>
+        <Card className={styles.emptyCard}>
           <EmptyState title="No treaty selected" message="Choose a treaty above to run adjustments." icon={<SlidersHorizontal size={16} />} />
         </Card>
       ) : (
-        <div className={`${shared.cols} ${styles.colsGrid}`}>
-          <ProfitCommissionCard treaty={selected} canWrite={canWrite} />
-          <PortfolioTransferCard treaty={selected} canWrite={canWrite} />
-          <EndorseCard treaty={selected} canWrite={canWrite} />
-          <CommuteCard treaty={selected} canWrite={canWrite} />
-        </div>
+        <>
+          <div className={styles.kpiRow}>
+            <KpiCard label="Selected treaty" value={selected.reference} icon={<SlidersHorizontal size={18} />} accent="var(--primary)" hint={selected.name} />
+            <KpiCard label="Currency" value={selected.currency} icon={<DollarSign size={18} />} accent="var(--accent-violet)" hint="Adjustment base currency" />
+            <KpiCard label="Status" value={titleCase(selected.status)} icon={<Activity size={18} />} accent="var(--accent-cyan)" hint="Lifecycle stage" />
+            <KpiCard label="Available treaties" value={treaties.length} icon={<FileSignature size={18} />} accent="var(--accent-emerald)" loading={isLoading} hint="Selectable above" />
+          </div>
+          <div className={`${shared.cols} ${styles.colsGrid}`}>
+            <ProfitCommissionCard treaty={selected} canWrite={canWrite} />
+            <PortfolioTransferCard treaty={selected} canWrite={canWrite} />
+            <EndorseCard treaty={selected} canWrite={canWrite} />
+            <CommuteCard treaty={selected} canWrite={canWrite} />
+          </div>
+        </>
       )}
     </>
   );
@@ -181,7 +192,10 @@ function ProfitCommissionCard({ treaty, canWrite }: { treaty: TreatyOption; canW
 
   return (
     <Card>
-      <CardHeader title="Profit commission" subtitle={`Amounts in major units of ${treaty.currency}.`} />
+      <CardHeader
+        title={<span className={styles.cardTitle}><span className={styles.cardIcon} data-accent="violet" aria-hidden><Percent size={15} /></span>Profit commission</span>}
+        subtitle={`Amounts in major units of ${treaty.currency}.`}
+      />
       <form onSubmit={submit} className={styles.form}>
         <div className={`${shared.grid2} ${styles.formGrid}`}>
           <FormField label="Ceded premium">
@@ -268,7 +282,10 @@ function PortfolioTransferCard({ treaty, canWrite }: { treaty: TreatyOption; can
 
   return (
     <Card>
-      <CardHeader title="Portfolio transfer" subtitle={`Entry or withdrawal in major units of ${treaty.currency}.`} />
+      <CardHeader
+        title={<span className={styles.cardTitle}><span className={styles.cardIcon} data-accent="cyan" aria-hidden><ArrowLeftRight size={15} /></span>Portfolio transfer</span>}
+        subtitle={`Entry or withdrawal in major units of ${treaty.currency}.`}
+      />
       <form onSubmit={submit} className={styles.form}>
         <FormField label="Direction" required>
           <Select value={direction} onChange={(e) => setDirection(e.target.value as 'entry' | 'withdrawal')} disabled={!canWrite}>
@@ -369,7 +386,10 @@ function EndorseCard({ treaty, canWrite }: { treaty: TreatyOption; canWrite: boo
 
   return (
     <Card>
-      <CardHeader title="Endorse" subtitle="Record a versioned amendment to the treaty." />
+      <CardHeader
+        title={<span className={styles.cardTitle}><span className={styles.cardIcon} data-accent="indigo" aria-hidden><FileSignature size={15} /></span>Endorse</span>}
+        subtitle="Record a versioned amendment to the treaty."
+      />
       <form onSubmit={(e) => { e.preventDefault(); openConfirm(); }} className={styles.form}>
         <FormField label="Effective date">
           <Input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} disabled={!canWrite} />
@@ -441,7 +461,10 @@ function CommuteCard({ treaty, canWrite }: { treaty: TreatyOption; canWrite: boo
 
   return (
     <Card>
-      <CardHeader title="Commute" subtitle="Settle and close the treaty. This is irreversible." />
+      <CardHeader
+        title={<span className={styles.cardTitle}><span className={styles.cardIcon} data-accent="orange" aria-hidden><Handshake size={15} /></span>Commute</span>}
+        subtitle="Settle and close the treaty. This is irreversible."
+      />
       <form onSubmit={(e) => { e.preventDefault(); openConfirm(); }} className={styles.form}>
         <FormField label="Settlement amount" required hint={`Major units of ${treaty.currency}.`}>
           <Input type="number" min="0" step="any" value={settlementAmount} onChange={(e) => setSettlementAmount(e.target.value)} placeholder="e.g. 500000" disabled={!canWrite || alreadyCommuted} />

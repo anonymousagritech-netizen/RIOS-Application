@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Tabs } from '../components/Tabs';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
@@ -13,9 +14,10 @@ import { Modal, ConfirmDialog } from '../components/Modal';
 import { Select, TextField } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatDateTime, titleCase } from '../lib/format';
-import { Plus, CheckCircle2, Inbox } from 'lucide-react';
+import { Plus, CheckCircle2, Inbox, Clock, ListChecks, BellRing } from 'lucide-react';
 import shared from './shared.module.css';
-import styles from './workspace.module.css';
+import workspace from './workspace.module.css';
+import styles from './WorkflowPage.module.css';
 
 /* ---------------- Types ---------------- */
 interface Approval {
@@ -90,17 +92,33 @@ export function WorkflowPage() {
   const canWrite = hasPermission('workflow:write');
   const canDecide = hasPermission('approval:decide');
 
+  const { data: allApprovals, isLoading: approvalsLoading } = useApprovals('');
+  const { data: notifData, isLoading: notifLoading } = useNotifications();
+
+  const approvals = allApprovals?.approvals ?? [];
+  const pendingCount = approvals.filter((a) => a.status === 'pending').length;
+  const decidedCount = approvals.filter((a) => a.status === 'approved' || a.status === 'rejected').length;
+  const unreadCount = (notifData?.notifications ?? []).filter((n) => !n.is_read).length;
+
   return (
     <>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Workflow' }]}
         title="Workflow"
-        description="Approval requests and notifications across the platform."
+        description="Track approval requests and platform notifications, and action items awaiting a decision."
         actions={
           canDecide
             ? <Badge color="green">approval:decide granted</Badge>
             : <Badge color="slate">read-only</Badge>
         }
       />
+
+      <div className={styles.kpiRow}>
+        <KpiCard label="Pending approvals" value={pendingCount} icon={<Clock size={18} />} accent="var(--primary)" loading={approvalsLoading} hint="Awaiting a decision" />
+        <KpiCard label="Decided" value={decidedCount} icon={<ListChecks size={18} />} accent="var(--accent-emerald)" loading={approvalsLoading} hint="Approved or rejected" />
+        <KpiCard label="Total requests" value={approvals.length} icon={<CheckCircle2 size={18} />} accent="var(--accent-violet)" loading={approvalsLoading} hint="All approval requests" />
+        <KpiCard label="Unread notifications" value={unreadCount} icon={<BellRing size={18} />} accent="var(--accent-orange)" loading={notifLoading} hint="Across channels" />
+      </div>
 
       <Card padded={false}>
         <div className={styles.tabBar}><Tabs tabs={TABS} active={tab} onChange={setTab} /></div>
@@ -155,7 +173,7 @@ function ApprovalsTab({ canWrite, canDecide }: { canWrite: boolean; canDecide: b
 
   return (
     <>
-      <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
+      <div className={styles.toolbar}>
         <div className={shared.filter}>
           <span className={shared.filterLabel}>Status</span>
           <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
@@ -261,21 +279,21 @@ function NotificationsTab() {
   const notifications = data?.notifications ?? [];
 
   return (
-    <div className={styles.tabBody}>
+    <div className={workspace.tabBody}>
       <CardHeader title="Notifications" subtitle="Recent platform notifications across channels." />
       {isLoading ? (
         <PageLoader label="Loading notifications…" />
       ) : notifications.length === 0 ? (
         <EmptyState title="No notifications" message="You're all caught up." icon={<Inbox size={16} />} />
       ) : (
-        <div className={styles.notifList}>
+        <div className={workspace.notifList}>
           {notifications.map((n) => (
-            <div key={n.id} className={`${styles.notif} ${n.is_read ? '' : styles.notifUnread}`}>
-              {!n.is_read && <span className={styles.unreadDot} aria-hidden />}
-              <div className={styles.notifMain}>
-                <span className={styles.notifSubject}>{n.subject}</span>
-                <span className={styles.notifBody}>{n.body}</span>
-                <span className={styles.notifMeta}>
+            <div key={n.id} className={`${workspace.notif} ${n.is_read ? '' : workspace.notifUnread}`}>
+              {!n.is_read && <span className={workspace.unreadDot} aria-hidden />}
+              <div className={workspace.notifMain}>
+                <span className={workspace.notifSubject}>{n.subject}</span>
+                <span className={workspace.notifBody}>{n.body}</span>
+                <span className={workspace.notifMeta}>
                   {titleCase(n.channel)} · {formatDateTime(n.created_at)}
                 </span>
               </div>

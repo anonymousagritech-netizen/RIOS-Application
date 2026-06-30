@@ -1,11 +1,12 @@
-import { Plus, ShieldAlert } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, ShieldAlert, FolderOpen, Coins, Wallet, CircleDollarSign } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClaims, useCreateClaim, useTreaties, useCurrencies, useStatusColors } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -26,6 +27,16 @@ export function ClaimsPage() {
 
   const { data, isLoading } = useClaims({ status: status || undefined });
   const statusColors = useStatusColors('claim_status');
+
+  const claims = data?.claims ?? [];
+  const kpis = useMemo(() => {
+    const ccy = claims[0]?.currency ?? 'USD';
+    const open = claims.filter((c) => c.status !== 'CLOSED').length;
+    const gross = claims.reduce((sum, c) => sum + (c.grossLossMinor ?? 0), 0);
+    const outstanding = claims.reduce((sum, c) => sum + (c.outstandingMinor ?? 0), 0);
+    const paid = claims.reduce((sum, c) => sum + (c.paidMinor ?? 0), 0);
+    return { ccy, open, gross, outstanding, paid };
+  }, [claims]);
 
   const columns: Column<ClaimListItem>[] = [
     { key: 'reference', header: 'Reference', sortValue: (c) => c.reference ?? '', render: (c) => <span className={shared.cellRef}>{c.reference ?? '-'}</span> },
@@ -50,6 +61,7 @@ export function ClaimsPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Claims' }]}
         title="Claims"
         description="Loss notifications, reserves and settlements across treaties."
         actions={
@@ -58,6 +70,13 @@ export function ClaimsPage() {
           ) : null
         }
       />
+
+      <div className={shared.kpiRow}>
+        <KpiCard label="Open claims" value={kpis.open} loading={isLoading} icon={<FolderOpen size={20} />} accent="var(--primary)" />
+        <KpiCard label="Gross loss" value={formatMoney(kpis.gross, kpis.ccy)} loading={isLoading} icon={<Coins size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label="Outstanding" value={formatMoney(kpis.outstanding, kpis.ccy)} loading={isLoading} icon={<Wallet size={20} />} accent="var(--accent-cyan)" />
+        <KpiCard label="Paid" value={formatMoney(kpis.paid, kpis.ccy)} loading={isLoading} icon={<CircleDollarSign size={20} />} accent="var(--accent-emerald)" />
+      </div>
 
       <Card padded={false}>
         <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
@@ -69,12 +88,12 @@ export function ClaimsPage() {
             </Select>
           </div>
           <div className={shared.spacer} />
-          <span className={shared.cellSub}>{data?.claims.length ?? 0} result{(data?.claims.length ?? 0) === 1 ? '' : 's'}</span>
+          <span className={shared.cellSub}>{claims.length} result{claims.length === 1 ? '' : 's'}</span>
         </div>
 
         <Table
           columns={columns}
-          rows={data?.claims}
+          rows={claims}
           loading={isLoading}
           rowKey={(c) => c.id}
           onRowClick={(c) => navigate(`/claims/${c.id}`)}

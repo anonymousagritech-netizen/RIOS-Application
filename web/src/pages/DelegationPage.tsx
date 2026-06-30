@@ -12,13 +12,16 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { FormField, Select, Input } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatDate } from '../lib/format';
+import { UserCheck, ShieldCheck, History, UserPlus } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './DelegationPage.module.css';
 
 interface User { id: string; displayName: string; email: string }
 interface Delegation {
@@ -65,53 +68,68 @@ export function DelegationPage() {
   ];
 
   const actingFor = acting.data?.actingFor ?? [];
+  const delegations = list.data?.delegations ?? [];
+  const activeCount = delegations.filter((d) => d.active).length;
+  const revokedCount = delegations.filter((d) => !d.active).length;
 
   return (
     <>
-      <PageHeader title="Approval delegation" description="Delegate your approval authority while away - scoped and time-bound, decided by a pure resolver." />
+      <PageHeader
+        title="Approval delegation"
+        description="Delegate your approval authority while away - scoped and time-bound, decided by a pure resolver."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Approval delegation' }]}
+      />
 
-      {actingFor.length > 0 && (
-        <Card>
-          <CardHeader title="You may currently act for" />
-          <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-            {actingFor.map((a) => <Badge key={a.id} color="teal">{a.displayName}</Badge>)}
+      <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
+        <KpiCard label="Acting for" value={actingFor.length} loading={acting.isLoading} icon={<UserCheck size={20} />} accent="var(--primary)" />
+        <KpiCard label="Active delegations" value={activeCount} loading={list.isLoading} icon={<ShieldCheck size={20} />} accent="var(--accent-emerald)" />
+        <KpiCard label="Revoked / past" value={revokedCount} loading={list.isLoading} icon={<History size={20} />} accent="var(--accent-orange)" />
+      </div>
+
+      <div className={shared.stack}>
+        {actingFor.length > 0 && (
+          <Card padded={false}>
+            <CardHeader title="You may currently act for" subtitle="Colleagues whose approval authority is delegated to you." />
+            <div className={styles.badgeRow}>
+              {actingFor.map((a) => <Badge key={a.id} color="teal">{a.displayName}</Badge>)}
+            </div>
+          </Card>
+        )}
+
+        <Card padded={false}>
+          <CardHeader title="Delegations" subtitle="Authority you have granted and received." />
+          <div className={shared.tableWrap}>
+            <Table columns={cols} rows={list.data?.delegations} rowKey={(d) => d.id}
+              empty={<EmptyState title="No delegations" message="You have no delegations." />} />
           </div>
         </Card>
-      )}
 
-      <Card>
-        <CardHeader title="Delegations" />
-        <div style={{ padding: 'var(--space-4)' }}>
-          <Table columns={cols} rows={list.data?.delegations} rowKey={(d) => d.id}
-            empty={<EmptyState title="No delegations" message="You have no delegations." />} />
-        </div>
-      </Card>
-
-      <Card>
-        <CardHeader title="Delegate your authority" subtitle="Grant a colleague the right to approve on your behalf." />
-        <div style={{ padding: 'var(--space-5)', display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 220 }}>
-            <FormField label="Delegate">
-              <Select value={delegateUserId} onChange={(e) => setDelegateUserId(e.target.value)}>
-                <option value="">Select a colleague…</option>
-                {users.data?.users.map((u) => <option key={u.id} value={u.id}>{u.displayName}</option>)}
-              </Select>
-            </FormField>
+        <Card padded={false}>
+          <CardHeader title="Delegate your authority" subtitle="Grant a colleague the right to approve on your behalf." />
+          <div className={styles.form}>
+            <div className={styles.formField}>
+              <FormField label="Delegate">
+                <Select value={delegateUserId} onChange={(e) => setDelegateUserId(e.target.value)}>
+                  <option value="">Select a colleague…</option>
+                  {users.data?.users.map((u) => <option key={u.id} value={u.id}>{u.displayName}</option>)}
+                </Select>
+              </FormField>
+            </div>
+            <div className={styles.formField}>
+              <FormField label="Scope (permission, optional)">
+                <Input value={scope} onChange={(e) => setScope(e.target.value)} placeholder="e.g. accounting:post" />
+              </FormField>
+            </div>
+            <div className={styles.formField}>
+              <FormField label="Reason (optional)">
+                <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Cover during leave" />
+              </FormField>
+            </div>
+            <Button variant="primary" icon={<UserPlus size={16} />} onClick={() => create.mutate()} loading={create.isPending} disabled={!delegateUserId}>Delegate</Button>
           </div>
-          <div style={{ minWidth: 200 }}>
-            <FormField label="Scope (permission, optional)">
-              <Input value={scope} onChange={(e) => setScope(e.target.value)} placeholder="e.g. accounting:post" />
-            </FormField>
-          </div>
-          <div style={{ minWidth: 200 }}>
-            <FormField label="Reason (optional)">
-              <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Cover during leave" />
-            </FormField>
-          </div>
-          <Button variant="primary" onClick={() => create.mutate()} loading={create.isPending} disabled={!delegateUserId}>Delegate</Button>
-        </div>
-        <p className={shared.cellSub} style={{ padding: '0 var(--space-5) var(--space-4)' }}>Leave the scope blank to delegate all approval authority.</p>
-      </Card>
+          <p className={`${shared.cellSub} ${styles.hint}`}>Leave the scope blank to delegate all approval authority.</p>
+        </Card>
+      </div>
     </>
   );
 }

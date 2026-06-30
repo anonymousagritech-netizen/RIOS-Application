@@ -4,6 +4,7 @@
  * the production sinks (Kafka, live connector handshakes) are provider-wired.
  */
 
+import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
@@ -12,20 +13,29 @@ import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
 import { Table, type Column, EmptyState } from '../components/Table';
-import { Badge } from '../components/Badge';
+import { Badge, StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Tabs } from '../components/Tabs';
+import { KpiCard } from '../components/KpiCard';
 import { PageLoader } from '../components/Feedback';
 import { formatDateTime, titleCase } from '../lib/format';
+import { Plug, Radio, KeyRound, Webhook } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './IntegrationHubPage.module.css';
 
 export function IntegrationHubPage() {
   const [tab, setTab] = useState('connectors');
   return (
     <>
-      <PageHeader title="Integration hub" description="Connectors, the event-bus outbox, and developer API keys." />
-      <Card>
-        <Tabs tabs={[{ id: 'connectors', label: 'Connectors' }, { id: 'events', label: 'Event bus' }, { id: 'keys', label: 'API keys' }]} active={tab} onChange={setTab} />
+      <PageHeader
+        title="Integration hub"
+        description="Connectors, the event-bus outbox, and developer API keys."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Integration hub' }]}
+      />
+      <Card padded={false}>
+        <div style={{ padding: '0 var(--space-4)' }}>
+          <Tabs tabs={[{ id: 'connectors', label: 'Connectors' }, { id: 'events', label: 'Event bus' }, { id: 'keys', label: 'API keys' }]} active={tab} onChange={setTab} />
+        </div>
         <div style={{ padding: 'var(--space-5)' }}>
           {tab === 'connectors' && <Connectors />}
           {tab === 'events' && <EventBus />}
@@ -38,6 +48,8 @@ export function IntegrationHubPage() {
 
 interface Connector { id: string; key: string; name: string; kind: string; config: Record<string, unknown>; enabled: boolean; lastStatus?: string | null }
 
+const CONNECTOR_ACCENTS = ['var(--primary)', 'var(--accent-violet)', 'var(--accent-cyan)', 'var(--accent-emerald)', 'var(--accent-orange)', 'var(--accent-indigo)'];
+
 function Connectors() {
   const toast = useToast();
   const qc = useQueryClient();
@@ -48,15 +60,48 @@ function Connectors() {
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Test failed'),
   });
   if (q.isLoading) return <PageLoader label="Loading connectors…" />;
-  const cols: Column<Connector>[] = [
-    { key: 'key', header: 'Key', render: (c) => <span className={shared.cellRef}>{c.key}</span> },
-    { key: 'name', header: 'Connector', render: (c) => <span className={shared.cellMain}>{c.name}</span> },
-    { key: 'kind', header: 'Kind', render: (c) => <Badge color="violet">{c.kind.toUpperCase()}</Badge> },
-    { key: 'status', header: 'Last test', render: (c) => c.lastStatus ? <Badge color={c.lastStatus === 'ok' ? 'green' : 'red'}>{c.lastStatus}</Badge> : '-' },
-    { key: 'enabled', header: 'Enabled', render: (c) => <Badge color={c.enabled ? 'green' : 'gray'}>{c.enabled ? 'On' : 'Off'}</Badge> },
-    { key: 'act', header: '', align: 'right', render: (c) => <Button variant="ghost" onClick={() => test.mutate(c.id)} loading={test.isPending}>Test</Button> },
-  ];
-  return <Table columns={cols} rows={q.data?.connectors} rowKey={(c) => c.id} empty={<EmptyState title="No connectors" message="No connectors registered." />} />;
+
+  const connectors = q.data?.connectors ?? [];
+  const enabledCount = connectors.filter((c) => c.enabled).length;
+  const okCount = connectors.filter((c) => c.lastStatus === 'ok').length;
+
+  if (connectors.length === 0) {
+    return <Card><EmptyState title="No connectors" message="No connectors registered." icon={<Plug size={16} />} /></Card>;
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+      <div className={shared.kpiGrid}>
+        <KpiCard label="Connectors" value={String(connectors.length)} hint="Registered in this tenant" icon={<Plug size={18} />} accent="var(--primary)" />
+        <KpiCard label="Enabled" value={String(enabledCount)} hint="Active connectors" icon={<Radio size={18} />} accent="var(--accent-emerald)" />
+        <KpiCard label="Healthy" value={String(okCount)} hint="Last test passed" icon={<Webhook size={18} />} accent="var(--accent-cyan)" />
+      </div>
+      <div className={styles.grid}>
+        {connectors.map((c, i) => (
+          <Card key={c.id} padded={false} className={styles.tile} style={{ '--tile-accent': CONNECTOR_ACCENTS[i % CONNECTOR_ACCENTS.length] } as CSSProperties}>
+            <div className={styles.head}>
+              <span className={styles.icon} aria-hidden><Plug size={20} /></span>
+              <div className={styles.headText}>
+                <span className={styles.name}>{c.name}</span>
+                <span className={styles.key}>{c.key}</span>
+              </div>
+              <Badge color="violet">{c.kind.toUpperCase()}</Badge>
+            </div>
+            <div className={styles.chips}>
+              <Badge color={c.enabled ? 'green' : 'gray'}>{c.enabled ? 'Enabled' : 'Disabled'}</Badge>
+              {c.lastStatus
+                ? <Badge color={c.lastStatus === 'ok' ? 'green' : 'red'}>Last test: {c.lastStatus}</Badge>
+                : <Badge color="slate">Not tested</Badge>}
+            </div>
+            <div className={styles.foot}>
+              <span className={shared.cellSub}>Connector</span>
+              <Button variant="secondary" size="sm" onClick={() => test.mutate(c.id)} loading={test.isPending && test.variables === c.id}>Test connection</Button>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 interface Event { id: string; eventType: string; aggregateType?: string | null; status: string; createdAt: string; publishedAt?: string | null }
@@ -71,19 +116,31 @@ function EventBus() {
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Relay failed'),
   });
   if (q.isLoading) return <PageLoader label="Loading events…" />;
+
+  const events = q.data?.events ?? [];
+  const pending = q.data?.pending ?? 0;
+  const published = events.filter((e) => e.status === 'published').length;
+
   const cols: Column<Event>[] = [
     { key: 'type', header: 'Event', render: (e) => <span className={shared.cellMain}>{e.eventType}</span> },
     { key: 'agg', header: 'Aggregate', render: (e) => e.aggregateType ?? '-' },
-    { key: 'status', header: 'Status', render: (e) => <Badge color={e.status === 'published' ? 'green' : 'amber'}>{titleCase(e.status)}</Badge> },
+    { key: 'status', header: 'Status', render: (e) => <StatusPill status={e.status === 'published' ? 'PUBLISHED' : 'PENDING'} label={titleCase(e.status)} metaColors={{ PUBLISHED: 'green', PENDING: 'amber' }} /> },
     { key: 'pub', header: 'Published', render: (e) => e.publishedAt ? formatDateTime(e.publishedAt) : '-' },
   ];
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span className={shared.cellSub}>{q.data?.pending ?? 0} pending in the outbox.</span>
-        <Button variant="primary" onClick={() => relay.mutate()} loading={relay.isPending} disabled={!q.data?.pending}>Relay pending</Button>
+    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+      <div className={shared.kpiGrid}>
+        <KpiCard label="Pending" value={String(pending)} hint="Awaiting relay in the outbox" icon={<Radio size={18} />} accent="var(--accent-orange)" />
+        <KpiCard label="Published" value={String(published)} hint="Delivered domain events" icon={<Webhook size={18} />} accent="var(--accent-emerald)" />
+        <KpiCard label="Total" value={String(events.length)} hint="Events in the outbox" icon={<Plug size={18} />} accent="var(--primary)" />
       </div>
-      <Table columns={cols} rows={q.data?.events} rowKey={(e) => e.id} empty={<EmptyState title="No events" message="No domain events in the outbox." />} />
+      <Card padded={false}>
+        <div style={{ padding: 'var(--space-4) var(--space-5)' }} className={styles.outboxBar}>
+          <CardHeader title="Event outbox" subtitle={`${pending} pending domain event${pending === 1 ? '' : 's'} awaiting relay.`} />
+          <Button variant="primary" onClick={() => relay.mutate()} loading={relay.isPending} disabled={!pending}>Relay pending</Button>
+        </div>
+        <Table columns={cols} rows={events} rowKey={(e) => e.id} empty={<EmptyState title="No events" message="No domain events in the outbox." icon={<Radio size={16} />} />} />
+      </Card>
     </div>
   );
 }
@@ -115,23 +172,28 @@ function ApiKeys() {
     { key: 'name', header: 'Name', render: (k) => <span className={shared.cellMain}>{k.name}</span> },
     { key: 'prefix', header: 'Prefix', render: (k) => <span className={shared.cellRef}>{k.prefix}…</span> },
     { key: 'created', header: 'Created', render: (k) => formatDateTime(k.createdAt) },
-    { key: 'status', header: 'Status', render: (k) => <Badge color={k.revokedAt ? 'gray' : 'green'}>{k.revokedAt ? 'Revoked' : 'Active'}</Badge> },
-    { key: 'act', header: '', align: 'right', render: (k) => canManage && !k.revokedAt ? <Button variant="ghost" onClick={() => revoke.mutate(k.id)} loading={revoke.isPending}>Revoke</Button> : null },
+    { key: 'status', header: 'Status', render: (k) => <StatusPill status={k.revokedAt ? 'REVOKED' : 'ACTIVE'} label={k.revokedAt ? 'Revoked' : 'Active'} metaColors={{ ACTIVE: 'green', REVOKED: 'slate' }} /> },
+    { key: 'act', header: '', align: 'right', render: (k) => canManage && !k.revokedAt ? <Button variant="ghost" onClick={() => revoke.mutate(k.id)} loading={revoke.isPending && revoke.variables === k.id}>Revoke</Button> : null },
   ];
   return (
     <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
-      {canManage && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          <Button variant="primary" onClick={() => issue.mutate()} loading={issue.isPending}>Issue API key</Button>
-          {newKey && <span className={shared.cellSub} style={{ fontFamily: 'var(--font-mono)' }}>Copy now - shown once: {newKey}</span>}
+      <Card padded={false}>
+        <div style={{ padding: 'var(--space-4) var(--space-5)' }} className={styles.outboxBar}>
+          <CardHeader title="Developer API keys" subtitle="Issue and revoke keys for programmatic access." />
+          {canManage && <Button variant="primary" icon={<KeyRound size={16} />} onClick={() => issue.mutate()} loading={issue.isPending}>Issue API key</Button>}
         </div>
-      )}
-      <Table columns={cols} rows={q.data?.keys} rowKey={(k) => k.id} empty={<EmptyState title="No keys" message="No API keys issued." />} />
+        {newKey && (
+          <div style={{ padding: '0 var(--space-5) var(--space-4)' }}>
+            <span className={styles.newKey}>Copy now — shown once: {newKey}</span>
+          </div>
+        )}
+        <Table columns={cols} rows={q.data?.keys} rowKey={(k) => k.id} empty={<EmptyState title="No keys" message="No API keys issued." icon={<KeyRound size={16} />} />} />
+      </Card>
       <Card>
         <CardHeader title="API catalog" subtitle="The stable public endpoints." />
-        <div style={{ padding: 'var(--space-4)', display: 'grid', gap: 'var(--space-3)' }}>
+        <div className={styles.catalogList} style={{ marginTop: 'var(--space-4)' }}>
           {catalog.data?.catalog.map((g) => (
-            <div key={g.group}>
+            <div key={g.group} className={styles.catalogGroup}>
               <div className={shared.cellMain}>{g.group}</div>
               {g.endpoints.map((e) => <div key={e} className={shared.cellRef}>{e}</div>)}
             </div>

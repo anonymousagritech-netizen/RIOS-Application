@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -13,8 +14,9 @@ import { FormField, Input, Select, TextField } from '../components/Form';
 import { formatDate, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
 import type { TreatyListItem } from '../lib/types';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, FileText, Layers, CheckCircle2, Activity, FileSignature } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './TreatiesPage.module.css';
 
 const STATUSES = ['DRAFT', 'QUOTED', 'PLACING', 'BOUND', 'ACTIVE', 'EXPIRING', 'RUNOFF', 'COMMUTED', 'CANCELLED'];
 const KINDS = ['TREATY', 'FACULTATIVE'];
@@ -28,6 +30,17 @@ export function TreatiesPage() {
 
   const { data, isLoading } = useTreaties({ status: status || undefined, kind: kind || undefined });
   const statusColors = useStatusColors('contract_status');
+
+  const rows = data?.treaties ?? [];
+  const kpis = useMemo(() => {
+    const isOneOf = (s: string, set: string[]) => set.includes((s ?? '').toUpperCase());
+    return {
+      total: rows.length,
+      bound: rows.filter((t) => isOneOf(t.status, ['BOUND', 'ACTIVE'])).length,
+      inFlight: rows.filter((t) => isOneOf(t.status, ['DRAFT', 'QUOTED', 'PLACING'])).length,
+      runoff: rows.filter((t) => isOneOf(t.status, ['EXPIRING', 'RUNOFF', 'COMMUTED', 'CANCELLED'])).length,
+    };
+  }, [rows]);
 
   const columns: Column<TreatyListItem>[] = useMemo(() => [
     {
@@ -85,8 +98,15 @@ export function TreatiesPage() {
         }
       />
 
-      <Card padded={false}>
-        <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
+      <div className={styles.kpiRow}>
+        <KpiCard label="Total treaties" value={kpis.total} icon={<Layers size={18} />} accent="var(--primary)" loading={isLoading} hint="Across the portfolio" />
+        <KpiCard label="Bound & active" value={kpis.bound} icon={<CheckCircle2 size={18} />} accent="var(--accent-emerald)" loading={isLoading} hint="On risk" />
+        <KpiCard label="In placement" value={kpis.inFlight} icon={<FileSignature size={18} />} accent="var(--accent-violet)" loading={isLoading} hint="Draft, quoted or placing" />
+        <KpiCard label="Run-off & closed" value={kpis.runoff} icon={<Activity size={18} />} accent="var(--accent-orange)" loading={isLoading} hint="Expiring or settled" />
+      </div>
+
+      <Card padded={false} className={styles.tableCard}>
+        <div className={styles.toolbar}>
           <div className={shared.filter}>
             <span className={shared.filterLabel}>Status</span>
             <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
@@ -102,7 +122,7 @@ export function TreatiesPage() {
             </Select>
           </div>
           <div className={shared.spacer} />
-          <span className={shared.cellSub}>{data?.treaties.length ?? 0} result{(data?.treaties.length ?? 0) === 1 ? '' : 's'}</span>
+          <span className={styles.resultCount}>{rows.length} result{rows.length === 1 ? '' : 's'}</span>
         </div>
 
         <Table

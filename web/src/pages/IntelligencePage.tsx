@@ -4,6 +4,7 @@
  * scoring/extraction/routing are real; speech I/O and image OCR are external.
  */
 
+import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
@@ -11,12 +12,14 @@ import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
 import { Table, type Column, EmptyState } from '../components/Table';
-import { Badge } from '../components/Badge';
+import { Badge, StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Tabs } from '../components/Tabs';
 import { FormField, Select, Textarea, Input } from '../components/Form';
+import { KpiCard } from '../components/KpiCard';
 import { PageLoader } from '../components/Feedback';
-import { formatMoney, formatPercent } from '../lib/format';
+import { formatMoney, formatMoneyCompact, formatPercent } from '../lib/format';
+import { Sparkles, TrendingUp, FileText, ScanText, Mic } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './IntelligencePage.module.css';
 
@@ -24,9 +27,15 @@ export function IntelligencePage() {
   const [tab, setTab] = useState('insights');
   return (
     <>
-      <PageHeader title="Intelligence" description="Predictive insights, narrative generation, document extraction and the voice assistant." />
-      <Card>
-        <Tabs tabs={[{ id: 'insights', label: 'Insights' }, { id: 'generate', label: 'Generate' }, { id: 'ocr', label: 'Document OCR' }, { id: 'voice', label: 'Voice' }]} active={tab} onChange={setTab} />
+      <PageHeader
+        title="Intelligence"
+        description="Predictive insights, narrative generation, document extraction and the voice assistant."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Intelligence' }]}
+      />
+      <Card padded={false}>
+        <div className={styles.tabBar}>
+          <Tabs tabs={[{ id: 'insights', label: 'Insights' }, { id: 'generate', label: 'Generate' }, { id: 'ocr', label: 'Document OCR' }, { id: 'voice', label: 'Voice' }]} active={tab} onChange={setTab} />
+        </div>
         <div className={styles.tabBody}>
           {tab === 'insights' && <Insights />}
           {tab === 'generate' && <Generate />}
@@ -39,19 +48,42 @@ export function IntelligencePage() {
 }
 
 interface Insight { id: string; reference: string; name: string; premiumMinor: number; incurredMinor: number; lossRatio: number; openClaims: number; renewalLikelihood: number; band: string }
-const BAND: Record<string, 'red' | 'amber' | 'green'> = { unlikely: 'red', 'at-risk': 'amber', likely: 'green' };
 
 function Insights() {
   const q = useQuery({ queryKey: ['insights-renewals'], queryFn: () => api<{ insights: Insight[] }>('/api/insights/renewals') });
   if (q.isLoading) return <PageLoader label="Scoring renewals…" />;
+
+  const insights = q.data?.insights ?? [];
+  const likely = insights.filter((i) => i.band === 'likely').length;
+  const atRisk = insights.filter((i) => i.band !== 'likely').length;
+  const premiumAtRenewal = insights.reduce((sum, i) => sum + i.premiumMinor, 0);
+  const avgLikelihood = insights.length
+    ? insights.reduce((sum, i) => sum + i.renewalLikelihood, 0) / insights.length
+    : 0;
+
   const cols: Column<Insight>[] = [
     { key: 'ref', header: 'Contract', render: (i) => <span className={shared.cellMain}>{i.name}</span> },
-    { key: 'premium', header: 'Premium', align: 'right', render: (i) => formatMoney(i.premiumMinor) },
-    { key: 'lr', header: 'Loss ratio', align: 'right', render: (i) => formatPercent(i.lossRatio) },
-    { key: 'open', header: 'Open claims', align: 'right', render: (i) => String(i.openClaims) },
-    { key: 'score', header: 'Renewal likelihood', align: 'right', render: (i) => <Badge color={BAND[i.band] ?? 'slate'}>{formatPercent(i.renewalLikelihood)} · {i.band}</Badge> },
+    { key: 'premium', header: 'Premium', align: 'right', render: (i) => <span className={shared.money}>{formatMoney(i.premiumMinor)}</span> },
+    { key: 'lr', header: 'Loss ratio', align: 'right', render: (i) => <span className={shared.money}>{formatPercent(i.lossRatio)}</span> },
+    { key: 'open', header: 'Open claims', align: 'right', render: (i) => <span className={shared.money}>{String(i.openClaims)}</span> },
+    { key: 'score', header: 'Renewal likelihood', align: 'right', render: (i) => <StatusPill status={i.band} label={`${formatPercent(i.renewalLikelihood)} · ${i.band}`} metaColors={{ likely: 'green', 'at-risk': 'amber', unlikely: 'red' }} /> },
   ];
-  return <Table columns={cols} rows={q.data?.insights} rowKey={(i) => i.id} empty={<EmptyState title="No contracts" message="No contracts to score." />} />;
+  return (
+    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+      <div className={shared.kpiGrid}>
+        <KpiCard label="Contracts scored" value={String(insights.length)} hint="Up for renewal" icon={<TrendingUp size={18} />} accent="var(--primary)" />
+        <KpiCard label="Likely to renew" value={String(likely)} hint="High renewal likelihood" icon={<Sparkles size={18} />} accent="var(--accent-emerald)" />
+        <KpiCard label="At risk" value={String(atRisk)} hint="Needs attention" icon={<TrendingUp size={18} />} accent="var(--accent-orange)" />
+        <KpiCard label="Avg likelihood" value={formatPercent(avgLikelihood)} hint={`Premium ${formatMoneyCompact(premiumAtRenewal)}`} icon={<Sparkles size={18} />} accent="var(--accent-violet)" />
+      </div>
+      <Card padded={false}>
+        <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+          <CardHeader title="Renewal likelihood" subtitle="Predictive renewal scoring across the in-force portfolio." />
+        </div>
+        <Table columns={cols} rows={insights} rowKey={(i) => i.id} empty={<EmptyState title="No contracts" message="No contracts to score." icon={<TrendingUp size={16} />} />} />
+      </Card>
+    </div>
+  );
 }
 
 function Generate() {
@@ -64,7 +96,13 @@ function Generate() {
   });
   return (
     <div className={styles.console}>
-      <p className={shared.cellSub}>Generate a plain-language executive summary from the live portfolio KPIs.</p>
+      <div className={styles.consoleHead} style={{ '--head-accent': 'var(--accent-violet)' } as CSSProperties}>
+        <span className={styles.headIcon} aria-hidden><FileText size={20} /></span>
+        <div>
+          <h3 className={styles.headTitle}>Narrative generation</h3>
+          <p className={shared.cellSub}>Generate a plain-language executive summary from the live portfolio KPIs.</p>
+        </div>
+      </div>
       <Button variant="primary" onClick={() => gen.mutate()} loading={gen.isPending} className={styles.startButton}>Generate summary</Button>
       {text && <Card><div className={styles.narrative}>{text}</div></Card>}
     </div>
@@ -83,7 +121,13 @@ function Ocr() {
   });
   return (
     <div className={styles.console}>
-      <p className={shared.cellSub}>Paste document text (image/PDF → text is an external OCR step). Fields are extracted deterministically.</p>
+      <div className={styles.consoleHead} style={{ '--head-accent': 'var(--accent-cyan)' } as CSSProperties}>
+        <span className={styles.headIcon} aria-hidden><ScanText size={20} /></span>
+        <div>
+          <h3 className={styles.headTitle}>Document extraction</h3>
+          <p className={shared.cellSub}>Paste document text (image/PDF → text is an external OCR step). Fields are extracted deterministically.</p>
+        </div>
+      </div>
       <div className={styles.docTypeField}>
         <FormField label="Document type">
           <Select value={docType} onChange={(e) => setDocType(e.target.value)}>
@@ -122,7 +166,13 @@ function Voice() {
   });
   return (
     <div className={styles.console}>
-      <p className={shared.cellSub}>Speech→text is captured on-device; the transcript is normalised here and routed through the assistant.</p>
+      <div className={styles.consoleHead} style={{ '--head-accent': 'var(--accent-emerald)' } as CSSProperties}>
+        <span className={styles.headIcon} aria-hidden><Mic size={20} /></span>
+        <div>
+          <h3 className={styles.headTitle}>Voice assistant</h3>
+          <p className={shared.cellSub}>Speech→text is captured on-device; the transcript is normalised here and routed through the assistant.</p>
+        </div>
+      </div>
       <FormField label="Transcript"><Input value={transcript} onChange={(e) => setTranscript(e.target.value)} /></FormField>
       <Button variant="primary" onClick={() => run.mutate()} loading={run.isPending} className={styles.startButton}>Interpret</Button>
       {result && (

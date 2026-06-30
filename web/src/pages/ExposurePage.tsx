@@ -11,8 +11,9 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
-import { formatMoney, formatPercent, titleCase } from '../lib/format';
-import { Radar } from 'lucide-react';
+import { KpiCard } from '../components/KpiCard';
+import { formatMoney, formatNumber, formatPercent, titleCase } from '../lib/format';
+import { Radar, Layers, ShieldAlert, Gauge, MapPin } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './ExposurePage.module.css';
 
@@ -105,6 +106,13 @@ export function ExposurePage() {
 
   const rows = data?.accumulations ?? [];
 
+  const stats = useMemo(() => {
+    const breaches = rows.filter((a) => a.breached).length;
+    const zones = new Set(rows.map((a) => a.zone)).size;
+    const peakUtil = rows.reduce((m, a) => Math.max(m, a.utilisationPct), 0);
+    return { count: rows.length, breaches, zones, peakUtil };
+  }, [rows]);
+
   const columns: Column<Accumulation>[] = useMemo(() => [
     {
       key: 'peril',
@@ -157,10 +165,11 @@ export function ExposurePage() {
   ], [canWrite]);
 
   return (
-    <>
+    <div className={styles.page}>
       <PageHeader
         title="Exposure"
         description="Aggregate accumulations by peril and zone. Utilisation tracks net exposure against capacity; breaches are flagged."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Exposure' }]}
         actions={
           canWrite ? (
             <Button variant="primary" onClick={() => setShowNew(true)} icon={<span aria-hidden>+</span>}>
@@ -172,8 +181,43 @@ export function ExposurePage() {
         }
       />
 
+      <div className={shared.kpiGrid}>
+        <KpiCard
+          label="Accumulations"
+          value={formatNumber(stats.count)}
+          hint="Tracked peril / zone groups"
+          icon={<Layers size={20} />}
+          accent="var(--primary)"
+          loading={isLoading}
+        />
+        <KpiCard
+          label="Capacity breaches"
+          value={formatNumber(stats.breaches)}
+          hint={stats.breaches ? 'Net exposure over capacity' : 'All within capacity'}
+          icon={<ShieldAlert size={20} />}
+          accent={stats.breaches ? 'var(--accent-rose)' : 'var(--accent-emerald)'}
+          loading={isLoading}
+        />
+        <KpiCard
+          label="Peak utilisation"
+          value={formatPercent(Math.max(0, stats.peakUtil))}
+          hint="Highest net-to-capacity ratio"
+          icon={<Gauge size={20} />}
+          accent="var(--accent-orange)"
+          loading={isLoading}
+        />
+        <KpiCard
+          label="Zones covered"
+          value={formatNumber(stats.zones)}
+          hint="Distinct accumulation zones"
+          icon={<MapPin size={20} />}
+          accent="var(--accent-cyan)"
+          loading={isLoading}
+        />
+      </div>
+
       <Card padded={false}>
-        <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+        <div className={styles.cardHead}>
           <CardHeader title="Accumulations" subtitle="Net exposure against declared capacity per peril/zone." />
         </div>
         <Table
@@ -189,7 +233,7 @@ export function ExposurePage() {
 
       <NewAccumulationModal open={showNew} onClose={() => setShowNew(false)} />
       <AddEntryModal accumulation={entryFor} onClose={() => setEntryFor(null)} />
-    </>
+    </div>
   );
 }
 
@@ -229,7 +273,7 @@ function SummaryCard() {
 
   return (
     <Card padded={false}>
-      <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+      <div className={styles.cardHead}>
         <CardHeader title="Gross / net by peril and zone" subtitle="Aggregated exposure across all accumulation entries." />
       </div>
       <Table

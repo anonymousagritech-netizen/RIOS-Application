@@ -1,3 +1,4 @@
+import { ShieldAlert, Wallet, CircleDollarSign, Undo2, History } from 'lucide-react';
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useClaim, useReserveMovement, useStatusColors } from '../lib/queries';
@@ -5,10 +6,12 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, Textarea } from '../components/Form';
+import { EmptyState } from '../components/Table';
 import { DefinitionList, ErrorState, PageLoader, SectionLabel } from '../components/Feedback';
 import { formatMoney, formatDate, formatDateTime, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
@@ -37,7 +40,7 @@ export function ClaimDetailPage() {
   return (
     <>
       <PageHeader
-        crumbs={[{ label: 'Claims', to: '/claims' }, { label: claim.reference ?? 'Claim' }]}
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Claims', to: '/claims' }, { label: claim.reference ?? 'Claim' }]}
         title={claim.description ?? 'Claim'}
         description={<span><span className={shared.cellRef}>{claim.reference}</span> · {claim.contractName ?? claim.contractId}</span>}
         actions={
@@ -50,11 +53,18 @@ export function ClaimDetailPage() {
         }
       />
 
+      <div className={shared.kpiRow}>
+        <KpiCard label="Gross loss" value={formatMoney(claim.grossLossMinor, ccy)} icon={<ShieldAlert size={20} />} accent="var(--primary)" />
+        <KpiCard label="Outstanding" value={formatMoney(claim.outstandingMinor, ccy)} icon={<Wallet size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label="Paid" value={formatMoney(claim.paidMinor, ccy)} icon={<CircleDollarSign size={20} />} accent="var(--accent-cyan)" />
+        <KpiCard label="Recovered" value={formatMoney(claim.recoveredMinor, ccy)} icon={<Undo2 size={20} />} accent="var(--accent-emerald)" />
+      </div>
+
       <div className={shared.cols}>
         <Card>
-          <CardHeader title="Reserve movements" subtitle="Newest first" />
+          <CardHeader title="Reserve movements" subtitle="Reserve and payment history, newest first." />
           {movements.length === 0 ? (
-            <p className={shared.cellSub}>No movements recorded yet.</p>
+            <EmptyState title="No movements yet" message="Reserve increases, decreases and payments will appear here as a timeline." icon={<History size={16} />} />
           ) : (
             <ol className={styles.timeline}>
               {movements.map((m) => <MovementRow key={m.id} m={m} currency={ccy} />)}

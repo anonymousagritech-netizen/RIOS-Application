@@ -8,14 +8,33 @@
 .sectionHeading { margin-bottom: var(--space-2); }
 .badgeRow { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 
-.simulator { border-top: 1px solid var(--border); padding-top: var(--space-4); }
+.simulator {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  padding: var(--space-5);
+}
 .simHeading { margin-bottom: var(--space-3); }
 .toolbar { display: flex; gap: var(--space-4); align-items: flex-end; flex-wrap: wrap; }
 .field { min-width: 180px; }
-.simResult { margin-top: var(--space-3); }
+.simResult {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
 
 .contextMono { font-family: var(--font-mono); }
 .evaluateRow { margin-top: var(--space-3); }
-.outcome { margin-top: var(--space-4); display: grid; gap: var(--space-2); }
+.outcome {
+  margin-top: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
 .errorText { color: var(--c-red); }
 .warningText { color: var(--c-amber); }

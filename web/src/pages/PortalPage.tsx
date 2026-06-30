@@ -23,6 +23,7 @@ import { FormField, Select } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatNumber, formatDate, titleCase } from '../lib/format';
 import shared from './shared.module.css';
+import styles from './PortalPage.module.css';
 
 interface Grant { id: string; portalType: string; partyId: string; partyName: string; scopes: string[] }
 interface PortalMeta { partyId: string; partyName: string; portalType: string }
@@ -142,13 +143,17 @@ export function PortalPage() {
       <PageHeader
         title="Counterparty portal"
         description={meta ? `${meta.partyName} · ${titleCase(meta.portalType)} view` : 'Your scoped view of contracts, statements and claims.'}
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Counterparty portal' }]}
       />
 
+      <div className={styles.page}>
       {isAdmin && (
-        <Card>
-          <CardHeader title="Impersonate a counterparty" subtitle="Administrators can preview any party's portal view." />
-          <div style={{ padding: 'var(--space-5)', display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div style={{ minWidth: 240 }}>
+        <Card padded={false}>
+          <div className={styles.cardHead}>
+            <CardHeader title="Impersonate a counterparty" subtitle="Administrators can preview any party's portal view." />
+          </div>
+          <div className={styles.impersonate}>
+            <div className={styles.field}>
               <FormField label="Party">
                 <Select value={adminPartyId} onChange={(e) => setAdminPartyId(e.target.value)}>
                   <option value="">Select a party…</option>
@@ -158,7 +163,7 @@ export function PortalPage() {
                 </Select>
               </FormField>
             </div>
-            <div style={{ minWidth: 200 }}>
+            <div className={styles.fieldNarrow}>
               <FormField label="Portal type">
                 <Select value={adminType} onChange={(e) => setAdminType(e.target.value)}>
                   {PORTAL_TYPES.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
@@ -177,26 +182,28 @@ export function PortalPage() {
 
       {ready && !noAccess && (
         <>
-          <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
-            <KpiCard label="Contracts" value={formatNumber(s?.contracts)} loading={overview.isLoading} icon={<Layers size={20} />} />
-            <KpiCard label="Active" value={formatNumber(s?.activeContracts)} loading={overview.isLoading} icon={<CheckCircle2 size={20} />} accent="var(--c-green)" />
-            <KpiCard label="Open claims" value={formatNumber(s?.claims)} loading={overview.isLoading} icon={<AlertTriangle size={20} />} accent="var(--c-amber)" />
-            <KpiCard label="Outstanding" value={formatMoney(s?.outstandingMinor)} loading={overview.isLoading} icon={<Wallet size={20} />} />
-            <KpiCard label="Statement balance" value={formatMoney(s?.statementBalanceMinor)} loading={overview.isLoading} icon={<Receipt size={20} />} />
-            <KpiCard label="Open statements" value={formatNumber(s?.openStatements)} loading={overview.isLoading} icon={<Clock size={20} />} accent="var(--c-amber)" />
+          <div className={styles.kpis}>
+            <KpiCard label="Contracts" value={formatNumber(s?.contracts)} hint="In your portfolio" loading={overview.isLoading} icon={<Layers size={20} />} accent="var(--primary)" />
+            <KpiCard label="Active" value={formatNumber(s?.activeContracts)} hint="Currently in force" loading={overview.isLoading} icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" />
+            <KpiCard label="Open claims" value={formatNumber(s?.claims)} hint="Notified to you" loading={overview.isLoading} icon={<AlertTriangle size={20} />} accent="var(--accent-orange)" />
+            <KpiCard label="Outstanding" value={formatMoney(s?.outstandingMinor)} hint="Claims reserves" loading={overview.isLoading} icon={<Wallet size={20} />} accent="var(--accent-violet)" />
+            <KpiCard label="Statement balance" value={formatMoney(s?.statementBalanceMinor)} hint="Net due / owed" loading={overview.isLoading} icon={<Receipt size={20} />} accent="var(--accent-cyan)" />
+            <KpiCard label="Open statements" value={formatNumber(s?.openStatements)} hint="Awaiting settlement" loading={overview.isLoading} icon={<Clock size={20} />} accent="var(--accent-orange)" />
           </div>
 
-          <Card>
-            <Tabs
-              tabs={[
-                { id: 'contracts', label: 'Contracts' },
-                { id: 'statements', label: 'Statements' },
-                { id: 'claims', label: 'Claims' },
-              ]}
-              active={tab}
-              onChange={setTab}
-            />
-            <div style={{ padding: 'var(--space-4)' }}>
+          <Card padded={false}>
+            <div className={styles.tabBar}>
+              <Tabs
+                tabs={[
+                  { id: 'contracts', label: 'Contracts' },
+                  { id: 'statements', label: 'Statements' },
+                  { id: 'claims', label: 'Claims' },
+                ]}
+                active={tab}
+                onChange={setTab}
+              />
+            </div>
+            <div className={styles.tabBody}>
               {tab === 'contracts' && (
                 contracts.isLoading ? <PageLoader label="Loading contracts…" /> :
                 <Table columns={contractCols} rows={contracts.data?.contracts} rowKey={(r) => r.id}
@@ -222,6 +229,7 @@ export function PortalPage() {
           <EmptyState title="Select a counterparty" message="Choose a party and portal type above to preview their portal." />
         </Card>
       )}
+      </div>
     </>
   );
 }

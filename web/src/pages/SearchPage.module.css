@@ -1,0 +1,86 @@
+.hero {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--grad-primary);
+  color: var(--primary-fg);
+  box-shadow: var(--shadow-primary);
+  margin-bottom: var(--space-5);
+}
+.heroTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  margin: 0;
+}
+.heroSub {
+  font-size: var(--text-sm);
+  opacity: 0.85;
+  margin: 0;
+}
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.searchIcon { color: var(--text-faint); flex-shrink: 0; }
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-md);
+  font-family: var(--font-sans);
+}
+.searchInput::placeholder { color: var(--text-faint); }
+.spin { display: flex; flex-shrink: 0; }
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-5);
+}
+.summaryText { font-size: var(--text-sm); color: var(--text-muted); }
+
+.results { display: flex; flex-direction: column; gap: var(--space-5); }
+
+.hitList { display: grid; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-4); }
+.hit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  text-decoration: none;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+}
+.hit:hover {
+  border-color: var(--primary-soft-strong);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.hitIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.hitBody { flex: 1; min-width: 0; }
+.hitLabel { font-weight: var(--weight-semibold); color: var(--text); font-size: var(--text-sm); }
+.hitSub { font-size: var(--text-xs); color: var(--text-muted); }
+.hitRef { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-faint); flex-shrink: 0; }
+
+.emptyWrap { padding: var(--space-7) var(--space-5); }

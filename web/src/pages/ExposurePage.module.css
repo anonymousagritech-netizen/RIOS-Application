@@ -1,3 +1,6 @@
+.page { display: flex; flex-direction: column; gap: var(--space-5); }
+.cardHead { padding: var(--space-4) var(--space-5) 0; }
+
 .barWrap {
   display: flex;
   align-items: center;

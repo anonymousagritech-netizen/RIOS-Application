@@ -136,6 +136,7 @@ export function CrmPage() {
       <PageHeader
         title="CRM"
         description="Sales pipeline, opportunities and counterparty activities."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'CRM' }]}
       />
 
       <Card padded={false}>

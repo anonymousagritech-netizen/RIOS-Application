@@ -21,6 +21,7 @@ import { formatMoney, formatNumber, formatDate } from '../lib/format';
 import type { TokenColor } from '../lib/status';
 import { Wallet, BookOpen, Plus, Percent, Gauge, TrendingDown, ShieldAlert, Sigma } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './RiskCapitalPage.module.css';
 
 interface Position { asOfDate: string; currency: string; ownFundsMinor: number; scrMinor: number; mcrMinor: number; note?: string | null }
 interface Adequacy { ownFundsMinor: number; scrMinor: number; solvencyRatio: number; surplusMinor: number; status: 'breach' | 'warning' | 'adequate' | 'strong' }
@@ -37,14 +38,18 @@ export function RiskCapitalPage() {
   const [tab, setTab] = useState('capital');
   return (
     <>
-      <PageHeader title="Risk & capital" description="Capital adequacy, Realistic Disaster Scenarios and tail-risk - on pure, reconcilable engines." />
-      <Card>
+      <PageHeader
+        title="Risk & capital"
+        description="Capital adequacy, Realistic Disaster Scenarios and tail-risk - on pure, reconcilable engines."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Risk & capital' }]}
+      />
+      <Card padded={false}>
         <Tabs
           tabs={[{ id: 'capital', label: 'Capital adequacy' }, { id: 'rds', label: 'Disaster scenarios' }, { id: 'var', label: 'VaR calculator' }]}
           active={tab}
           onChange={setTab}
         />
-        <div style={{ padding: 'var(--space-5)' }}>
+        <div className={styles.tabBody}>
           {tab === 'capital' && <CapitalPanel />}
           {tab === 'rds' && <RdsPanel />}
           {tab === 'var' && <VarPanel />}
@@ -61,15 +66,15 @@ function CapitalPanel() {
   if (!position || !adequacy) return <EmptyState title="No capital position" message="No capital position has been recorded yet." />;
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
-      <div className={shared.kpiGrid}>
-        <KpiCard label="Own funds" value={formatMoney(position.ownFundsMinor, position.currency)} icon={<Wallet size={20} />} />
-        <KpiCard label="SCR" value={formatMoney(position.scrMinor, position.currency)} icon={<BookOpen size={20} />} />
-        <KpiCard label="Surplus" value={formatMoney(adequacy.surplusMinor, position.currency)} accent={adequacy.surplusMinor >= 0 ? 'var(--c-green)' : 'var(--c-red)'} icon={<Plus size={20} />} />
-        <KpiCard label="Solvency ratio" value={ratioLabel(adequacy.solvencyRatio)} icon={<Percent size={20} />} accent={`var(--c-${STATUS_COLOR[adequacy.status]})`} />
-        <KpiCard label="MCR" value={formatMoney(position.mcrMinor, position.currency)} icon={<Gauge size={20} />} />
+    <div className={styles.panel}>
+      <div className={styles.kpiRow}>
+        <KpiCard label="Own funds" value={formatMoney(position.ownFundsMinor, position.currency)} hint={position.currency} icon={<Wallet size={20} />} accent="var(--primary)" />
+        <KpiCard label="SCR" value={formatMoney(position.scrMinor, position.currency)} hint="Solvency capital req." icon={<BookOpen size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label="Surplus" value={formatMoney(adequacy.surplusMinor, position.currency)} hint={adequacy.surplusMinor >= 0 ? 'Above requirement' : 'Below requirement'} accent={adequacy.surplusMinor >= 0 ? 'var(--c-green)' : 'var(--c-red)'} icon={<Plus size={20} />} />
+        <KpiCard label="Solvency ratio" value={ratioLabel(adequacy.solvencyRatio)} hint="Own funds / SCR" icon={<Percent size={20} />} accent={`var(--c-${STATUS_COLOR[adequacy.status]})`} />
+        <KpiCard label="MCR" value={formatMoney(position.mcrMinor, position.currency)} hint="Minimum capital req." icon={<Gauge size={20} />} accent="var(--accent-cyan)" />
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+      <div className={styles.statusBar}>
         <Badge color={STATUS_COLOR[adequacy.status]}>{adequacy.status.toUpperCase()}</Badge>
         <span className={shared.cellSub}>As of {formatDate(position.asOfDate)}{position.note ? ` · ${position.note}` : ''}</span>
       </div>
@@ -99,12 +104,17 @@ function RdsPanel() {
   ];
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-      <p className={shared.cellSub}>
+    <div className={styles.panel}>
+      <p className={styles.intro}>
         Each scenario's prescribed gross loss is netted by its assumed reinsurance recovery, then absorbed against current own funds to project the post-event solvency ratio.
       </p>
-      <Table columns={cols} rows={q.data?.scenarios} rowKey={(s) => s.id}
-        empty={<EmptyState title="No scenarios" message="No Realistic Disaster Scenarios have been defined." />} />
+      <Card padded={false}>
+        <div className={shared.tableWrap} style={{ paddingBottom: 0 }}>
+          <CardHeader title="Realistic Disaster Scenarios" subtitle="Prescribed gross losses netted to a post-event solvency ratio." />
+        </div>
+        <Table columns={cols} rows={q.data?.scenarios} rowKey={(s) => s.id}
+          empty={<EmptyState title="No scenarios" message="No Realistic Disaster Scenarios have been defined." icon={<ShieldAlert size={16} />} />} />
+      </Card>
     </div>
   );
 }
@@ -132,13 +142,13 @@ function VarPanel() {
   };
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 640 }}>
-      <p className={shared.cellSub}>Paste a loss sample (the loss in whole units per simulated year/event). VaR and Tail-VaR are computed empirically.</p>
+    <div className={styles.varPanel}>
+      <p className={styles.intro}>Paste a loss sample (the loss in whole units per simulated year/event). VaR and Tail-VaR are computed empirically.</p>
       <FormField label="Loss sample" error={error ?? undefined}>
         <Textarea rows={3} value={sample} onChange={(e) => setSample(e.target.value)} />
       </FormField>
-      <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end' }}>
-        <div style={{ width: 160 }}>
+      <div className={styles.varControls}>
+        <div className={styles.confField}>
           <FormField label="Confidence">
             <Input type="number" min="0" max="1" step="0.005" value={confidence} onChange={(e) => setConfidence(e.target.value)} />
           </FormField>
@@ -146,7 +156,7 @@ function VarPanel() {
         <Button variant="primary" onClick={compute} loading={busy}>Compute VaR</Button>
       </div>
       {result && (
-        <div className={shared.kpiGrid}>
+        <div className={styles.kpiRow}>
           <KpiCard label={`VaR @ ${ratioLabel(result.confidence)}`} value={formatNumber(result.valueAtRiskMinor)} icon={<ShieldAlert size={20} />} accent="var(--c-amber)" />
           <KpiCard label={`Tail-VaR @ ${ratioLabel(result.confidence)}`} value={formatNumber(result.tailValueAtRiskMinor)} icon={<TrendingDown size={20} />} accent="var(--c-red)" />
           <KpiCard label="Sample size" value={formatNumber(result.sampleSize)} icon={<Sigma size={20} />} />

@@ -180,6 +180,7 @@ export function ClaimsRecoveriesPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Claims recoveries' }]}
         title="Claims recoveries"
         description="Recoveries, cash calls and reinstatement premium against the net retained position."
         actions={
@@ -233,11 +234,11 @@ function NetPositionKpis({ claimId, fallbackCurrency }: { claimId: string; fallb
   const { data, isLoading } = useNetPosition(claimId);
   const ccy = data?.currency ?? fallbackCurrency;
   return (
-    <div className={`${shared.kpiGrid} ${local.kpiGrid}`}>
-      <KpiCard label="Gross loss" value={formatMoney(data?.grossLossMinor, ccy)} loading={isLoading} icon={<ShieldAlert size={20} />} />
-      <KpiCard label="Paid" value={formatMoney(data?.paidMinor, ccy)} loading={isLoading} icon={<ArrowRight size={20} />} accent="var(--c-amber)" />
-      <KpiCard label="Recovered" value={formatMoney(data?.recoveredMinor, ccy)} loading={isLoading} icon={<Undo2 size={20} />} accent="var(--c-green)" />
-      <KpiCard label="Net retained" value={formatMoney(data?.netMinor, ccy)} loading={isLoading} icon={<Sigma size={20} />} />
+    <div className={shared.kpiRow}>
+      <KpiCard label="Gross loss" value={formatMoney(data?.grossLossMinor, ccy)} loading={isLoading} icon={<ShieldAlert size={20} />} accent="var(--primary)" />
+      <KpiCard label="Paid" value={formatMoney(data?.paidMinor, ccy)} loading={isLoading} icon={<ArrowRight size={20} />} accent="var(--accent-orange)" />
+      <KpiCard label="Recovered" value={formatMoney(data?.recoveredMinor, ccy)} loading={isLoading} icon={<Undo2 size={20} />} accent="var(--accent-emerald)" />
+      <KpiCard label="Net retained" value={formatMoney(data?.netMinor, ccy)} loading={isLoading} icon={<Sigma size={20} />} accent="var(--accent-violet)" />
     </div>
   );
 }

@@ -1,0 +1,9 @@
+.page { display: grid; gap: var(--space-5); }
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.cardHead { padding: var(--space-5) var(--space-5) 0; }

@@ -1,0 +1,40 @@
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.tabBody {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.formRow {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.cardPad { padding: var(--space-5); }
+
+.field { min-width: 220px; }
+.fieldSm { min-width: 180px; }
+
+.evaluatePanel {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 640px;
+}
+
+.verdict {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}

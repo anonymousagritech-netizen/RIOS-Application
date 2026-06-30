@@ -11,11 +11,14 @@ import { api, qs } from '../lib/api';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
-import { TextField } from '../components/Form';
 import { Spinner } from '../components/Feedback';
 import { EmptyState } from '../components/Table';
 import { titleCase } from '../lib/format';
-import shared from './shared.module.css';
+import {
+  Search as SearchIcon, Building2, FileText, AlertTriangle, ReceiptText, CircleDot, ArrowUpRight,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import styles from './SearchPage.module.css';
 
 interface Hit { type: string; id: string; label: string; sublabel?: string | null; ref?: string | null; url: string }
 interface SearchResponse { query: string; results: Hit[]; groups: { type: string; hits: Hit[] }[] }
@@ -24,48 +27,109 @@ const TYPE_COLOR: Record<string, 'blue' | 'violet' | 'amber' | 'teal' | 'slate'>
   party: 'blue', contract: 'violet', claim: 'amber', statement: 'teal',
 };
 
+const TYPE_META: Record<string, { icon: LucideIcon; accent: string }> = {
+  party: { icon: Building2, accent: 'var(--accent-blue)' },
+  contract: { icon: FileText, accent: 'var(--accent-violet)' },
+  claim: { icon: AlertTriangle, accent: 'var(--accent-orange)' },
+  statement: { icon: ReceiptText, accent: 'var(--accent-cyan)' },
+};
+
 export function SearchPage() {
   const [term, setTerm] = useState('');
+  const ready = term.trim().length >= 2;
   const q = useQuery({
     queryKey: ['global-search', term],
     queryFn: () => api<SearchResponse>(`/api/search${qs({ q: term })}`),
-    enabled: term.trim().length >= 2,
+    enabled: ready,
   });
+
+  const total = q.data?.results.length ?? 0;
+  const noMatches = ready && !q.isFetching && q.data && total === 0;
 
   return (
     <>
-      <PageHeader title="Search" description="Find parties, contracts, claims and statements across the platform." />
-      <Card>
-        <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-4)' }}>
-          <TextField label="Search" value={term} onChange={setTerm} placeholder="Type at least two characters…" />
-          {q.isFetching && <Spinner />}
-          {term.trim().length >= 2 && !q.isFetching && q.data && q.data.results.length === 0 && (
-            <EmptyState title="No matches" message={`Nothing found for “${term}”.`} />
-          )}
-        </div>
-      </Card>
+      <PageHeader
+        title="Search"
+        description="Find parties, contracts, claims and statements across the platform."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Search' }]}
+      />
 
-      {q.data?.groups.map((g) => (
-        <Card key={g.type}>
-          <CardHeader
-            title={titleCase(g.type)}
-            actions={<Badge color={TYPE_COLOR[g.type] ?? 'slate'}>{g.hits.length}</Badge>}
+      <div className={styles.hero}>
+        <div>
+          <h2 className={styles.heroTitle}>Search everything</h2>
+          <p className={styles.heroSub}>One box across parties, contracts, claims and statements - results respect your permissions.</p>
+        </div>
+        <div className={styles.searchBox}>
+          <SearchIcon size={20} className={styles.searchIcon} aria-hidden />
+          <input
+            className={styles.searchInput}
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            placeholder="Type at least two characters…"
+            aria-label="Search"
+            autoFocus
           />
-          <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-4)' }}>
-            {g.hits.map((h) => (
-              <Link key={`${h.type}:${h.id}`} to={h.url} style={{ textDecoration: 'none' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-3) 0', borderBottom: '1px solid var(--border)' }}>
-                  <div>
-                    <div className={shared.cellMain}>{h.label}</div>
-                    {h.sublabel && <div className={shared.cellSub}>{h.sublabel}</div>}
-                  </div>
-                  {h.ref && <span className={shared.cellRef}>{h.ref}</span>}
-                </div>
-              </Link>
-            ))}
+          {q.isFetching && <span className={styles.spin}><Spinner /></span>}
+        </div>
+      </div>
+
+      {ready && total > 0 && (
+        <div className={styles.summary}>
+          <Badge color="blue">{total} result{total === 1 ? '' : 's'}</Badge>
+          <span className={styles.summaryText}>for “{term}”</span>
+        </div>
+      )}
+
+      {!ready && (
+        <Card>
+          <div className={styles.emptyWrap}>
+            <EmptyState
+              icon={<SearchIcon size={20} />}
+              title="Start typing to search"
+              message="Look up a party, contract, claim or statement by name or reference. Enter at least two characters to begin."
+            />
           </div>
         </Card>
-      ))}
+      )}
+
+      {noMatches && (
+        <Card>
+          <div className={styles.emptyWrap}>
+            <EmptyState icon={<SearchIcon size={20} />} title="No matches" message={`Nothing found for “${term}”. Try a different name or reference.`} />
+          </div>
+        </Card>
+      )}
+
+      <div className={styles.results}>
+        {q.data?.groups.map((g) => {
+          const meta = TYPE_META[g.type];
+          const Icon = meta?.icon ?? CircleDot;
+          return (
+            <Card key={g.type} padded={false}>
+              <CardHeader
+                title={titleCase(g.type)}
+                subtitle={`${g.hits.length} match${g.hits.length === 1 ? '' : 'es'}`}
+                actions={<Badge color={TYPE_COLOR[g.type] ?? 'slate'}>{g.hits.length}</Badge>}
+              />
+              <div className={styles.hitList}>
+                {g.hits.map((h) => (
+                  <Link key={`${h.type}:${h.id}`} to={h.url} className={styles.hit}>
+                    <span className={styles.hitIcon} style={{ color: meta?.accent ?? 'var(--primary)' }} aria-hidden>
+                      <Icon size={18} />
+                    </span>
+                    <span className={styles.hitBody}>
+                      <span className={styles.hitLabel}>{h.label}</span>
+                      {h.sublabel && <span className={styles.hitSub}>{h.sublabel}</span>}
+                    </span>
+                    {h.ref && <span className={styles.hitRef}>{h.ref}</span>}
+                    <ArrowUpRight size={16} aria-hidden style={{ color: 'var(--text-faint)' }} />
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
     </>
   );
 }

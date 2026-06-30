@@ -1,7 +1,36 @@
 .treatySelect { margin-top: var(--space-4); max-width: 520px; }
 .selectedToolbar { margin-top: var(--space-3); }
 
+.emptyCard { margin-top: var(--space-5); }
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
 .colsGrid { margin-top: var(--space-5); }
+
+.cardTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cardIcon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  color: var(--primary);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.cardIcon[data-accent='violet'] { color: var(--accent-violet); }
+.cardIcon[data-accent='cyan'] { color: var(--accent-cyan); }
+.cardIcon[data-accent='indigo'] { color: var(--accent-indigo); }
+.cardIcon[data-accent='orange'] { color: var(--accent-orange); }
 
 .form {
   display: flex;

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { DollarSign, ArrowLeftRight } from 'lucide-react';
+import { DollarSign, ArrowLeftRight, ShieldHalf, Layers } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useStatusColors, useCurrencies } from '../lib/queries';
@@ -15,6 +15,7 @@ import { FormField, Select, TextField } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
 import { formatMoney, formatMoneyCompact, titleCase } from '../lib/format';
 import shared from './shared.module.css';
+import styles from './RetrocessionPage.module.css';
 
 interface RetroItem {
   id: string;
@@ -106,6 +107,7 @@ export function RetrocessionPage() {
       <PageHeader
         title="Retrocession"
         description="Outwards retrocession protections and the resulting gross / ceded / net position."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Retrocession' }]}
         actions={
           hasPermission('retro:write') ? (
             <Button variant="primary" onClick={() => setShowNew(true)} icon={<span aria-hidden>+</span>}>New retrocession</Button>
@@ -113,14 +115,14 @@ export function RetrocessionPage() {
         }
       />
 
-      <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
-        <KpiCard label="Gross liability" value={headline ? formatMoneyCompact(headline.grossMinor, headline.currency) : '-'} hint={headline ? headline.currency : 'No positions'} loading={netLoading} />
-        <KpiCard label="Ceded out" value={headline ? formatMoneyCompact(headline.cededMinor, headline.currency) : '-'} hint={headline ? headline.currency : 'No positions'} loading={netLoading} />
-        <KpiCard label="Net retained" value={headline ? formatMoneyCompact(headline.netMinor, headline.currency) : '-'} hint={headline ? headline.currency : 'No positions'} loading={netLoading} />
+      <div className={styles.kpiRow}>
+        <KpiCard label="Gross liability" value={headline ? formatMoneyCompact(headline.grossMinor, headline.currency) : '-'} hint={headline ? headline.currency : 'No positions'} icon={<Layers size={20} />} accent="var(--primary)" loading={netLoading} />
+        <KpiCard label="Ceded out" value={headline ? formatMoneyCompact(headline.cededMinor, headline.currency) : '-'} hint={headline ? headline.currency : 'No positions'} icon={<ArrowLeftRight size={20} />} accent="var(--accent-violet)" loading={netLoading} />
+        <KpiCard label="Net retained" value={headline ? formatMoneyCompact(headline.netMinor, headline.currency) : '-'} hint={headline ? headline.currency : 'No positions'} icon={<ShieldHalf size={20} />} accent="var(--accent-emerald)" loading={netLoading} />
       </div>
 
       <Card padded={false}>
-        <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+        <div className={styles.cardPad}>
           <CardHeader title="Net position by currency" subtitle="Gross liability, ceded out under retrocession, and net retained." />
         </div>
         <Table
@@ -134,7 +136,7 @@ export function RetrocessionPage() {
       </Card>
 
       <Card padded={false}>
-        <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+        <div className={styles.cardPad}>
           <CardHeader title="Outwards retrocession contracts" subtitle={`${data?.retrocession?.length ?? 0} contract${(data?.retrocession?.length ?? 0) === 1 ? '' : 's'}`} />
         </div>
         <Table

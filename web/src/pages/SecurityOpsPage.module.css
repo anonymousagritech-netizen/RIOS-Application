@@ -1,7 +1,25 @@
 .tabBody { padding: var(--space-5); }
 
-.section { display: grid; gap: var(--space-4); }
+.section { display: grid; gap: var(--space-5); }
 .sectionWide { display: grid; gap: var(--space-5); }
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.intro {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.intro svg { flex-shrink: 0; margin-top: 2px; color: var(--text-faint); }
+
+.actionRow { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 
 .cryptoForm {
   padding: var(--space-5);

@@ -1,22 +1,33 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useParties, useCreateParty, useCodeLists } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
-import { titleCase } from '../lib/format';
-import { Users } from 'lucide-react';
+import { formatNumber, titleCase } from '../lib/format';
+import { Users, Building2, UserRound, CheckCircle2 } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import type { PartyListItem } from '../lib/types';
 import shared from './shared.module.css';
+import styles from './PartiesPage.module.css';
 
 const KINDS = ['ORGANISATION', 'INDIVIDUAL'];
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('') || '?';
+}
 
 export function PartiesPage() {
   const navigate = useNavigate();
@@ -29,6 +40,16 @@ export function PartiesPage() {
   const { data, isLoading } = useParties({ q: q || undefined, role: role || undefined });
   const roleOptions = codeLists?.lists?.party_role ?? [];
 
+  const stats = useMemo(() => {
+    const list = data?.parties ?? [];
+    return {
+      total: list.length,
+      organisations: list.filter((p) => p.kind === 'ORGANISATION').length,
+      individuals: list.filter((p) => p.kind === 'INDIVIDUAL').length,
+      active: list.filter((p) => p.status === 'ACTIVE').length,
+    };
+  }, [data]);
+
   const columns: Column<PartyListItem>[] = [
     { key: 'reference', header: 'Reference', sortValue: (p) => p.reference ?? '', render: (p) => <span className={shared.cellRef}>{p.reference ?? '-'}</span> },
     {
@@ -36,9 +57,12 @@ export function PartiesPage() {
       header: 'Party',
       sortValue: (p) => p.legalName,
       render: (p) => (
-        <div>
-          <div className={shared.cellMain}>{p.legalName}</div>
-          {p.shortName && <div className={shared.cellSub}>{p.shortName}</div>}
+        <div className={styles.partyCell}>
+          <span className={styles.avatar} aria-hidden>{initials(p.legalName)}</span>
+          <div>
+            <div className={shared.cellMain}>{p.legalName}</div>
+            {p.shortName && <div className={shared.cellSub}>{p.shortName}</div>}
+          </div>
         </div>
       ),
     },
@@ -59,14 +83,22 @@ export function PartiesPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Parties' }]}
         title="Parties"
-        description="Cedents, reinsurers, brokers and other counterparties."
+        description="Cedents, reinsurers, brokers and other counterparties across the tenant."
         actions={
           hasPermission('party:write') ? (
             <Button variant="primary" onClick={() => setShowNew(true)} icon={<span aria-hidden>+</span>}>New party</Button>
           ) : null
         }
       />
+
+      <div className={styles.kpiGrid}>
+        <KpiCard label="Total parties" value={formatNumber(stats.total)} loading={isLoading} icon={<Users size={20} />} accent="var(--primary)" />
+        <KpiCard label="Organisations" value={formatNumber(stats.organisations)} loading={isLoading} icon={<Building2 size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label="Individuals" value={formatNumber(stats.individuals)} loading={isLoading} icon={<UserRound size={20} />} accent="var(--accent-cyan)" />
+        <KpiCard label="Active" value={formatNumber(stats.active)} loading={isLoading} icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" />
+      </div>
 
       <Card padded={false}>
         <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>

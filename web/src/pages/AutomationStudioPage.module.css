@@ -2,6 +2,7 @@
 
 .section { display: grid; gap: var(--space-4); }
 .sectionWide { display: grid; gap: var(--space-5); }
+.cardHead { padding: var(--space-5) var(--space-5) 0; }
 
 .runForm {
   padding: var(--space-5);

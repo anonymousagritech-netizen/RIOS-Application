@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Tabs } from '../components/Tabs';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
@@ -19,7 +20,7 @@ import { legalTransitions } from '../lib/status';
 import { formatMoney, formatDate, formatPercent, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
 import type { FinancialEventDTO } from '@rios/shared';
-import { ClipboardList, DollarSign } from 'lucide-react';
+import { ClipboardList, DollarSign, Coins, Layers, Users, CalendarDays } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './TreatyDetailPage.module.css';
 
@@ -105,6 +106,13 @@ export function TreatyDetailPage() {
           </div>
         }
       />
+
+      <div className={styles.kpiRow}>
+        <KpiCard label="Currency" value={treaty.currency} icon={<Coins size={18} />} accent="var(--primary)" hint={titleCase(treaty.basis)} />
+        <KpiCard label="Layers" value={treaty.layers?.length ?? 0} icon={<Layers size={18} />} accent="var(--accent-violet)" hint="Structured layers" />
+        <KpiCard label="Participations" value={treaty.participations?.length ?? 0} icon={<Users size={18} />} accent="var(--accent-cyan)" hint="Placed reinsurers" />
+        <KpiCard label="Inception" value={formatDate(treaty.periodStart)} icon={<CalendarDays size={18} />} accent="var(--accent-emerald)" hint={treaty.periodEnd ? `to ${formatDate(treaty.periodEnd)}` : 'Period start'} />
+      </div>
 
       <Card padded={false}>
         <div className={styles.tabBar}><Tabs tabs={TABS} active={tab} onChange={setTab} /></div>

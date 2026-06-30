@@ -11,8 +11,9 @@ import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select } from '../components/Form';
-import { formatMoney, formatDate, titleCase } from '../lib/format';
-import { Landmark, Receipt, Wallet } from 'lucide-react';
+import { KpiCard } from '../components/KpiCard';
+import { formatMoney, formatMoneyCompact, formatDate, titleCase } from '../lib/format';
+import { Landmark, Receipt, Wallet, CheckCircle2, AlertTriangle, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
 
@@ -111,17 +112,63 @@ export function FinancePage() {
   const [tab, setTab] = useState('trial');
   const canPost = hasPermission('finance:post');
 
+  const trial = useTrialBalance();
+  const ar = useArInvoices('');
+  const ap = useApInvoices('');
+  const bank = useBankAccounts();
+
+  const arOutstanding = (ar.data?.invoices ?? []).reduce((sum, i) => sum + (i.amount_minor - i.settled_minor), 0);
+  const apOutstanding = (ap.data?.invoices ?? []).reduce((sum, i) => sum + (i.amount_minor - i.settled_minor), 0);
+  const cashTotal = (bank.data?.accounts ?? []).reduce((sum, a) => sum + a.balance_minor, 0);
+  const balanced = trial.data?.balanced;
+
   return (
     <>
       <PageHeader
         title="Finance"
-        description="Ledger, receivables, payables and bank cash management."
+        description="General ledger, receivables, payables and bank cash management."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Finance' }]}
         actions={
           canPost
             ? <Badge color="green">finance:post granted</Badge>
             : <Badge color="slate">read-only</Badge>
         }
       />
+
+      <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
+        <KpiCard
+          label="Ledger status"
+          value={trial.isLoading ? '—' : balanced ? 'Balanced' : 'Unbalanced'}
+          hint={balanced ? 'Debits equal credits' : 'Review trial balance'}
+          icon={balanced ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+          accent={balanced ? 'var(--accent-emerald)' : 'var(--accent-rose)'}
+          loading={trial.isLoading}
+        />
+        <KpiCard
+          label="Receivables open"
+          value={formatMoneyCompact(arOutstanding)}
+          hint="Outstanding across AR invoices"
+          icon={<ArrowDownToLine size={18} />}
+          accent="var(--accent-violet)"
+          loading={ar.isLoading}
+        />
+        <KpiCard
+          label="Payables open"
+          value={formatMoneyCompact(apOutstanding)}
+          hint="Outstanding across AP invoices"
+          icon={<ArrowUpFromLine size={18} />}
+          accent="var(--accent-orange)"
+          loading={ap.isLoading}
+        />
+        <KpiCard
+          label="Cash on hand"
+          value={formatMoneyCompact(cashTotal)}
+          hint={`${bank.data?.accounts?.length ?? 0} settlement account${(bank.data?.accounts?.length ?? 0) === 1 ? '' : 's'}`}
+          icon={<Wallet size={18} />}
+          accent="var(--accent-cyan)"
+          loading={bank.isLoading}
+        />
+      </div>
 
       <Card padded={false}>
         <div className={styles.tabBar}><Tabs tabs={TABS} active={tab} onChange={setTab} /></div>
@@ -148,7 +195,7 @@ function TrialBalanceTab() {
 
   return (
     <>
-      <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+      <div style={{ padding: 'var(--space-5) var(--space-5) 0' }}>
         <CardHeader title="Trial balance" subtitle="Aggregated ledger debits and credits across all accounts." />
       </div>
       {!isLoading && data && (
@@ -163,11 +210,13 @@ function TrialBalanceTab() {
               <span className={styles.totalValue}>{formatMoney(data.totalCreditMinor)}</span>
             </div>
           </div>
-          <StatusPill
-            status={data.balanced ? 'BALANCED' : 'UNBALANCED'}
-            label={data.balanced ? 'Balanced ✓' : 'Unbalanced ✗'}
-            metaColors={{ BALANCED: 'green', UNBALANCED: 'red' }}
-          />
+          <div className={styles.reconcileChip} data-balanced={data.balanced ? 'true' : 'false'}>
+            {data.balanced ? <CheckCircle2 size={18} aria-hidden /> : <AlertTriangle size={18} aria-hidden />}
+            <div className={styles.reconcileText}>
+              <span className={styles.reconcileLabel}>Reconciliation</span>
+              <span className={styles.reconcileValue}>{data.balanced ? 'Balanced' : 'Unbalanced'}</span>
+            </div>
+          </div>
         </div>
       )}
       <Table
@@ -220,7 +269,13 @@ function InvoicesTab({ kind, canPost }: { kind: 'ar' | 'ap'; canPost: boolean })
 
   return (
     <>
-      <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
+      <div style={{ padding: 'var(--space-5) var(--space-5) 0' }}>
+        <CardHeader
+          title={isAr ? 'Accounts receivable' : 'Accounts payable'}
+          subtitle={isAr ? 'Inbound cash owed to the cedent on bound treaties.' : 'Outbound cash owed to reinsurers and brokers.'}
+        />
+      </div>
+      <div style={{ padding: 'var(--space-4) var(--space-5)' }} className={shared.toolbar}>
         <div className={shared.filter}>
           <span className={shared.filterLabel}>Status</span>
           <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
@@ -352,7 +407,7 @@ function BankTab({ canPost }: { canPost: boolean }) {
 
   return (
     <>
-      <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+      <div style={{ padding: 'var(--space-5) var(--space-5) 0' }}>
         <CardHeader title="Bank accounts" subtitle="Cash positions across settlement accounts." />
       </div>
       <Table

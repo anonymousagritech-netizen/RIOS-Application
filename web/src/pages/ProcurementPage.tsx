@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ShoppingCart, ClipboardList, Store } from 'lucide-react';
+import { ShoppingCart, ClipboardList, Store, Wallet } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Tabs } from '../components/Tabs';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
@@ -12,7 +13,7 @@ import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, Input, Select, TextField, Textarea } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
-import { formatMoney, titleCase } from '../lib/format';
+import { formatMoney, formatMoneyCompact, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
 import shared from './shared.module.css';
 import styles from './ProcurementPage.module.css';
@@ -156,12 +157,29 @@ export function ProcurementPage() {
   const canWrite = hasPermission('procurement:write');
   const [tab, setTab] = useState('orders');
 
+  const orders = useOrders({});
+  const requisitions = useRequisitions({});
+  const vendors = useVendors();
+
+  const orderRows = orders.data?.orders ?? [];
+  const openOrders = orderRows.filter((o) => o.status === 'draft' || o.status === 'issued');
+  const openCurrency = openOrders[0]?.currency ?? 'USD';
+  const openValueMinor = openOrders.reduce((sum, o) => sum + o.totalMinor, 0);
+
   return (
-    <>
+    <div className={shared.stack}>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Procurement' }]}
         title="Procurement"
-        description="Vendors, purchase requisitions and purchase orders."
+        description="Vendors, purchase requisitions and purchase orders across the tenant."
       />
+
+      <div className={shared.kpiRow}>
+        <KpiCard label="Purchase orders" value={orderRows.length} loading={orders.isLoading} icon={<ShoppingCart size={20} />} accent="var(--primary)" />
+        <KpiCard label="Open PO value" value={formatMoneyCompact(openValueMinor, openCurrency)} hint={`${openOrders.length} open`} loading={orders.isLoading} icon={<Wallet size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label="Requisitions" value={requisitions.data?.requisitions.length ?? 0} loading={requisitions.isLoading} icon={<ClipboardList size={20} />} accent="var(--accent-cyan)" />
+        <KpiCard label="Vendors" value={vendors.data?.vendors.length ?? 0} loading={vendors.isLoading} icon={<Store size={20} />} accent="var(--accent-emerald)" />
+      </div>
 
       <Card padded={false}>
         <div className={styles.tabBar}>
@@ -173,7 +191,7 @@ export function ProcurementPage() {
           {tab === 'vendors' && <VendorsTab canWrite={canWrite} />}
         </div>
       </Card>
-    </>
+    </div>
   );
 }
 

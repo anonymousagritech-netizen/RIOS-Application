@@ -11,8 +11,9 @@ import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, Input, Select } from '../components/Form';
-import { formatMoney, formatDate, formatDateTime, titleCase } from '../lib/format';
-import { CalendarCheck, DollarSign } from 'lucide-react';
+import { KpiCard } from '../components/KpiCard';
+import { formatMoney, formatDate, formatDateTime, formatNumber, titleCase } from '../lib/format';
+import { CalendarCheck, DollarSign, Lock, Unlock, CalendarDays } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './PeriodClosePage.module.css';
 
@@ -108,6 +109,7 @@ export function PeriodClosePage() {
       <PageHeader
         title="Period close"
         description="Open, close and reopen accounting periods, and run FX revaluation at period end."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Period close' }]}
         actions={canPost ? <Badge color="green">finance:post granted</Badge> : <Badge color="slate">read-only</Badge>}
       />
 
@@ -127,6 +129,8 @@ function PeriodsTab({ canPost }: { canPost: boolean }) {
   const toast = useToast();
   const { data, isLoading } = usePeriods();
   const rows = data?.periods ?? [];
+  const openCount = rows.filter((p) => p.status !== 'closed').length;
+  const closedCount = rows.filter((p) => p.status === 'closed').length;
   const [showNew, setShowNew] = useState(false);
   const [closeTarget, setCloseTarget] = useState<AccountingPeriod | null>(null);
   const action = usePeriodAction();
@@ -186,6 +190,12 @@ function PeriodsTab({ canPost }: { canPost: boolean }) {
 
   return (
     <>
+      <div className={styles.kpis}>
+        <KpiCard label="Accounting periods" value={formatNumber(rows.length)} hint="All periods on file" icon={<CalendarDays size={20} />} accent="var(--primary)" loading={isLoading} />
+        <KpiCard label="Open" value={formatNumber(openCount)} hint="Accepting postings" icon={<Unlock size={20} />} accent="var(--accent-emerald)" loading={isLoading} />
+        <KpiCard label="Closed" value={formatNumber(closedCount)} hint="Locked against postings" icon={<Lock size={20} />} accent="var(--accent-violet)" loading={isLoading} />
+      </div>
+
       <div className={`${shared.toolbar} ${styles.toolbarPad}`}>
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} period{rows.length === 1 ? '' : 's'}</span>
@@ -199,7 +209,7 @@ function PeriodsTab({ canPost }: { canPost: boolean }) {
         rows={data?.periods}
         loading={isLoading}
         rowKey={(p) => p.id}
-        empty={<EmptyState title="No periods" message="Open an accounting period to begin month-end close." icon={<CalendarCheck size={16} />} />}
+        empty={<EmptyState title="No periods" message="Open an accounting period to begin month-end close." icon={<CalendarCheck size={28} />} />}
       />
 
       <NewPeriodModal open={showNew} onClose={() => setShowNew(false)} />
@@ -388,7 +398,7 @@ function FxTab({ canPost }: { canPost: boolean }) {
               columns={detailColumns}
               rows={result.detail ?? []}
               rowKey={(d) => d.currency}
-              empty={<EmptyState title="No detail" message="No non-base balances were revalued." icon={<DollarSign size={16} />} />}
+              empty={<EmptyState title="No detail" message="No non-base balances were revalued." icon={<DollarSign size={28} />} />}
             />
           </Card>
         )}
@@ -401,7 +411,7 @@ function FxTab({ canPost }: { canPost: boolean }) {
           rows={pastData?.revaluations}
           loading={pastLoading}
           rowKey={(r) => r.id}
-          empty={<EmptyState title="No revaluations" message="No FX revaluations have been booked yet." icon={<DollarSign size={16} />} />}
+          empty={<EmptyState title="No revaluations" message="No FX revaluations have been booked yet." icon={<DollarSign size={28} />} />}
         />
       </div>
     </div>

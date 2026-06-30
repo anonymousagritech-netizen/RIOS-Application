@@ -6,12 +6,14 @@
  */
 
 import { useState } from 'react';
+import { ShieldCheck, Lock, ScrollText, Gavel } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -20,6 +22,7 @@ import { FormField, Select, Input } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatNumber, formatDate, titleCase } from '../lib/format';
 import shared from './shared.module.css';
+import styles from './RetentionPage.module.css';
 
 interface Policy { id: string; entityType: string; retentionDays: number; action: string; active: boolean; note?: string | null }
 interface Hold { id: string; name: string; reason?: string | null; entityType?: string | null; entityId?: string | null; active: boolean; placedAt?: string | null; releasedAt?: string | null }
@@ -29,12 +32,33 @@ const REASON_COLOR: Record<string, 'green' | 'amber' | 'red'> = { eligible: 'gre
 
 export function RetentionPage() {
   const [tab, setTab] = useState('policies');
+
+  const policiesQ = useQuery({ queryKey: ['retention-policies'], queryFn: () => api<{ policies: Policy[] }>('/api/retention/policies') });
+  const holdsQ = useQuery({ queryKey: ['retention-holds'], queryFn: () => api<{ holds: Hold[] }>('/api/retention/holds') });
+
+  const policies = policiesQ.data?.policies ?? [];
+  const holds = holdsQ.data?.holds ?? [];
+  const activePolicies = policies.filter((p) => p.active).length;
+  const activeHolds = holds.filter((h) => h.active).length;
+
   return (
     <>
-      <PageHeader title="Retention & legal hold" description="How long records are kept, and which are frozen under legal hold - a hold always overrides a policy." />
-      <Card>
+      <PageHeader
+        title="Retention & legal hold"
+        description="How long records are kept, and which are frozen under legal hold - a hold always overrides a policy."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Retention' }]}
+      />
+
+      <div className={styles.kpiRow}>
+        <KpiCard label="Retention policies" value={formatNumber(policies.length)} hint={`${formatNumber(activePolicies)} active`} icon={<ScrollText size={20} />} accent="var(--primary)" loading={policiesQ.isLoading} />
+        <KpiCard label="Active policies" value={formatNumber(activePolicies)} hint="Currently enforced" icon={<ShieldCheck size={20} />} accent="var(--accent-violet)" loading={policiesQ.isLoading} />
+        <KpiCard label="Legal holds" value={formatNumber(holds.length)} hint="All time" icon={<Gavel size={20} />} accent="var(--accent-cyan)" loading={holdsQ.isLoading} />
+        <KpiCard label="Active holds" value={formatNumber(activeHolds)} hint="Records frozen" icon={<Lock size={20} />} accent={activeHolds > 0 ? 'var(--accent-rose)' : 'var(--accent-emerald)'} loading={holdsQ.isLoading} />
+      </div>
+
+      <Card padded={false}>
         <Tabs tabs={[{ id: 'policies', label: 'Policies' }, { id: 'holds', label: 'Legal holds' }, { id: 'evaluate', label: 'Evaluate' }]} active={tab} onChange={setTab} />
-        <div style={{ padding: 'var(--space-5)' }}>
+        <div className={styles.tabBody}>
           {tab === 'policies' && <Policies />}
           {tab === 'holds' && <Holds />}
           {tab === 'evaluate' && <Evaluate />}
@@ -92,13 +116,13 @@ function Holds() {
   ];
   return (
     <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
-      <Table columns={cols} rows={q.data?.holds} rowKey={(h) => h.id} empty={<EmptyState title="No holds" message="No legal holds in place." />} />
+      <Table columns={cols} rows={q.data?.holds} rowKey={(h) => h.id} empty={<EmptyState title="No holds" message="No legal holds in place." icon={<Gavel size={16} />} />} />
       {canWrite && (
-        <Card>
+        <Card padded={false}>
           <CardHeader title="Place a legal hold" subtitle="Freeze disposal of records under litigation or investigation." />
-          <div style={{ padding: 'var(--space-5)', display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ minWidth: 240 }}><FormField label="Hold name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Windstorm litigation" /></FormField></div>
-            <div style={{ minWidth: 180 }}>
+          <div className={`${styles.cardPad} ${styles.formRow}`}>
+            <div className={styles.field}><FormField label="Hold name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Windstorm litigation" /></FormField></div>
+            <div className={styles.fieldSm}>
               <FormField label="Scope">
                 <Select value={entityType} onChange={(e) => setEntityType(e.target.value)}>
                   <option value="">Global (all types)</option>
@@ -136,10 +160,10 @@ function Evaluate() {
   };
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 560 }}>
+    <div className={styles.evaluatePanel}>
       <p className={shared.cellSub}>Check whether a record may be disposed of, given its age, the entity policy and any active legal hold.</p>
-      <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <div style={{ minWidth: 180 }}>
+      <div className={styles.formRow}>
+        <div className={styles.fieldSm}>
           <FormField label="Entity type">
             <Select value={entityType} onChange={(e) => setEntityType(e.target.value)}>
               <option value="claim">Claim</option>
@@ -149,11 +173,11 @@ function Evaluate() {
             </Select>
           </FormField>
         </div>
-        <div style={{ minWidth: 180 }}><FormField label="Record date"><Input type="date" value={recordedAt} onChange={(e) => setRecordedAt(e.target.value)} /></FormField></div>
+        <div className={styles.fieldSm}><FormField label="Record date"><Input type="date" value={recordedAt} onChange={(e) => setRecordedAt(e.target.value)} /></FormField></div>
         <Button variant="primary" onClick={run} loading={busy}>Evaluate</Button>
       </div>
       {result && (result.hasPolicy && result.verdict ? (
-        <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+        <div className={styles.verdict}>
           <div>
             <Badge color={result.verdict.eligible ? 'green' : REASON_COLOR[result.verdict.reason] ?? 'slate'}>
               {result.verdict.eligible ? `Eligible to ${result.action}` : titleCase(result.verdict.reason.replace('_', ' '))}

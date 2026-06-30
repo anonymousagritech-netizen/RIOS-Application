@@ -7,6 +7,16 @@ import { Button } from '../components/Button';
 import { DefinitionList, ErrorState, PageLoader, SectionLabel } from '../components/Feedback';
 import { titleCase } from '../lib/format';
 import shared from './shared.module.css';
+import styles from './PartyDetailPage.module.css';
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('') || '?';
+}
 
 export function PartyDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,18 +35,39 @@ export function PartyDetailPage() {
       <PageHeader
         crumbs={[{ label: 'Parties', to: '/parties' }, { label: party.legalName }]}
         title={party.legalName}
-        description={
-          <span>
-            <span className={shared.cellRef}>{party.reference ?? '-'}</span> · {titleCase(party.kind)}
-            {party.country ? ` · ${party.country}` : ''}
-          </span>
-        }
+        description="Counterparty profile, roles and external identifiers."
         actions={<Badge color={party.status === 'ACTIVE' ? 'green' : 'slate'}>{titleCase(party.status)}</Badge>}
       />
 
-      <div className={shared.cols}>
+      <div className={styles.profile}>
+        <span className={styles.avatar} aria-hidden>{initials(party.legalName)}</span>
+        <div className={styles.identity}>
+          <h2 className={styles.name}>{party.legalName}</h2>
+          <div className={styles.meta}>
+            <span className={shared.cellRef}>{party.reference ?? '-'}</span>
+            <span className={styles.dot} aria-hidden />
+            <span>{titleCase(party.kind)}</span>
+            {party.country && (
+              <>
+                <span className={styles.dot} aria-hidden />
+                <span>{party.country}</span>
+              </>
+            )}
+          </div>
+          {party.roles?.length ? (
+            <div className={styles.chips}>
+              {party.roles.map((r) => <Badge key={r} color="indigo">{titleCase(r)}</Badge>)}
+            </div>
+          ) : null}
+        </div>
+        <div className={styles.statusSlot}>
+          <Badge color={party.status === 'ACTIVE' ? 'green' : 'slate'} variant="outline">{titleCase(party.status)}</Badge>
+        </div>
+      </div>
+
+      <div className={styles.cols}>
         <Card>
-          <CardHeader title="Overview" />
+          <CardHeader title="Overview" subtitle="Core registration details for this counterparty." />
           <DefinitionList
             items={[
               { term: 'Legal name', value: party.legalName },

@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
+import { Coins, ListTree, Plus, Tags } from 'lucide-react';
 import type { CodeValueDTO } from '@rios/shared';
 import { useCodeLists, useCurrencies, useAddCodeValue } from '../lib/queries';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -11,7 +13,7 @@ import { Modal } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
 import { PageLoader, ErrorState } from '../components/Feedback';
 import { isTokenColor, type TokenColor } from '../lib/status';
-import { titleCase } from '../lib/format';
+import { formatNumber, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
 import shared from './shared.module.css';
 import styles from './AdminPage.module.css';
@@ -30,29 +32,51 @@ export function AdminPage() {
   if (isLoading) return <PageLoader label="Loading configuration…" />;
   if (isError) return <Card><ErrorState message="Could not load configuration." /></Card>;
 
+  const totalValues = listKeys.reduce((acc, k) => acc + (data?.lists?.[k]?.length ?? 0), 0);
+  const currencyCount = currencies?.currencies?.length ?? 0;
+
   return (
     <>
       <PageHeader
         title="Configuration"
         description="No-code configuration: add status and code values that take effect immediately - no deployment required."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Configuration' }]}
+        actions={<Badge color="blue">No deploy required</Badge>}
       />
 
-      {listKeys.map((key) => {
-        const values = data?.lists?.[key] ?? [];
-        return (
-          <CodeListCard
-            key={key}
-            listKey={key}
-            values={values}
-            onAdd={() => setAddTo(key)}
-          />
-        );
-      })}
+      <div className={styles.page}>
+        <div className={styles.kpis}>
+          <KpiCard label="Code lists" value={formatNumber(listKeys.length)} hint="Configurable vocabularies" icon={<ListTree size={20} />} accent="var(--primary)" />
+          <KpiCard label="Values" value={formatNumber(totalValues)} hint="Across all lists" icon={<Tags size={20} />} accent="var(--accent-violet)" />
+          <KpiCard label="Currencies" value={formatNumber(currencyCount)} hint="Settlement currencies" icon={<Coins size={20} />} accent="var(--accent-cyan)" />
+        </div>
 
-      <Card>
-        <CardHeader title="Currencies" subtitle="Supported settlement currencies and their minor units" />
-        <CurrencyTable currencies={currencies?.currencies ?? []} />
-      </Card>
+        <Card padded={false}>
+          <div className={styles.listHead}>
+            <CardHeader title="Code lists" subtitle="Metadata-driven status and code vocabularies used across the app." />
+          </div>
+          <div className={styles.listGrid}>
+            {listKeys.map((key) => {
+              const values = data?.lists?.[key] ?? [];
+              return (
+                <CodeListCard
+                  key={key}
+                  listKey={key}
+                  values={values}
+                  onAdd={() => setAddTo(key)}
+                />
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card padded={false}>
+          <div className={styles.listHead}>
+            <CardHeader title="Currencies" subtitle="Supported settlement currencies and their minor units." />
+          </div>
+          <CurrencyTable currencies={currencies?.currencies ?? []} />
+        </Card>
+      </div>
 
       <AddValueModal listKey={addTo} onClose={() => setAddTo(null)} />
     </>
@@ -88,12 +112,12 @@ function CodeListCard({ listKey, values, onAdd }: {
   ];
 
   return (
-    <Card padded={false}>
-      <div className={styles.listHead}>
+    <div className={styles.listPanel}>
+      <div className={styles.panelHead}>
         <CardHeader
           title={titleCase(listKey)}
           subtitle={<code className={styles.keyCode}>{listKey}</code>}
-          actions={<Button size="sm" variant="secondary" onClick={onAdd} icon={<span aria-hidden>+</span>}>Add value</Button>}
+          actions={<Button size="sm" variant="secondary" onClick={onAdd} icon={<Plus size={14} />}>Add value</Button>}
         />
       </div>
       <Table
@@ -103,7 +127,7 @@ function CodeListCard({ listKey, values, onAdd }: {
         empty={<EmptyState title="No values" message="Add the first value for this list." />}
         skeletonRows={3}
       />
-    </Card>
+    </div>
   );
 }
 

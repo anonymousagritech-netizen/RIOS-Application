@@ -1,0 +1,43 @@
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.recentList {
+  display: flex;
+  flex-direction: column;
+}
+
+.recentRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.recentRow:last-child { border-bottom: none; }
+
+.recentIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid var(--border);
+}
+
+.recentMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.recentMeta {
+  text-align: right;
+  white-space: nowrap;
+}

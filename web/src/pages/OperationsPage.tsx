@@ -111,6 +111,7 @@ export function OperationsPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Operations' }]}
         title="Operations"
         description="Platform health, the immutable audit viewer, event-delivery monitor and SLA targets."
         actions={
@@ -142,12 +143,12 @@ function HealthTab() {
   }
 
   return (
-    <div className={shared.kpiGrid}>
-      <KpiCard label="Audit events" value={formatNumber(data?.auditEvents)} loading={isLoading} icon={<Database size={20} />} />
-      <KpiCard label="Pending events" value={formatNumber(data?.pendingEvents)} loading={isLoading} icon={<Clock size={20} />} accent="var(--c-amber)" />
-      <KpiCard label="Open claims" value={formatNumber(data?.openClaims)} loading={isLoading} icon={<AlertTriangle size={20} />} accent="var(--c-rose)" />
-      <KpiCard label="Active contracts" value={formatNumber(data?.activeContracts)} loading={isLoading} icon={<CheckCircle2 size={20} />} accent="var(--c-green)" />
-      <KpiCard label="SLA targets" value={formatNumber(data?.slaTargets)} loading={isLoading} icon={<Gauge size={20} />} />
+    <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
+      <KpiCard label="Audit events" value={formatNumber(data?.auditEvents)} loading={isLoading} icon={<Database size={20} />} accent="var(--primary)" />
+      <KpiCard label="Pending events" value={formatNumber(data?.pendingEvents)} loading={isLoading} icon={<Clock size={20} />} accent="var(--accent-orange)" />
+      <KpiCard label="Open claims" value={formatNumber(data?.openClaims)} loading={isLoading} icon={<AlertTriangle size={20} />} accent="var(--accent-rose)" />
+      <KpiCard label="Active contracts" value={formatNumber(data?.activeContracts)} loading={isLoading} icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" />
+      <KpiCard label="SLA targets" value={formatNumber(data?.slaTargets)} loading={isLoading} icon={<Gauge size={20} />} accent="var(--accent-violet)" />
     </div>
   );
 }

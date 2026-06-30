@@ -1,0 +1,43 @@
+.page { display: flex; flex-direction: column; gap: var(--space-5); }
+.cardBody { padding: var(--space-5); }
+.cardBodyPad { padding: var(--space-4); }
+
+.demo {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 640px;
+}
+
+.fields {
+  display: grid;
+  gap: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface);
+}
+.fieldRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.fieldRow:last-child { border-bottom: none; }
+.fieldRow:nth-child(even) { background: var(--surface-2); }
+
+.fieldKey {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.fieldVal {
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  text-align: right;
+  word-break: break-word;
+}
+.mono { font-family: var(--font-mono); }

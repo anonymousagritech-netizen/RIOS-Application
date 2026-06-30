@@ -10,6 +10,7 @@ import { Card, CardHeader } from '../components/Card';
 import { DonutChart } from '../components/DonutChart';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
+import { Button } from '../components/Button';
 import { ErrorState } from '../components/Feedback';
 import { formatMoneyCompact, formatNumber } from '../lib/format';
 import type { DashboardSummary } from '../lib/types';
@@ -56,6 +57,12 @@ export function DashboardPage() {
       <PageHeader
         title="Executive overview"
         description="Portfolio health at a glance: treaty volumes, premium and claims exposure."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Dashboard' }]}
+        actions={
+          <Button variant="primary" icon={<Plus size={16} />} onClick={() => navigate('/treaties')}>
+            New treaty
+          </Button>
+        }
       />
 
       {isError ? (
@@ -63,7 +70,7 @@ export function DashboardPage() {
       ) : (
         <>
           <div className={shared.kpiGrid}>
-            <KpiCard label="Treaties" value={formatNumber(k?.treaties)} loading={isLoading} icon={<FileText size={20} />} />
+            <KpiCard label="Treaties" value={formatNumber(k?.treaties)} loading={isLoading} icon={<FileText size={20} />} accent="var(--primary)" />
             <KpiCard label="Active treaties" value={formatNumber(k?.activeTreaties)} loading={isLoading} icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" />
             <KpiCard label="Parties" value={formatNumber(k?.parties)} loading={isLoading} icon={<Users size={20} />} accent="var(--accent-cyan)" />
             <KpiCard label="Open claims" value={formatNumber(k?.openClaims)} loading={isLoading} icon={<ShieldAlert size={20} />} accent="var(--accent-orange)" />
@@ -73,6 +80,7 @@ export function DashboardPage() {
               hint={k?.currency}
               loading={isLoading}
               icon={<Wallet size={20} />}
+              accent="var(--accent-indigo)"
             />
             <KpiCard
               label="Outstanding reserves"

@@ -1,7 +1,36 @@
+.tabBar { padding: 0 var(--space-4); }
 .tabBody { padding: var(--space-5); }
 
 .console { display: grid; gap: var(--space-4); max-width: 720px; }
 .startButton { justify-self: start; }
+
+.consoleHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--head-accent, var(--primary)) 8%, transparent), transparent 60%),
+    var(--surface);
+}
+.headIcon {
+  display: grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  color: var(--head-accent, var(--primary));
+  background: color-mix(in srgb, var(--head-accent, var(--primary)) 14%, transparent);
+}
+.headTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  margin-bottom: var(--space-1);
+}
 
 .narrative { padding: var(--space-5); line-height: 1.7; }
 

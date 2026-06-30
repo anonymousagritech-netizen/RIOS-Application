@@ -1,4 +1,4 @@
-import { Grid2x2, Plus } from 'lucide-react';
+import { Grid2x2, Plus, Rows3, CircleCheck, CircleAlert, Sigma } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
@@ -7,6 +7,7 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -105,6 +106,7 @@ export function BordereauxPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Bordereaux' }]}
         title="Bordereaux"
         description="Ingest premium and loss bordereaux. Malformed rows are rejected with line-level errors; validated bordereaux produce financial events and claims."
         actions={
@@ -232,11 +234,11 @@ function BordereauDetailCard({ id, canWrite, onClear }: { id: string; canWrite: 
           />
         </div>
 
-        <div className={shared.kpiGrid} style={{ padding: 'var(--space-4) var(--space-5)' }}>
-          <SummaryStat label="Rows" value={data.lines.length} />
-          <SummaryStat label="Valid" value={validCount} />
-          <SummaryStat label="Errors" value={errorCount} tone={errorCount ? 'bad' : undefined} />
-          <SummaryStat label="Total" value={formatMoney(data.total_minor, data.currency)} />
+        <div className={shared.kpiRow} style={{ padding: 'var(--space-4) var(--space-5)', marginBottom: 0 }}>
+          <KpiCard label="Rows" value={data.lines.length} icon={<Rows3 size={20} />} accent="var(--primary)" />
+          <KpiCard label="Valid" value={validCount} icon={<CircleCheck size={20} />} accent="var(--accent-emerald)" />
+          <KpiCard label="Errors" value={errorCount} icon={<CircleAlert size={20} />} accent={errorCount ? 'var(--accent-rose)' : 'var(--accent-cyan)'} />
+          <KpiCard label="Total" value={formatMoney(data.total_minor, data.currency)} icon={<Sigma size={20} />} accent="var(--accent-violet)" />
         </div>
 
         <Table

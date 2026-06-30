@@ -11,9 +11,11 @@ import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
-import { formatPercent } from '../lib/format';
-import { PenLine } from 'lucide-react';
+import { KpiCard } from '../components/KpiCard';
+import { formatPercent, formatNumber } from '../lib/format';
+import { PenLine, FileSignature, Percent, TrendingUp, AlertTriangle } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './PlacementPage.module.css';
 
 interface SlipItem {
   id: string;
@@ -99,6 +101,10 @@ export function PlacementPage() {
   const statusColors = useStatusColors('contract_status');
 
   const treatyList = treaties?.treaties ?? [];
+  const slips = slipsData?.slips ?? [];
+  const fullyPlaced = slips.filter((s) => s.totalSigned >= 1).length;
+  const oversubscribed = slips.filter((s) => s.isOversubscribed).length;
+  const avgWritten = slips.length ? slips.reduce((acc, s) => acc + s.totalWritten, 0) / slips.length : 0;
 
   const columns: Column<SlipItem>[] = useMemo(() => [
     { key: 'reference', header: 'Reference', sortValue: (s) => s.reference ?? '', render: (s) => <span className={shared.cellRef}>{s.reference}</span> },
@@ -112,7 +118,7 @@ export function PlacementPage() {
       align: 'right',
       sortValue: (s) => s.status,
       render: (s) => (
-        <span style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+        <span className={styles.inlineMeta}>
           {s.isOversubscribed && <Badge color="amber">Oversubscribed</Badge>}
           <StatusPill status={s.status} metaColors={statusColors} />
         </span>
@@ -125,6 +131,7 @@ export function PlacementPage() {
       <PageHeader
         title="Placement"
         description="Broker slips, market lines and sign-down for treaty placements."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Placement' }]}
         actions={
           canWrite ? (
             <Button variant="primary" onClick={() => setShowNew(true)} disabled={!contractId} icon={<span aria-hidden>+</span>}>New slip</Button>
@@ -132,42 +139,53 @@ export function PlacementPage() {
         }
       />
 
-      <Card padded={false}>
-        <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
-          <div className={shared.filter}>
-            <span className={shared.filterLabel}>Contract</span>
-            <Select
-              value={contractId}
-              onChange={(e) => { setContractId(e.target.value); setSelectedSlip(null); }}
-              aria-label="Select a contract"
-            >
-              <option value="">Select a contract…</option>
-              {treatyList.map((t) => <option key={t.id} value={t.id}>{t.reference} - {t.name}</option>)}
-            </Select>
+      <div className={styles.page}>
+        {contractId && (
+          <div className={styles.kpis}>
+            <KpiCard label="Slips" value={formatNumber(slips.length)} hint="On this contract" icon={<FileSignature size={20} />} accent="var(--primary)" loading={isLoading} />
+            <KpiCard label="Average written" value={formatPercent(avgWritten)} hint="Mean placed line" icon={<Percent size={20} />} accent="var(--accent-violet)" loading={isLoading} />
+            <KpiCard label="Fully placed" value={formatNumber(fullyPlaced)} hint="Signed at 100% or more" icon={<TrendingUp size={20} />} accent="var(--accent-emerald)" loading={isLoading} />
+            <KpiCard label="Oversubscribed" value={formatNumber(oversubscribed)} hint="Need sign-down" icon={<AlertTriangle size={20} />} accent="var(--accent-orange)" loading={isLoading} />
           </div>
-          <div className={shared.spacer} />
-          <span className={shared.cellSub}>{slipsData?.slips.length ?? 0} slip{(slipsData?.slips.length ?? 0) === 1 ? '' : 's'}</span>
-        </div>
+        )}
 
-        <Table
-          columns={columns}
-          rows={contractId ? slipsData?.slips : []}
-          loading={!!contractId && isLoading}
-          rowKey={(s) => s.id}
-          onRowClick={(s) => setSelectedSlip(s.id)}
-          empty={
-            <EmptyState
-              title={contractId ? 'No slips' : 'Pick a contract'}
-              message={contractId ? 'Create a new slip to start placing this contract in the market.' : 'Choose a contract above to view its placement slips.'}
-              icon={<PenLine size={16} />}
-            />
-          }
-        />
-      </Card>
+        <Card padded={false}>
+          <div className={`${styles.toolbarPad} ${shared.toolbar}`}>
+            <div className={shared.filter}>
+              <span className={shared.filterLabel}>Contract</span>
+              <Select
+                value={contractId}
+                onChange={(e) => { setContractId(e.target.value); setSelectedSlip(null); }}
+                aria-label="Select a contract"
+              >
+                <option value="">Select a contract…</option>
+                {treatyList.map((t) => <option key={t.id} value={t.id}>{t.reference} - {t.name}</option>)}
+              </Select>
+            </div>
+            <div className={shared.spacer} />
+            <span className={shared.cellSub}>{slips.length} slip{slips.length === 1 ? '' : 's'}</span>
+          </div>
 
-      {selectedSlip && (
-        <SlipDetailCard slipId={selectedSlip} canWrite={canWrite} statusColors={statusColors} />
-      )}
+          <Table
+            columns={columns}
+            rows={contractId ? slipsData?.slips : []}
+            loading={!!contractId && isLoading}
+            rowKey={(s) => s.id}
+            onRowClick={(s) => setSelectedSlip(s.id)}
+            empty={
+              <EmptyState
+                title={contractId ? 'No slips' : 'Pick a contract'}
+                message={contractId ? 'Create a new slip to start placing this contract in the market.' : 'Choose a contract above to view its placement slips.'}
+                icon={<PenLine size={28} />}
+              />
+            }
+          />
+        </Card>
+
+        {selectedSlip && (
+          <SlipDetailCard slipId={selectedSlip} canWrite={canWrite} statusColors={statusColors} />
+        )}
+      </div>
 
       <NewSlipModal open={showNew} onClose={() => setShowNew(false)} contractId={contractId} />
     </>
@@ -222,12 +240,12 @@ function SlipDetailCard({ slipId, canWrite, statusColors }: { slipId: string; ca
 
   return (
     <Card padded={false}>
-      <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+      <div className={styles.detailHead}>
         <CardHeader
           title={slip ? `Slip ${slip.reference}` : 'Slip'}
           subtitle={
             slip
-              ? <span style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+              ? <span className={styles.inlineMeta}>
                   Written {formatPercent(slip.totalWritten)} · Signed {formatPercent(slip.totalSigned)}
                   {slip.isOversubscribed && <Badge color="amber">Oversubscribed</Badge>}
                 </span>
@@ -253,7 +271,7 @@ function SlipDetailCard({ slipId, canWrite, statusColors }: { slipId: string; ca
       />
 
       {canWrite && (
-        <form onSubmit={submitLine} style={{ padding: 'var(--space-4) var(--space-5)', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 'var(--space-3)', alignItems: 'end' }}>
+        <form onSubmit={submitLine} className={styles.addLineForm}>
           <FormField label="Market">
             <Select value={partyId} onChange={(e) => setPartyId(e.target.value)}>
               <option value="">Select a market…</option>
@@ -264,7 +282,7 @@ function SlipDetailCard({ slipId, canWrite, statusColors }: { slipId: string; ca
             <Input type="number" min="0" max="1" step="any" value={writtenLine} onChange={(e) => setWrittenLine(e.target.value)} placeholder="e.g. 0.1" />
           </FormField>
           <Button variant="primary" onClick={submitLine} loading={addLine.isPending} disabled={!partyId || !writtenLine}>Add line</Button>
-          {lineError && <p style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontSize: 'var(--text-sm)', margin: 0 }} role="alert">{lineError}</p>}
+          {lineError && <p className={styles.formError} role="alert">{lineError}</p>}
         </form>
       )}
 
@@ -322,12 +340,12 @@ function NewSlipModal({ open, onClose, contractId }: { open: boolean; onClose: (
         </>
       }
     >
-      <form onSubmit={submit} className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} className={`${shared.grid2} ${styles.modalForm}`}>
         <TextField label="UMR" value={umr} onChange={setUmr} placeholder="e.g. B1234ABCDEF" />
         <FormField label="Order" hint="Fraction 0..1 (e.g. 1.0)">
           <Input type="number" min="0" step="any" value={orderPct} onChange={(e) => setOrderPct(e.target.value)} placeholder="e.g. 1.0" />
         </FormField>
-        {error && <p style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.modalError} role="alert">{error}</p>}
       </form>
     </Modal>
   );

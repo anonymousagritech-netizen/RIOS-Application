@@ -33,7 +33,12 @@ export function AnalyticsPage() {
   const [tab, setTab] = useState('pivot');
   return (
     <>
-      <PageHeader title="Analytics" description="Pivot the data warehouse and model catastrophe loss - built on pure, reconcilable engines." />
+      <PageHeader
+        title="Analytics"
+        description="Pivot the data warehouse and model catastrophe loss - built on pure, reconcilable engines."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Analytics' }]}
+        actions={<Badge color="indigo">Reconcilable engines</Badge>}
+      />
       <Card>
         <Tabs
           tabs={[{ id: 'pivot', label: 'Data warehouse' }, { id: 'reports', label: 'Reports' }, { id: 'dashboards', label: 'Dashboards' }, { id: 'cat', label: 'Catastrophe' }, { id: 'forecast', label: 'Forecast' }]}
@@ -122,9 +127,9 @@ function PivotBuilder() {
       {result && (
         <>
           <div className={shared.kpiGrid}>
-            <KpiCard label="Groups" value={formatNumber(result.cells.length)} icon={<Grid2x2 size={20} />} />
-            <KpiCard label="Facts" value={formatNumber(result.factCount)} icon={<Hash size={20} />} />
-            <KpiCard label="Grand total" value={formatMoney(result.totals.total)} icon={<DollarSign size={20} />} />
+            <KpiCard label="Groups" value={formatNumber(result.cells.length)} icon={<Grid2x2 size={20} />} accent="var(--primary)" />
+            <KpiCard label="Facts" value={formatNumber(result.factCount)} icon={<Hash size={20} />} accent="var(--accent-violet)" />
+            <KpiCard label="Grand total" value={formatMoney(result.totals.total)} icon={<DollarSign size={20} />} accent="var(--accent-emerald)" />
           </div>
           <Table columns={cols} rows={result.cells} rowKey={(c) => JSON.stringify(c.key)}
             empty={<EmptyState title="No facts" message="No rows match this source yet." />} />
@@ -200,9 +205,9 @@ function CatConsole() {
       {metrics && (
         <>
           <div className={shared.kpiGrid}>
-            <KpiCard label="Average Annual Loss" value={formatMoney(metrics.averageAnnualLossMinor)} icon={<Sigma size={20} />} accent="var(--c-amber)" />
-            {metrics.pmlProfile.filter((p) => [50, 100, 250].includes(p.returnPeriod)).map((p) => (
-              <KpiCard key={p.returnPeriod} label={`PML 1-in-${p.returnPeriod}`} value={formatMoney(p.lossMinor)} icon={<TrendingUp size={20} />} />
+            <KpiCard label="Average Annual Loss" value={formatMoney(metrics.averageAnnualLossMinor)} icon={<Sigma size={20} />} accent="var(--accent-orange)" />
+            {metrics.pmlProfile.filter((p) => [50, 100, 250].includes(p.returnPeriod)).map((p, i) => (
+              <KpiCard key={p.returnPeriod} label={`PML 1-in-${p.returnPeriod}`} value={formatMoney(p.lossMinor)} icon={<TrendingUp size={20} />} accent={['var(--primary)', 'var(--accent-violet)', 'var(--accent-rose)'][i % 3]} />
             ))}
           </div>
 
@@ -279,8 +284,8 @@ function ForecastConsole() {
       {result && (
         <>
           <div className={shared.kpiGrid}>
-            <KpiCard label="Trend slope" value={formatNumber(Math.round(result.fit.slope))} icon={<TrendingUp size={20} />} />
-            <KpiCard label="Fit R²" value={formatPercent(result.fit.r2)} icon={<Target size={20} />} accent={result.fit.r2 >= 0.8 ? 'var(--c-green)' : 'var(--c-amber)'} />
+            <KpiCard label="Trend slope" value={formatNumber(Math.round(result.fit.slope))} icon={<TrendingUp size={20} />} accent="var(--primary)" />
+            <KpiCard label="Fit R²" value={formatPercent(result.fit.r2)} icon={<Target size={20} />} accent={result.fit.r2 >= 0.8 ? 'var(--accent-emerald)' : 'var(--accent-orange)'} />
           </div>
           <Table
             columns={[
@@ -464,8 +469,8 @@ function DashboardsConsole() {
         <Card>
           <CardHeader title={rendered.name} />
           <div className={`${shared.kpiGrid} ${styles.cardBody}`}>
-            {rendered.widgets.map((w) => (
-              <KpiCard key={w.title} label={w.title} value={w.error ? '-' : formatMoney(w.total)} hint={w.error ?? `${w.groups} groups · ${w.factCount} facts`} icon={<Grid2x2 size={20} />} />
+            {rendered.widgets.map((w, i) => (
+              <KpiCard key={w.title} label={w.title} value={w.error ? '-' : formatMoney(w.total)} hint={w.error ?? `${w.groups} groups · ${w.factCount} facts`} icon={<Grid2x2 size={20} />} accent={['var(--primary)', 'var(--accent-violet)', 'var(--accent-cyan)', 'var(--accent-emerald)', 'var(--accent-orange)'][i % 5]} />
             ))}
           </div>
         </Card>

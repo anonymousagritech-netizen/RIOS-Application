@@ -1,0 +1,75 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  overflow: hidden;
+}
+.tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--tile-accent, var(--primary)), color-mix(in srgb, var(--tile-accent, var(--primary)) 25%, transparent));
+}
+
+.head { display: flex; align-items: flex-start; gap: var(--space-3); }
+.icon {
+  display: grid;
+  place-items: center;
+  width: 42px; height: 42px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  color: var(--tile-accent, var(--primary));
+  background: color-mix(in srgb, var(--tile-accent, var(--primary)) 14%, transparent);
+}
+.headText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.name { font-weight: var(--weight-semibold); color: var(--text); }
+.key { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); }
+
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.outboxBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.catalogGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.catalogList { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.newKey {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent-emerald) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent-emerald) 35%, var(--border));
+  color: var(--text);
+  word-break: break-all;
+}

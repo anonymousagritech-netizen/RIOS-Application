@@ -10,9 +10,10 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, Textarea, TextField } from '../components/Form';
 import { Tabs } from '../components/Tabs';
-import { formatDate, titleCase } from '../lib/format';
+import { KpiCard } from '../components/KpiCard';
+import { formatDate, formatNumber, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
-import { FileText, Lock, Clock, FolderOpen } from 'lucide-react';
+import { FileText, Lock, Clock, FolderOpen, LayoutTemplate, FileStack, Sparkles } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './DocumentsPage.module.css';
 
@@ -71,12 +72,55 @@ export function DocumentsPage() {
   const canWrite = hasPermission('documents:write');
   const [tab, setTab] = useState('templates');
 
+  const templates = useDocTemplates();
+  const documents = useDocuments('');
+  const tplCount = templates.data?.templates.length ?? 0;
+  const docCount = documents.data?.documents.length ?? 0;
+  const docTypeCount = new Set((documents.data?.documents ?? []).map((d) => d.doc_type ?? 'other')).size;
+
   return (
-    <>
+    <div className={styles.page}>
       <PageHeader
         title="Documents"
         description="Author reusable templates with merge placeholders and generate documents across the portfolio."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Documents' }]}
+        actions={
+          canWrite ? (
+            <Button variant="primary" onClick={() => setTab('generate')} icon={<Sparkles size={16} />}>
+              Generate document
+            </Button>
+          ) : (
+            <span className={shared.cellSub}>read-only</span>
+          )
+        }
       />
+
+      <div className={shared.kpiGrid}>
+        <KpiCard
+          label="Templates"
+          value={formatNumber(tplCount)}
+          hint="Reusable merge bodies"
+          icon={<LayoutTemplate size={20} />}
+          accent="var(--primary)"
+          loading={templates.isLoading}
+        />
+        <KpiCard
+          label="Documents"
+          value={formatNumber(docCount)}
+          hint="Generated across the portfolio"
+          icon={<FileStack size={20} />}
+          accent="var(--accent-violet)"
+          loading={documents.isLoading}
+        />
+        <KpiCard
+          label="Document types"
+          value={formatNumber(docTypeCount)}
+          hint="Distinct categories in use"
+          icon={<FolderOpen size={20} />}
+          accent="var(--accent-cyan)"
+          loading={documents.isLoading}
+        />
+      </div>
 
       <Tabs
         tabs={[
@@ -91,7 +135,7 @@ export function DocumentsPage() {
       {tab === 'templates' && <TemplatesTab canWrite={canWrite} />}
       {tab === 'generate' && <GenerateTab canWrite={canWrite} />}
       {tab === 'documents' && <DocumentsTab />}
-    </>
+    </div>
   );
 }
 

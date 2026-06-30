@@ -42,6 +42,7 @@ export function DesignerPage() {
       <PageHeader
         title="Designer"
         description="Author metadata-driven workflows and business rules - interpreted, never executed as code."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Designer' }]}
       />
       <Card>
         <Tabs

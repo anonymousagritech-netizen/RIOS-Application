@@ -1,0 +1,24 @@
+.page { display: grid; gap: var(--space-5); }
+
+.cardHead { padding: var(--space-5) var(--space-5) 0; }
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.impersonate {
+  padding: var(--space-5);
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.field { min-width: 240px; flex: 1; }
+.fieldNarrow { min-width: 200px; }
+
+.tabBar { padding: 0 var(--space-4); }
+
+.tabBody { padding: var(--space-4); }

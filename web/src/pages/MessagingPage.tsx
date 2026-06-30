@@ -4,23 +4,26 @@
  * production. integration:write to send.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
-import { Badge } from '../components/Badge';
+import { Badge, StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { FormField, Select, Input, Textarea } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
-import { formatDateTime, titleCase } from '../lib/format';
+import { formatNumber, formatDateTime, titleCase } from '../lib/format';
+import { Inbox, Send, Clock, AlertTriangle, Mail } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './MessagingPage.module.css';
 
 interface Message { id: string; channel: string; to: string; subject?: string | null; body: string; status: string; provider?: string | null; createdAt: string; sentAt?: string | null }
-const STATUS: Record<string, 'amber' | 'green' | 'red'> = { queued: 'amber', sent: 'green', failed: 'red' };
+const STATUS_COLORS: Record<string, string> = { queued: 'amber', sent: 'green', failed: 'red' };
 
 export function MessagingPage() {
   const { hasPermission } = useAuth();
@@ -45,39 +48,78 @@ export function MessagingPage() {
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not deliver'),
   });
 
+  const stats = useMemo(() => {
+    const list = q.data?.messages ?? [];
+    return {
+      total: list.length,
+      queued: list.filter((m) => m.status === 'queued').length,
+      sent: list.filter((m) => m.status === 'sent').length,
+      failed: list.filter((m) => m.status === 'failed').length,
+    };
+  }, [q.data]);
+
   if (q.isLoading) return <PageLoader label="Loading outbox…" />;
 
   const cols: Column<Message>[] = [
     { key: 'channel', header: 'Channel', render: (m) => <Badge color="slate">{titleCase(m.channel)}</Badge> },
     { key: 'to', header: 'To', render: (m) => <span className={shared.cellMain}>{m.to}</span> },
     { key: 'subject', header: 'Subject', render: (m) => <span className={shared.cellSub}>{m.subject ?? '-'}</span> },
-    { key: 'status', header: 'Status', render: (m) => <Badge color={STATUS[m.status] ?? 'slate'}>{titleCase(m.status)}</Badge> },
-    { key: 'sent', header: 'Sent', render: (m) => m.sentAt ? formatDateTime(m.sentAt) : '-' },
+    { key: 'status', header: 'Status', render: (m) => <StatusPill status={m.status} metaColors={STATUS_COLORS} /> },
+    { key: 'sent', header: 'Sent', align: 'right', render: (m) => <span className={shared.cellSub}>{m.sentAt ? formatDateTime(m.sentAt) : '-'}</span> },
   ];
 
   return (
     <>
-      <PageHeader title="Messaging" description="Email & SMS outbox. The dev provider delivers in-process; SMTP/SMS gateways are wired in production." />
-      {canSend && (
-        <Card>
-          <CardHeader title="Compose" actions={<Button variant="ghost" onClick={() => deliver.mutate()} loading={deliver.isPending}>Deliver queue</Button>} />
-          <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-3)', maxWidth: 640 }}>
-            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-              <div style={{ width: 140 }}><FormField label="Channel"><Select value={channel} onChange={(e) => setChannel(e.target.value)}><option value="email">Email</option><option value="sms">SMS</option></Select></FormField></div>
-              <div style={{ flex: 1 }}><FormField label="To"><Input value={to} onChange={(e) => setTo(e.target.value)} placeholder={channel === 'sms' ? '+1…' : 'name@example.com'} /></FormField></div>
+      <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Messaging' }]}
+        title="Messaging"
+        description="Email & SMS outbox. The dev provider delivers in-process; SMTP/SMS gateways are wired in production."
+        actions={canSend ? <Button variant="secondary" onClick={() => deliver.mutate()} loading={deliver.isPending} icon={<Send size={16} />}>Deliver queue</Button> : null}
+      />
+
+      <div className={styles.kpiGrid}>
+        <KpiCard label="Messages" value={formatNumber(stats.total)} icon={<Inbox size={20} />} accent="var(--primary)" />
+        <KpiCard label="Queued" value={formatNumber(stats.queued)} icon={<Clock size={20} />} accent="var(--accent-orange)" />
+        <KpiCard label="Sent" value={formatNumber(stats.sent)} icon={<Send size={20} />} accent="var(--accent-emerald)" />
+        <KpiCard label="Failed" value={formatNumber(stats.failed)} icon={<AlertTriangle size={20} />} accent="var(--accent-rose)" />
+      </div>
+
+      <div className={canSend ? styles.cols : undefined}>
+        {canSend && (
+          <Card padded={false}>
+            <CardHeader title="Compose" subtitle="Queue a message for the next delivery run." />
+            <div className={styles.compose}>
+              <div className={styles.row}>
+                <div className={styles.channelField}>
+                  <FormField label="Channel">
+                    <Select value={channel} onChange={(e) => setChannel(e.target.value)}>
+                      <option value="email">Email</option>
+                      <option value="sms">SMS</option>
+                    </Select>
+                  </FormField>
+                </div>
+                <div className={styles.toField}>
+                  <FormField label="To">
+                    <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder={channel === 'sms' ? '+1…' : 'name@example.com'} />
+                  </FormField>
+                </div>
+              </div>
+              {channel === 'email' && <FormField label="Subject"><Input value={subject} onChange={(e) => setSubject(e.target.value)} /></FormField>}
+              <FormField label="Body"><Textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} /></FormField>
+              <div className={styles.composeActions}>
+                <Button variant="primary" onClick={() => send.mutate()} loading={send.isPending} disabled={!to.trim() || !body.trim()} icon={<Mail size={16} />}>Queue message</Button>
+              </div>
             </div>
-            {channel === 'email' && <FormField label="Subject"><Input value={subject} onChange={(e) => setSubject(e.target.value)} /></FormField>}
-            <FormField label="Body"><Textarea rows={3} value={body} onChange={(e) => setBody(e.target.value)} /></FormField>
-            <div><Button variant="primary" onClick={() => send.mutate()} loading={send.isPending} disabled={!to.trim() || !body.trim()}>Queue message</Button></div>
+          </Card>
+        )}
+
+        <Card padded={false}>
+          <CardHeader title="Outbox" subtitle="Queued and delivered messages for this tenant." />
+          <div style={{ padding: 'var(--space-4)' }}>
+            <Table columns={cols} rows={q.data?.messages} rowKey={(m) => m.id} empty={<EmptyState title="Empty outbox" message="No messages queued yet." icon={<Inbox size={16} />} />} />
           </div>
         </Card>
-      )}
-      <Card>
-        <CardHeader title="Outbox" />
-        <div style={{ padding: 'var(--space-4)' }}>
-          <Table columns={cols} rows={q.data?.messages} rowKey={(m) => m.id} empty={<EmptyState title="Empty" message="No messages queued." />} />
-        </div>
-      </Card>
+      </div>
     </>
   );
 }

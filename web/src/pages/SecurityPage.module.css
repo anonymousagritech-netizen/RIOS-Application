@@ -1,0 +1,63 @@
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.body {
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+  max-width: 560px;
+}
+
+.intro { color: var(--text-muted); font-size: var(--text-sm); line-height: var(--leading-normal); }
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+}
+.stepNum {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* Passkey rows as tidy list tiles rather than bare flex rows. */
+.keyList { display: grid; gap: var(--space-2); }
+.keyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.keyIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-violet) 14%, transparent);
+  color: var(--accent-violet);
+}
+.keyMeta { flex: 1; min-width: 0; }
+.keyName { font-weight: var(--weight-medium); color: var(--text); font-size: var(--text-sm); }
+.keySub { font-size: var(--text-2xs); color: var(--text-faint); }

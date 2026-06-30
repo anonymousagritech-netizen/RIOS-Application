@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
-import { BarChart3, FileBarChart } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { BarChart3, FileBarChart, FileText, AlertTriangle, Receipt, FileSpreadsheet, Building2, Database, Save } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -13,6 +14,19 @@ import { FormField, Input, Select, TextField } from '../components/Form';
 import { formatDate, formatNumber, titleCase } from '../lib/format';
 import { api, ApiError, getToken, API_BASE } from '../lib/api';
 import shared from './shared.module.css';
+import styles from './ReportsPage.module.css';
+
+/* Per-source presentation: icon + accent token for the category card grid. */
+const SOURCE_META: Record<string, { icon: ReactNode; accent: string; label: string }> = {
+  contracts: { icon: <FileText size={20} />, accent: 'var(--primary)', label: 'Contracts' },
+  claims: { icon: <AlertTriangle size={20} />, accent: 'var(--accent-rose)', label: 'Claims' },
+  financial_events: { icon: <Receipt size={20} />, accent: 'var(--accent-violet)', label: 'Financial events' },
+  statements: { icon: <FileSpreadsheet size={20} />, accent: 'var(--accent-cyan)', label: 'Statements' },
+  parties: { icon: <Building2 size={20} />, accent: 'var(--accent-emerald)', label: 'Parties' },
+};
+function sourceMeta(key: string) {
+  return SOURCE_META[key] ?? { icon: <Database size={20} />, accent: 'var(--accent-orange)', label: titleCase(key) };
+}
 
 /* ---------------- Source allowlist ---------------- */
 const SOURCES: Record<string, string[]> = {
@@ -135,30 +149,54 @@ export function ReportsPage() {
     <>
       <PageHeader
         title="Reports"
-        description="Build ad-hoc reports over portfolio data and save reusable definitions."
+        description="Build ad-hoc reports over portfolio data, then run, export or save reusable definitions."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Reports' }]}
         actions={
-          canWrite ? <Badge color="green">reporting:write granted</Badge> : <Badge color="slate">read-only</Badge>
+          canWrite ? (
+            <Button variant="primary" icon={<Save size={16} />} onClick={() => setShowSave(true)} disabled={!columns.length}>
+              Save definition
+            </Button>
+          ) : <Badge color="slate">read-only</Badge>
         }
       />
+
+      <div className={styles.kpiRow} style={{ marginBottom: 'var(--space-5)' }}>
+        <KpiCard label="Data sources" value={formatNumber(SOURCE_KEYS.length)} hint="Reportable domains" icon={<Database size={20} />} accent="var(--primary)" />
+        <KpiCard label="Selected source" value={sourceMeta(source).label} hint={`${allCols.length} fields available`} icon={sourceMeta(source).icon} accent={sourceMeta(source).accent} />
+        <KpiCard label="Columns chosen" value={formatNumber(columns.length)} hint="In the current report" icon={<FileSpreadsheet size={20} />} accent="var(--accent-cyan)" />
+        <KpiCard label="Rows returned" value={result ? formatNumber(result.rowCount) : '-'} hint={result ? titleCase(result.source) : 'Not run yet'} icon={<BarChart3 size={20} />} accent="var(--accent-emerald)" />
+      </div>
 
       <Card>
         <CardHeader
           title="Report builder"
           subtitle="Pick a source, choose columns, optionally filter, then run."
-          actions={
-            canWrite ? (
-              <Button size="sm" variant="secondary" onClick={() => setShowSave(true)} disabled={!columns.length}>
-                Save definition
-              </Button>
-            ) : null
-          }
         />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <FormField label="Source" required>
-            <Select value={source} onChange={(e) => onChangeSource(e.target.value)}>
-              {SOURCE_KEYS.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
-            </Select>
+        <div className={styles.builderBody}>
+          <FormField label="Source" hint="Choose the data domain to report over.">
+            <div className={styles.sourceGrid}>
+              {SOURCE_KEYS.map((s) => {
+                const meta = sourceMeta(s);
+                const active = source === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => onChangeSource(s)}
+                    className={`${styles.sourceCard} ${active ? styles.sourceCardActive : ''}`}
+                    style={{ color: meta.accent }}
+                    aria-pressed={active}
+                  >
+                    <span className={styles.sourceIcon} aria-hidden>{meta.icon}</span>
+                    <span className={styles.sourceMeta}>
+                      <span className={styles.sourceName}>{meta.label}</span>
+                      <span className={styles.sourceCount}>{SOURCES[s]!.length} fields</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </FormField>
 
           <FormField label="Columns" hint="Select the fields to include.">
@@ -211,7 +249,7 @@ export function ReportsPage() {
 
       {result && (
         <Card padded={false}>
-          <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+          <div className={styles.cardPad}>
             <CardHeader
               title="Results"
               subtitle={`${formatNumber(result.rowCount)} row${result.rowCount === 1 ? '' : 's'} from ${titleCase(result.source)}`}
@@ -297,7 +335,7 @@ function SavedDefinitions() {
       header: '',
       align: 'right',
       render: (d) => (
-        <div style={{ display: 'inline-flex', gap: 'var(--space-2)' }}>
+        <div className={styles.actionRow}>
           <Button
             size="sm"
             variant="subtle"
@@ -306,7 +344,7 @@ function SavedDefinitions() {
           >
             Run
           </Button>
-          <Button size="sm" variant="subtle" onClick={() => onExport(d)} loading={exporting === d.id}>
+          <Button size="sm" variant="subtle" icon={<FileSpreadsheet size={14} />} onClick={() => onExport(d)} loading={exporting === d.id}>
             Export CSV
           </Button>
         </div>
@@ -317,7 +355,7 @@ function SavedDefinitions() {
   return (
     <>
       <Card padded={false}>
-        <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+        <div className={styles.cardPad}>
           <CardHeader title="Saved definitions" subtitle="Run or export previously saved reports." />
         </div>
         <Table
@@ -408,11 +446,11 @@ function SaveDefinitionModal({
       }
     >
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        <div className={styles.fieldGrid}>
           <TextField label="Key" value={key} onChange={setKey} required placeholder="e.g. active_contracts" />
           <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. Active contracts" />
         </div>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );

@@ -1,0 +1,45 @@
+.page { display: grid; gap: var(--space-5); }
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.toolbarPad { padding: var(--space-4); }
+
+.inlineMeta {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.detailHead { padding: var(--space-5) var(--space-5) 0; }
+
+.addLineForm {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.formError {
+  grid-column: 1 / -1;
+  color: var(--danger);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+.modalForm { display: grid; }
+
+.modalError {
+  grid-column: 1 / -1;
+  color: var(--danger);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 720px) {
+  .addLineForm { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,79 @@
+.page { display: grid; gap: var(--space-5); }
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.cardHead { padding: var(--space-5) var(--space-5) 0; }
+
+/* Goal progress cards */
+.goals {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+
+.goal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.goal:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.goalTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.goalTitle {
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  font-size: var(--text-base);
+}
+
+.goalMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.goalWeight {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.goalScore {
+  font-weight: var(--weight-bold);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  position: relative;
+  height: var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.progressFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--radius-full);
+  background: var(--grad-primary);
+  transition: width var(--motion-base);
+}

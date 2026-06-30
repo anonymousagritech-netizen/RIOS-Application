@@ -12,9 +12,11 @@ import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, Select } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
-import { formatMoney, formatDate, titleCase } from '../lib/format';
-import { ReceiptText } from 'lucide-react';
+import { KpiCard } from '../components/KpiCard';
+import { formatMoney, formatDate, formatNumber, titleCase } from '../lib/format';
+import { ReceiptText, Scale, Hourglass, CheckCircle2 } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './StatementsPage.module.css';
 
 /* ---------------- Types ---------------- */
 interface TreatyOption { id: string; reference: string; name: string; }
@@ -141,6 +143,21 @@ export function StatementsPage() {
 
   const rows = data?.statements ?? [];
 
+  const kpis = useMemo(() => {
+    const settledSet = new Set(['SETTLED', 'CLOSED']);
+    const inFlightSet = new Set(['PREPARED', 'UNDER_REVIEW', 'APPROVED', 'ISSUED']);
+    let balance = 0;
+    let inFlight = 0;
+    let settled = 0;
+    for (const s of rows) {
+      balance += s.balance_minor;
+      if (inFlightSet.has(s.status)) inFlight += 1;
+      if (settledSet.has(s.status)) settled += 1;
+    }
+    const ccy = rows[0]?.currency;
+    return { count: rows.length, balance, inFlight, settled, ccy };
+  }, [rows]);
+
   const doGenerate = async () => {
     if (!contractId) { toast.error('Pick a contract first'); return; }
     try {
@@ -169,8 +186,30 @@ export function StatementsPage() {
       <PageHeader
         title="Statements"
         description="Generate statements of account from un-statemented financial events and drive them through the settlement lifecycle."
-        actions={canWrite ? null : <Badge color="slate">read-only</Badge>}
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Statements' }]}
+        actions={
+          canWrite ? (
+            <Button
+              variant="primary"
+              onClick={doGenerate}
+              loading={generate.isPending}
+              disabled={!contractId}
+              title={contractId ? undefined : 'Select a contract to generate a statement'}
+            >
+              Generate statement
+            </Button>
+          ) : (
+            <Badge color="slate">read-only</Badge>
+          )
+        }
       />
+
+      <div className={styles.kpiRow}>
+        <KpiCard label="Statements" value={formatNumber(kpis.count)} accent="var(--primary)" icon={<ReceiptText size={20} />} loading={isLoading} />
+        <KpiCard label="Net balance" value={formatMoney(kpis.balance, kpis.ccy)} accent="var(--accent-cyan)" icon={<Scale size={20} />} loading={isLoading} />
+        <KpiCard label="In flight" value={formatNumber(kpis.inFlight)} hint="Prepared through issued" accent="var(--accent-orange)" icon={<Hourglass size={20} />} loading={isLoading} />
+        <KpiCard label="Settled" value={formatNumber(kpis.settled)} accent="var(--accent-emerald)" icon={<CheckCircle2 size={20} />} loading={isLoading} />
+      </div>
 
       <Card padded={false}>
         <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
@@ -191,17 +230,6 @@ export function StatementsPage() {
             </Select>
           </div>
           <div className={shared.spacer} />
-          {canWrite && (
-            <Button
-              variant="primary"
-              onClick={doGenerate}
-              loading={generate.isPending}
-              disabled={!contractId}
-              title={contractId ? undefined : 'Select a contract to generate a statement'}
-            >
-              Generate statement
-            </Button>
-          )}
         </div>
 
         <Table
@@ -288,27 +316,27 @@ function StatementDrawer({ id, canWrite, statusColors, onClose }: {
         <EmptyState title="Statement not found" message="It may have been removed." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-          <div className={shared.grid3} style={{ display: 'grid' }}>
-            <div>
-              <div className={shared.cellSub}>Balance</div>
-              <div className={shared.money} style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-medium)' }}>
+          <div className={styles.summaryGrid}>
+            <div className={styles.summaryItem}>
+              <span className={styles.summaryLabel}>Balance</span>
+              <span className={`${styles.summaryValue} ${shared.money}`}>
                 {formatMoney(data.balance_minor, data.currency)}
-              </div>
+              </span>
             </div>
-            <div>
-              <div className={shared.cellSub}>Events</div>
-              <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-medium)' }}>
+            <div className={styles.summaryItem}>
+              <span className={styles.summaryLabel}>Events</span>
+              <span className={styles.summaryValue}>
                 {data.eventCount ?? events.length}
-              </div>
+              </span>
             </div>
-            <div>
-              <div className={shared.cellSub}>Status</div>
-              <div><StatusPill status={data.status} metaColors={statusColors} /></div>
+            <div className={styles.summaryItem}>
+              <span className={styles.summaryLabel}>Status</span>
+              <span><StatusPill status={data.status} metaColors={statusColors} /></span>
             </div>
           </div>
 
           {canWrite && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <div className={styles.transitions}>
               {nextStates.length ? (
                 nextStates.map((to) => (
                   <Button

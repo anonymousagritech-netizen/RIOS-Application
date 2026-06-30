@@ -6,18 +6,21 @@
  */
 
 import { useState } from 'react';
+import { CalendarClock, AlarmClock, ListChecks, Power } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { PageLoader } from '../components/Feedback';
 import { formatNumber, formatDateTime } from '../lib/format';
 import shared from './shared.module.css';
+import styles from './SchedulerPage.module.css';
 
 interface Job {
   id: string; key: string; name: string; jobType: string; intervalMinutes: number;
@@ -55,7 +58,9 @@ export function SchedulerPage() {
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not update job'),
   });
 
-  if (jobs.isLoading) return <PageLoader label="Loading jobs…" />;
+  const jobList = jobs.data?.jobs ?? [];
+  const dueCount = jobs.data?.dueCount ?? 0;
+  const enabledCount = jobList.filter((j) => j.enabled).length;
 
   const cols: Column<Job>[] = [
     { key: 'name', header: 'Job', render: (j) => <span className={shared.cellMain}>{j.name}</span> },
@@ -67,7 +72,7 @@ export function SchedulerPage() {
     {
       key: 'act', header: '', align: 'right',
       render: (j) => canWrite ? (
-        <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+        <div className={styles.actions}>
           <Button variant="ghost" onClick={() => setOpenJob(openJob === j.id ? null : j.id)}>History</Button>
           <Button variant="ghost" onClick={() => toggle.mutate({ id: j.id, enabled: !j.enabled })}>{j.enabled ? 'Disable' : 'Enable'}</Button>
           <Button variant="primary" onClick={() => run.mutate(j.id)} loading={run.isPending} disabled={!j.enabled}>Run now</Button>
@@ -78,19 +83,33 @@ export function SchedulerPage() {
 
   return (
     <>
-      <PageHeader title="Scheduler" description="Interval-scheduled jobs with run history. Due-state is computed by the pure scheduler engine." />
-      <Card>
-        <CardHeader title="Jobs" subtitle={`${formatNumber(jobs.data?.dueCount ?? 0)} due now`} />
-        <div style={{ padding: 'var(--space-4)' }}>
-          <Table columns={cols} rows={jobs.data?.jobs} rowKey={(j) => j.id}
-            empty={<EmptyState title="No jobs" message="No scheduled jobs defined." />} />
+      <PageHeader
+        title="Scheduler"
+        description="Interval-scheduled jobs with run history. Due-state is computed by the pure scheduler engine."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Scheduler' }]}
+      />
+
+      <div className={styles.kpiRow}>
+        <KpiCard label="Total jobs" value={formatNumber(jobList.length)} hint="Registered" icon={<CalendarClock size={20} />} accent="var(--primary)" loading={jobs.isLoading} />
+        <KpiCard label="Enabled" value={formatNumber(enabledCount)} hint="Actively scheduled" icon={<Power size={20} />} accent="var(--accent-violet)" loading={jobs.isLoading} />
+        <KpiCard label="Due now" value={formatNumber(dueCount)} hint="Awaiting run" icon={<AlarmClock size={20} />} accent={dueCount > 0 ? 'var(--accent-orange)' : 'var(--accent-emerald)'} loading={jobs.isLoading} />
+        <KpiCard label="Disabled" value={formatNumber(jobList.length - enabledCount)} hint="Paused" icon={<ListChecks size={20} />} accent="var(--accent-cyan)" loading={jobs.isLoading} />
+      </div>
+
+      <Card padded={false}>
+        <CardHeader title="Jobs" subtitle={`${formatNumber(dueCount)} due now`} />
+        <div className={styles.tableWrap}>
+          {jobs.isLoading ? <PageLoader label="Loading jobs…" /> : (
+            <Table columns={cols} rows={jobList} rowKey={(j) => j.id}
+              empty={<EmptyState title="No jobs" message="No scheduled jobs defined." icon={<CalendarClock size={16} />} />} />
+          )}
         </div>
       </Card>
 
       {openJob && (
-        <Card>
+        <Card padded={false}>
           <CardHeader title="Run history" actions={<Button variant="ghost" onClick={() => setOpenJob(null)}>Close</Button>} />
-          <div style={{ padding: 'var(--space-4)' }}>
+          <div className={styles.tableWrap}>
             {runs.isLoading ? <PageLoader label="Loading history…" /> : (
               <Table
                 columns={[

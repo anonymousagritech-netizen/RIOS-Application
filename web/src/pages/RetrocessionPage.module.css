@@ -1,0 +1,14 @@
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.cardPad { padding: var(--space-4) var(--space-5) 0; }
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}

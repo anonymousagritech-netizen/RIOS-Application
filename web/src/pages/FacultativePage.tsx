@@ -5,15 +5,17 @@ import { useStatusColors, useCurrencies } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
-import { Card } from '../components/Card';
+import { Card, CardHeader } from '../components/Card';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
-import { formatPercent, titleCase } from '../lib/format';
-import { FileCheck2 } from 'lucide-react';
+import { KpiCard } from '../components/KpiCard';
+import { formatNumber, formatPercent, titleCase } from '../lib/format';
+import { FileCheck2, Briefcase, CircleCheckBig, PenLine, Layers } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './FacultativePage.module.css';
 
 interface FacultativeItem {
   id: string;
@@ -54,7 +56,16 @@ export function FacultativePage() {
   const [showNew, setShowNew] = useState(false);
 
   const { data, isLoading } = useFacultative({ status: status || undefined });
+  const all = useFacultative({});
   const statusColors = useStatusColors('contract_status');
+
+  const stats = useMemo(() => {
+    const list = all.data?.facultative ?? [];
+    const active = list.filter((r) => ['BOUND', 'ACTIVE'].includes(r.status)).length;
+    const draft = list.filter((r) => ['DRAFT', 'QUOTED', 'PLACING'].includes(r.status)).length;
+    const lobs = new Set(list.map((r) => r.lineOfBusiness ?? 'other')).size;
+    return { total: list.length, active, draft, lobs };
+  }, [all.data]);
 
   const columns: Column<FacultativeItem>[] = useMemo(() => [
     { key: 'reference', header: 'Reference', sortValue: (r) => r.reference ?? '', render: (r) => <span className={shared.cellRef}>{r.reference}</span> },
@@ -77,10 +88,11 @@ export function FacultativePage() {
   ], [statusColors]);
 
   return (
-    <>
+    <div className={styles.page}>
       <PageHeader
         title="Facultative"
         description="Single-risk facultative cessions placed outside of treaty arrangements."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Facultative' }]}
         actions={
           hasPermission('facultative:write') ? (
             <Button variant="primary" onClick={() => setShowNew(true)} icon={<span aria-hidden>+</span>}>New cession</Button>
@@ -88,8 +100,46 @@ export function FacultativePage() {
         }
       />
 
+      <div className={shared.kpiGrid}>
+        <KpiCard
+          label="Cessions"
+          value={formatNumber(stats.total)}
+          hint="Facultative placements on book"
+          icon={<Briefcase size={20} />}
+          accent="var(--primary)"
+          loading={all.isLoading}
+        />
+        <KpiCard
+          label="Active / bound"
+          value={formatNumber(stats.active)}
+          hint="In force or bound"
+          icon={<CircleCheckBig size={20} />}
+          accent="var(--accent-emerald)"
+          loading={all.isLoading}
+        />
+        <KpiCard
+          label="In placement"
+          value={formatNumber(stats.draft)}
+          hint="Draft, quoted or placing"
+          icon={<PenLine size={20} />}
+          accent="var(--accent-orange)"
+          loading={all.isLoading}
+        />
+        <KpiCard
+          label="Lines of business"
+          value={formatNumber(stats.lobs)}
+          hint="Distinct LOBs covered"
+          icon={<Layers size={20} />}
+          accent="var(--accent-violet)"
+          loading={all.isLoading}
+        />
+      </div>
+
       <Card padded={false}>
-        <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
+        <div className={styles.cardHead}>
+          <CardHeader title="Cessions" subtitle="Single-risk facultative placements, filterable by status." />
+        </div>
+        <div className={`${styles.toolbarPad} ${shared.toolbar}`}>
           <div className={shared.filter}>
             <span className={shared.filterLabel}>Status</span>
             <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
@@ -111,7 +161,7 @@ export function FacultativePage() {
       </Card>
 
       <NewCessionModal open={showNew} onClose={() => setShowNew(false)} />
-    </>
+    </div>
   );
 }
 

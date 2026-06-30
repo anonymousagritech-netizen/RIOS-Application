@@ -1,0 +1,22 @@
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+.summaryItem { display: grid; gap: var(--space-1); }
+.summaryLabel { font-size: var(--text-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.summaryValue { font-size: var(--text-lg); font-weight: var(--weight-semibold); color: var(--text); font-variant-numeric: tabular-nums; }
+
+.transitions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.section { display: grid; gap: var(--space-2); }

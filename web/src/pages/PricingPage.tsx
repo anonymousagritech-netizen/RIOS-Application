@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LineChart } from 'lucide-react';
+import { LineChart, Flame, Gauge, Percent, Calculator } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useCurrencies } from '../lib/queries';
@@ -7,10 +7,11 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
+import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
+import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { FormField, Input, Select } from '../components/Form';
-import { DefinitionList } from '../components/Feedback';
 import { formatMoney, formatPercent, formatDateTime, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './PricingPage.module.css';
@@ -76,12 +77,26 @@ export function PricingPage() {
     { key: 'created', header: 'Run at', align: 'right', sortValue: (r) => r.created_at, render: (r) => formatDateTime(r.created_at) },
   ];
 
+  const runs = runsData?.runs ?? [];
+  const avgRol = runs.length ? runs.reduce((s, r) => s + r.rate_on_line, 0) / runs.length : 0;
+  const burningCount = runs.filter((r) => r.method?.toLowerCase().includes('burning')).length;
+  const exposureCount = runs.filter((r) => r.method?.toLowerCase().includes('exposure')).length;
+
   return (
-    <>
+    <div className={shared.stack}>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Pricing' }]}
         title="Pricing"
         description="Actuarial rating of excess-of-loss layers via burning-cost and exposure methods."
+        actions={canWrite ? <Badge color="green">pricing:write granted</Badge> : <Badge color="slate">read-only</Badge>}
       />
+
+      <div className={shared.kpiRow}>
+        <KpiCard label="Rating runs" value={runs.length} loading={runsLoading} icon={<LineChart size={20} />} accent="var(--primary)" />
+        <KpiCard label="Avg rate on line" value={runs.length ? formatPercent(avgRol) : '-'} loading={runsLoading} icon={<Percent size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label="Burning-cost" value={burningCount} loading={runsLoading} icon={<Flame size={20} />} accent="var(--accent-orange)" />
+        <KpiCard label="Exposure" value={exposureCount} loading={runsLoading} icon={<Gauge size={20} />} accent="var(--accent-cyan)" />
+      </div>
 
       {!canWrite && (
         <Card>
@@ -109,7 +124,38 @@ export function PricingPage() {
           skeletonRows={3}
         />
       </Card>
-    </>
+    </div>
+  );
+}
+
+/** Highlighted result panel - headline metric plus supporting figures. */
+function ResultPanel({
+  accent, icon, headlineLabel, headlineValue, items,
+}: {
+  accent: string;
+  icon: React.ReactNode;
+  headlineLabel: string;
+  headlineValue: string;
+  items: { term: string; value: string }[];
+}) {
+  return (
+    <div className={styles.resultBlock} style={{ '--result-accent': accent } as React.CSSProperties}>
+      <div className={styles.resultHeadline}>
+        <span className={styles.resultIcon} aria-hidden>{icon}</span>
+        <div>
+          <span className={styles.resultLabel}>{headlineLabel}</span>
+          <span className={styles.resultValue}>{headlineValue}</span>
+        </div>
+      </div>
+      <dl className={styles.resultGrid}>
+        {items.map((it) => (
+          <div key={it.term} className={styles.resultItem}>
+            <dt className={styles.resultItemLabel}>{it.term}</dt>
+            <dd className={styles.resultItemValue}>{it.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
@@ -228,17 +274,18 @@ function BurningCostCard({ canWrite }: { canWrite: boolean }) {
       </form>
 
       {result && (
-        <div className={styles.resultBlock}>
-          <DefinitionList
-            items={[
-              { term: 'Technical premium', value: <strong>{formatMoney(result.technicalPremium.amount, result.technicalPremium.currency)}</strong> },
-              { term: 'Rate on line', value: formatPercent(result.rateOnLine) },
-              { term: 'Pure burning cost', value: formatPercent(result.pureBurningCost) },
-              { term: 'Loaded burning cost', value: formatPercent(result.loadedBurningCost) },
-              { term: 'Total layer losses', value: formatMoney(result.totalLayerLosses.amount, result.totalLayerLosses.currency) },
-            ]}
-          />
-        </div>
+        <ResultPanel
+          accent="var(--accent-orange)"
+          icon={<Flame size={20} />}
+          headlineLabel="Technical premium"
+          headlineValue={formatMoney(result.technicalPremium.amount, result.technicalPremium.currency)}
+          items={[
+            { term: 'Rate on line', value: formatPercent(result.rateOnLine) },
+            { term: 'Pure burning cost', value: formatPercent(result.pureBurningCost) },
+            { term: 'Loaded burning cost', value: formatPercent(result.loadedBurningCost) },
+            { term: 'Total layer losses', value: formatMoney(result.totalLayerLosses.amount, result.totalLayerLosses.currency) },
+          ]}
+        />
       )}
     </Card>
   );
@@ -345,15 +392,16 @@ function ExposureCard({ canWrite }: { canWrite: boolean }) {
       </form>
 
       {result && (
-        <div className={styles.resultBlock}>
-          <DefinitionList
-            items={[
-              { term: 'Expected loss', value: formatMoney(result.expectedLoss.amount, result.expectedLoss.currency) },
-              { term: 'Technical premium', value: <strong>{formatMoney(result.technicalPremium.amount, result.technicalPremium.currency)}</strong> },
-              { term: 'Rate on line', value: formatPercent(result.rateOnLine) },
-            ]}
-          />
-        </div>
+        <ResultPanel
+          accent="var(--accent-cyan)"
+          icon={<Calculator size={20} />}
+          headlineLabel="Technical premium"
+          headlineValue={formatMoney(result.technicalPremium.amount, result.technicalPremium.currency)}
+          items={[
+            { term: 'Expected loss', value: formatMoney(result.expectedLoss.amount, result.expectedLoss.currency) },
+            { term: 'Rate on line', value: formatPercent(result.rateOnLine) },
+          ]}
+        />
       )}
     </Card>
   );

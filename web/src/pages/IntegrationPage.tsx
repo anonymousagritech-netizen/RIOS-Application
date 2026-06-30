@@ -11,8 +11,9 @@ import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, Textarea } from '../components/Form';
+import { KpiCard } from '../components/KpiCard';
 import { formatDateTime, titleCase } from '../lib/format';
-import { Network } from 'lucide-react';
+import { Network, Webhook, Zap } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './IntegrationPage.module.css';
 
@@ -100,6 +101,7 @@ export function IntegrationPage() {
       <PageHeader
         title="Integration"
         description="Webhook subscriptions, event delivery and data import/export."
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Integration' }]}
       />
 
       <Card padded={false}>
@@ -151,10 +153,20 @@ function WebhooksTab() {
     },
   ];
 
+  const subs = data?.subscriptions ?? [];
+  const activeCount = subs.filter((s) => s.isActive).length;
+  const eventTypeCount = new Set(subs.flatMap((s) => s.eventTypes ?? [])).size;
+
   return (
     <>
+      <div className={shared.kpiGrid} style={{ padding: 'var(--space-5) var(--space-5) 0' }}>
+        <KpiCard label="Subscriptions" value={String(subs.length)} hint="Registered endpoints" icon={<Webhook size={18} />} accent="var(--primary)" loading={isLoading} />
+        <KpiCard label="Active" value={String(activeCount)} hint="Receiving events" icon={<Zap size={18} />} accent="var(--accent-emerald)" loading={isLoading} />
+        <KpiCard label="Event types" value={String(eventTypeCount)} hint="Distinct subscribed events" icon={<Network size={18} />} accent="var(--accent-violet)" loading={isLoading} />
+      </div>
+
       <div style={{ padding: 'var(--space-4) var(--space-5) 0' }} className={shared.toolbar}>
-        <span className={shared.cellSub}>{data?.subscriptions?.length ?? 0} subscription{(data?.subscriptions?.length ?? 0) === 1 ? '' : 's'}</span>
+        <CardHeader title="Webhook subscriptions" subtitle="External endpoints that receive RIOS domain events." />
         <div className={shared.spacer} />
         {canWrite && (
           <>

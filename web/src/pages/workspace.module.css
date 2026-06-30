@@ -16,6 +16,29 @@
 .totalLabel { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
 .totalValue { font-size: var(--text-lg); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
 
+.reconcileChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.reconcileChip[data-balanced='true'] {
+  border-color: color-mix(in srgb, var(--accent-emerald) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent-emerald) 10%, var(--surface));
+  color: var(--c-green);
+}
+.reconcileChip[data-balanced='false'] {
+  border-color: color-mix(in srgb, var(--accent-rose) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent-rose) 10%, var(--surface));
+  color: var(--c-red);
+}
+.reconcileText { display: flex; flex-direction: column; line-height: var(--leading-tight); }
+.reconcileLabel { font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.reconcileValue { font-size: var(--text-md); font-weight: var(--weight-semibold); }
+
 .notifList { display: flex; flex-direction: column; gap: var(--space-3); }
 .notif {
   display: flex;
