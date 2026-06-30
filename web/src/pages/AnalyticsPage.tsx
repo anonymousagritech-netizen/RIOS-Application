@@ -16,7 +16,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Tabs } from '../components/Tabs';
-import { FormField, Select, Input } from '../components/Form';
+import { FormField, Select, Input, Textarea } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatNumber, formatPercent, titleCase } from '../lib/format';
 import shared from './shared.module.css';
@@ -32,12 +32,14 @@ export function AnalyticsPage() {
       <PageHeader title="Analytics" description="Pivot the data warehouse and model catastrophe loss — built on pure, reconcilable engines." />
       <Card>
         <Tabs
-          tabs={[{ id: 'pivot', label: 'Data warehouse' }, { id: 'cat', label: 'Catastrophe' }]}
+          tabs={[{ id: 'pivot', label: 'Data warehouse' }, { id: 'cat', label: 'Catastrophe' }, { id: 'forecast', label: 'Forecast' }]}
           active={tab}
           onChange={setTab}
         />
         <div style={{ padding: 'var(--space-5)' }}>
-          {tab === 'pivot' ? <PivotBuilder /> : <CatConsole />}
+          {tab === 'pivot' && <PivotBuilder />}
+          {tab === 'cat' && <CatConsole />}
+          {tab === 'forecast' && <ForecastConsole />}
         </div>
       </Card>
     </>
@@ -212,6 +214,76 @@ function CatConsole() {
               />
             </div>
           </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ----------------------------- Forecast ----------------------------- */
+
+interface FitResult { slope: number; intercept: number; r2: number }
+interface ForecastResponse { method: string; fit: FitResult; forecast: { index: number; value: number }[] }
+
+function ForecastConsole() {
+  const [series, setSeries] = useState('1200, 1350, 1290, 1480, 1600, 1720');
+  const [method, setMethod] = useState('linear');
+  const [periods, setPeriods] = useState('3');
+  const [result, setResult] = useState<ForecastResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = async () => {
+    setError(null);
+    const nums = series.split(/[\s,]+/).map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
+    if (nums.length < 2) { setError('Enter at least two numeric data points.'); return; }
+    setBusy(true);
+    try {
+      const r = await api<ForecastResponse>('/api/analytics/forecast', {
+        body: { series: nums, periods: Math.max(1, Number(periods) || 3), method },
+      });
+      setResult(r);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 680 }}>
+      <p className={shared.cellSub}>Project a metric forward from a historical series (e.g. monthly premium). Linear fits an OLS trend; smoothing uses exponential smoothing.</p>
+      <FormField label="Historical series" error={error ?? undefined}>
+        <Textarea rows={3} value={series} onChange={(e) => setSeries(e.target.value)} />
+      </FormField>
+      <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 180 }}>
+          <FormField label="Method">
+            <Select value={method} onChange={(e) => setMethod(e.target.value)}>
+              <option value="linear">Linear trend</option>
+              <option value="smoothing">Exponential smoothing</option>
+            </Select>
+          </FormField>
+        </div>
+        <div style={{ width: 140 }}>
+          <FormField label="Periods ahead">
+            <Input type="number" min="1" max="60" value={periods} onChange={(e) => setPeriods(e.target.value)} />
+          </FormField>
+        </div>
+        <Button variant="primary" onClick={run} loading={busy}>Forecast</Button>
+      </div>
+      {result && (
+        <>
+          <div className={shared.kpiGrid}>
+            <KpiCard label="Trend slope" value={formatNumber(Math.round(result.fit.slope))} icon="↗" />
+            <KpiCard label="Fit R²" value={formatPercent(result.fit.r2)} icon="◎" accent={result.fit.r2 >= 0.8 ? 'var(--c-green)' : 'var(--c-amber)'} />
+          </div>
+          <Table
+            columns={[
+              { key: 'period', header: 'Period ahead', render: (p: { index: number; value: number }) => `+${p.index - (result.forecast[0]!.index - 1)}` },
+              { key: 'value', header: 'Forecast', align: 'right', render: (p: { index: number; value: number }) => formatNumber(p.value) },
+            ]}
+            rows={result.forecast}
+            rowKey={(p) => String(p.index)}
+          />
         </>
       )}
     </div>
