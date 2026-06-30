@@ -71,4 +71,24 @@ describe('Product lifecycle', () => {
     const res = await app.inject({ method: 'POST', url: `/api/products/${id}/transition`, headers: { authorization: `Bearer ${claimsTkn}` }, payload: { event: 'resume' } });
     expect(res.statusCode).toBe(403);
   });
+
+  it('evaluates a parametric cover and an ILW dual trigger', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };
+
+    const para = await app.inject({
+      method: 'POST', url: '/api/products/evaluate-parametric', headers: auth,
+      payload: { cover: { perilType: 'eq', index: { source: 'MOCK_USGS', metric: 'magnitude' }, payout: { type: 'BINARY', trigger: 7.0, payoutMinor: 100_000_000 } }, observed: 7.1 },
+    });
+    expect(para.statusCode).toBe(200);
+    expect(para.json().payoutMinor).toBe(100_000_000);
+
+    const ilw = await app.inject({
+      method: 'POST', url: '/api/products/evaluate-ilw', headers: auth,
+      payload: { ilw: { structure: 'BINARY', basis: 'OCCURRENCE', peril: 'US wind', industryTriggerMinor: 2_000_000_000_000, limitMinor: 10_000_000_000, warrantyMinOwnLossMinor: 500_000_000 }, industryLossMinor: 2_500_000_000_000, ownLossMinor: 600_000_000 },
+    });
+    expect(ilw.statusCode).toBe(200);
+    expect(ilw.json().triggered).toBe(true);
+    expect(ilw.json().payoutMinor).toBe(10_000_000_000);
+  });
 });

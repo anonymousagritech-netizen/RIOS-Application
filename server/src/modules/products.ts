@@ -9,7 +9,10 @@
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { PRODUCT_LIFECYCLE, applyEvent, availableTransitions } from '@rios/domain';
+import {
+  PRODUCT_LIFECYCLE, applyEvent, availableTransitions,
+  evaluateParametric, evaluateIlw, type ParametricCover, type Ilw,
+} from '@rios/domain';
 import { runAs } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
@@ -22,6 +25,27 @@ const productSchema = z.object({
 });
 
 export async function productsModule(app: FastifyInstance): Promise<void> {
+  // Parametric (index-trigger) product evaluation: given a cover definition and
+  // an observed index value, compute the deterministic payout. Pure calc, no DB.
+  app.post('/api/products/evaluate-parametric', { preHandler: requirePermission('product:read') }, async (req, reply) => {
+    const body = req.body as { cover?: ParametricCover; observed?: number };
+    if (!body?.cover || typeof body.observed !== 'number') {
+      reply.code(400);
+      return { error: 'cover and observed (number) are required' };
+    }
+    return evaluateParametric(body.cover, body.observed);
+  });
+
+  // Industry Loss Warranty evaluation with the dual (industry + own-loss) trigger.
+  app.post('/api/products/evaluate-ilw', { preHandler: requirePermission('product:read') }, async (req, reply) => {
+    const body = req.body as { ilw?: Ilw; industryLossMinor?: number; ownLossMinor?: number };
+    if (!body?.ilw || typeof body.industryLossMinor !== 'number' || typeof body.ownLossMinor !== 'number') {
+      reply.code(400);
+      return { error: 'ilw, industryLossMinor and ownLossMinor (numbers) are required' };
+    }
+    return evaluateIlw(body.ilw, body.industryLossMinor, body.ownLossMinor);
+  });
+
   // List products, annotating each with the lifecycle actions available from its state.
   app.get('/api/products', { preHandler: requirePermission('product:read') }, async (req) => {
     const ctx = authContext(req);
