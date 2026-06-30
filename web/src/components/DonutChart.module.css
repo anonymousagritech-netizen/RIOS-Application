@@ -1,0 +1,45 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+.chart { position: relative; width: 160px; height: 160px; flex-shrink: 0; }
+.svg { width: 100%; height: 100%; transform: rotate(0deg); }
+.svg circle { transition: stroke-dasharray var(--motion-slow); }
+
+.center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.centerValue { font-size: var(--text-2xl); font-weight: var(--weight-bold); letter-spacing: -0.02em; color: var(--text); }
+.centerLabel { font-size: var(--text-xs); color: var(--text-muted); }
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.legend li {
+  display: grid;
+  grid-template-columns: 12px 1fr auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+.dot { width: 10px; height: 10px; border-radius: 3px; }
+.legendLabel { color: var(--text); }
+.legendVal { color: var(--text); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.legendPct { color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+
+.empty { font-size: var(--text-sm); color: var(--text-muted); padding: var(--space-6) 0; text-align: center; }

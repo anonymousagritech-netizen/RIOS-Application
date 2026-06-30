@@ -7,7 +7,7 @@ import { useDashboard, useStatusColors } from '../lib/queries';
 import { PageHeader } from '../components/PageHeader';
 import { KpiCard } from '../components/KpiCard';
 import { Card, CardHeader } from '../components/Card';
-import { BarChart } from '../components/BarChart';
+import { DonutChart } from '../components/DonutChart';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { ErrorState } from '../components/Feedback';
@@ -118,13 +118,14 @@ export function DashboardPage() {
               {isLoading ? (
                 <div className={shared.cellSub}>Loading...</div>
               ) : (
-                <BarChart
+                <DonutChart
                   data={(data?.treatiesByStatus ?? []).map((s) => ({
                     label: s.status,
                     value: s.n,
                     status: s.status,
                   }))}
                   metaColors={statusColors}
+                  centerLabel="treaties"
                 />
               )}
             </Card>

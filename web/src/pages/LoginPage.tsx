@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  FileText, ShieldAlert, BookOpen, BarChart3, Users, PiggyBank,
+  Scale, Workflow, Boxes, Calculator, Network, UserRound,
+} from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { Button } from '../components/Button';
 import { TextField } from '../components/Form';
@@ -12,6 +16,21 @@ const DEMO_ACCOUNTS = [
   { email: 'uw@demo.rios', label: 'Underwriter', note: 'Treaty management' },
   { email: 'acct@demo.rios', label: 'Accountant', note: 'Accounting & posting' },
   { email: 'claims@demo.rios', label: 'Claims handler', note: 'Claims' },
+];
+
+const MODULES = [
+  { icon: FileText, label: 'Treaties' },
+  { icon: Calculator, label: 'Pricing' },
+  { icon: ShieldAlert, label: 'Claims' },
+  { icon: BookOpen, label: 'Accounting' },
+  { icon: PiggyBank, label: 'Treasury' },
+  { icon: BarChart3, label: 'Analytics' },
+  { icon: Scale, label: 'Regulatory' },
+  { icon: Workflow, label: 'Workflow' },
+  { icon: Users, label: 'Parties' },
+  { icon: Boxes, label: 'Products' },
+  { icon: UserRound, label: 'HRMS' },
+  { icon: Network, label: 'Integration' },
 ];
 
 export function LoginPage() {
@@ -89,11 +108,18 @@ export function LoginPage() {
             Treaty lifecycle, claims, accounting and configurable workflows - unified in one
             confident, auditable platform.
           </p>
-          <ul className={styles.featureList}>
-            <li>Full treaty lifecycle with booked financial events</li>
-            <li>Reconciled statements of account & GL posting</li>
-            <li>No-code configuration of statuses and code lists</li>
-          </ul>
+          <div className={styles.modulesHead}>
+            <span className={styles.modulesCount}>40+</span>
+            <span>Integrated modules across the reinsurance lifecycle</span>
+          </div>
+          <div className={styles.modulesGrid}>
+            {MODULES.map((m) => (
+              <div key={m.label} className={styles.module}>
+                <span className={styles.moduleIcon}><m.icon size={16} /></span>
+                {m.label}
+              </div>
+            ))}
+          </div>
         </div>
         <p className={styles.brandFoot}>Reinsurance Intelligent Operating System</p>
       </aside>
