@@ -14,6 +14,16 @@ import { treatiesModule } from './modules/treaties.js';
 import { accountingModule } from './modules/accounting.js';
 import { claimsModule } from './modules/claims.js';
 import { assistantModule } from './modules/assistant.js';
+import { facultativeModule } from './modules/facultative.js';
+import { retrocessionModule } from './modules/retrocession.js';
+import { placementModule } from './modules/placement.js';
+import { pricingModule } from './modules/pricing.js';
+import { bordereauxModule } from './modules/bordereaux.js';
+import { exposureModule } from './modules/exposure.js';
+import { statementsModule } from './modules/statements.js';
+import { financeModule } from './modules/finance.js';
+import { regulatoryModule } from './modules/regulatory.js';
+import { automationModule } from './modules/automation.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -103,6 +113,18 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(accountingModule);
   await app.register(claimsModule);
   await app.register(assistantModule);
+  // Reinsurance-core & operations modules
+  await app.register(facultativeModule);
+  await app.register(retrocessionModule);
+  await app.register(placementModule);
+  await app.register(pricingModule);
+  await app.register(bordereauxModule);
+  await app.register(exposureModule);
+  // Accounting, regulatory & automation modules
+  await app.register(statementsModule);
+  await app.register(financeModule);
+  await app.register(regulatoryModule);
+  await app.register(automationModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);

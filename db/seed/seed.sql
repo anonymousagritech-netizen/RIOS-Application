@@ -40,7 +40,28 @@ insert into permission (code, module, action, description) values
   ('accounting:read',  'accounting', 'read',   'View accounting'),
   ('accounting:post',  'accounting', 'post',   'Post journals / generate statements'),
   ('claims:read',      'claims',     'read',   'View claims'),
-  ('claims:write',     'claims',     'write',  'Register / edit claims & reserves')
+  ('claims:write',     'claims',     'write',  'Register / edit claims & reserves'),
+  ('facultative:read', 'facultative','read',   'View facultative business'),
+  ('facultative:write','facultative','write',  'Cede / accept facultative risks'),
+  ('retro:read',       'retrocession','read',  'View retrocession & net position'),
+  ('retro:write',      'retrocession','write', 'Create retrocession contracts'),
+  ('placement:read',   'placement',  'read',   'View slips & market lines'),
+  ('placement:write',  'placement',  'write',  'Author slips, write lines, sign down'),
+  ('pricing:read',     'pricing',    'read',   'View rating runs'),
+  ('pricing:write',    'pricing',    'write',  'Run pricing / rating'),
+  ('bordereaux:read',  'bordereaux', 'read',   'View bordereaux'),
+  ('bordereaux:write', 'bordereaux', 'write',  'Upload / process bordereaux'),
+  ('exposure:read',    'exposure',   'read',   'View exposure & aggregates'),
+  ('exposure:write',   'exposure',   'write',  'Manage accumulations & exposure'),
+  ('statement:read',   'statement',  'read',   'View statements of account'),
+  ('statement:write',  'statement',  'write',  'Generate / progress statements'),
+  ('finance:read',     'finance',    'read',   'View GL / AR / AP / cash'),
+  ('finance:post',     'finance',    'post',   'Record cash / reconcile'),
+  ('regulatory:read',  'regulatory', 'read',   'View IFRS 17 / Solvency II'),
+  ('regulatory:run',   'regulatory', 'run',    'Run regulatory measurements'),
+  ('workflow:read',    'workflow',   'read',   'View workflow / approvals / notifications'),
+  ('workflow:write',   'workflow',   'write',  'Drive workflow & approvals'),
+  ('approval:decide',  'approval',   'decide', 'Approve / reject requests')
 on conflict (code) do nothing;
 
 insert into role (tenant_id, code, name, is_system) values
@@ -108,6 +129,9 @@ on conflict do nothing;
 
 insert into numbering_scheme (tenant_id, key, pattern) values
   (:'tenant_id'::uuid,'treaty_reference','TRTY-{YYYY}-{SEQ:5}'),
+  (:'tenant_id'::uuid,'facultative_reference','FAC-{YYYY}-{SEQ:5}'),
+  (:'tenant_id'::uuid,'retrocession_reference','RETRO-{YYYY}-{SEQ:5}'),
+  (:'tenant_id'::uuid,'slip_reference','SLIP-{YYYY}-{SEQ:5}'),
   (:'tenant_id'::uuid,'claim_reference','CLM-{YYYY}-{SEQ:6}'),
   (:'tenant_id'::uuid,'statement_reference','SOA-{YYYY}-{SEQ:5}')
 on conflict do nothing;
