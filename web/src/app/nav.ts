@@ -83,6 +83,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Integration', to: '/integration', icon: '⇲', permission: 'integration:read' },
       { label: 'Portal', to: '/portal', icon: '◈', permission: 'portal:read' },
       { label: 'Security', to: '/security', icon: '⛨' },
+      { label: 'Retention', to: '/retention', icon: '⧗', permission: 'retention:read' },
+      { label: 'Field Security', to: '/field-security', icon: '◫' },
       { label: 'Admin', to: '/admin', icon: '⚙', permission: 'admin:manage' },
     ],
   },

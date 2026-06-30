@@ -84,7 +84,11 @@ insert into permission (code, module, action, description) values
   ('treasury:read',    'treasury',   'read',   'View investments, treasury & tax levies'),
   ('treasury:write',   'treasury',   'write',  'Manage investments & tax levy configuration'),
   ('risk:read',        'risk',       'read',   'View risk & capital, RDS scenarios'),
-  ('risk:write',       'risk',       'write',  'Manage capital positions & RDS scenarios')
+  ('risk:write',       'risk',       'write',  'Manage capital positions & RDS scenarios'),
+  ('retention:read',   'retention',  'read',   'View retention policies & legal holds'),
+  ('retention:write',  'retention',  'write',  'Manage retention policies & legal holds'),
+  ('pii:view',         'pii',        'view',   'View unmasked PII / sensitive fields'),
+  ('fls:write',        'fls',        'write',  'Manage field-level security policies')
 on conflict (code) do nothing;
 
 insert into role (tenant_id, code, name, is_system) values
@@ -440,6 +444,29 @@ values
   (:'tenant_id'::uuid,'RDS-EU-FLOOD','Northern European Flood','Flood','Europe','USD', 450000000, 250000000),
   (:'tenant_id'::uuid,'RDS-JP-QUAKE','Japanese Earthquake','Earthquake','Japan','USD', 1200000000, 850000000)
 on conflict (tenant_id, code) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Data retention policies & a sample legal hold (§14). The disposition decision
+-- is computed by @rios/domain; a hold always overrides a policy.
+-- ---------------------------------------------------------------------------
+insert into retention_policy (tenant_id, entity_type, retention_days, action, active, note) values
+  (:'tenant_id'::uuid,'claim',        3650,'archive',true,'Claims kept 10 years'),
+  (:'tenant_id'::uuid,'statement',    2555,'archive',true,'Statements kept 7 years'),
+  (:'tenant_id'::uuid,'audit_log',   3650,'archive',true,'Audit retained 10 years'),
+  (:'tenant_id'::uuid,'notification',  365,'purge',  true,'Notifications purged after 1 year')
+on conflict (tenant_id, entity_type) do nothing;
+
+insert into legal_hold (tenant_id, name, reason, entity_type, active)
+values (:'tenant_id'::uuid,'Windstorm litigation hold','Pending coverage dispute on 2026 Atlantic Windstorm','claim',true)
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Field-level security: mask a party's regulatory identifiers unless the viewer
+-- holds pii:view (§14). Masking is computed by @rios/domain.
+-- ---------------------------------------------------------------------------
+insert into field_policy (tenant_id, entity_type, field, classification, required_permission, strategy) values
+  (:'tenant_id'::uuid,'party','identifiers','PII','pii:view','redact')
+on conflict (tenant_id, entity_type, field) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- A catastrophe event and notified claims, so claims analytics & catastrophe
