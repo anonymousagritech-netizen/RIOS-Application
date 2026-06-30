@@ -69,7 +69,15 @@ insert into permission (code, module, action, description) values
   ('crm:read',         'crm',        'read',   'View CRM activity & pipeline'),
   ('crm:write',        'crm',        'write',  'Manage CRM activity & opportunities'),
   ('integration:read', 'integration','read',   'View integrations & exports'),
-  ('integration:write','integration','write',  'Manage webhooks & data import/export')
+  ('integration:write','integration','write',  'Manage webhooks & data import/export'),
+  ('hr:read',          'hr',         'read',   'View HR (employees, departments, leave)'),
+  ('hr:write',         'hr',         'write',  'Manage HR records & approve leave'),
+  ('procurement:read', 'procurement','read',   'View procurement (vendors, POs)'),
+  ('procurement:write','procurement','write',  'Manage requisitions & purchase orders'),
+  ('asset:read',       'asset',      'read',   'View assets, licenses & entitlements'),
+  ('asset:write',      'asset',      'write',  'Manage assets, licenses & entitlements'),
+  ('ops:read',         'ops',        'read',   'View operations, audit & SLA'),
+  ('ops:write',        'ops',        'write',  'Manage SLA targets & operations')
 on conflict (code) do nothing;
 
 insert into role (tenant_id, code, name, is_system) values
@@ -141,7 +149,10 @@ insert into numbering_scheme (tenant_id, key, pattern) values
   (:'tenant_id'::uuid,'retrocession_reference','RETRO-{YYYY}-{SEQ:5}'),
   (:'tenant_id'::uuid,'slip_reference','SLIP-{YYYY}-{SEQ:5}'),
   (:'tenant_id'::uuid,'claim_reference','CLM-{YYYY}-{SEQ:6}'),
-  (:'tenant_id'::uuid,'statement_reference','SOA-{YYYY}-{SEQ:5}')
+  (:'tenant_id'::uuid,'statement_reference','SOA-{YYYY}-{SEQ:5}'),
+  (:'tenant_id'::uuid,'employee_reference','EMP-{SEQ:5}'),
+  (:'tenant_id'::uuid,'requisition_reference','REQ-{YYYY}-{SEQ:5}'),
+  (:'tenant_id'::uuid,'po_reference','PO-{YYYY}-{SEQ:5}')
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
