@@ -26,6 +26,10 @@ import { DocumentsPage } from '../pages/DocumentsPage';
 import { ReportsPage } from '../pages/ReportsPage';
 import { CrmPage } from '../pages/CrmPage';
 import { IntegrationPage } from '../pages/IntegrationPage';
+import { HrmsPage } from '../pages/HrmsPage';
+import { ProcurementPage } from '../pages/ProcurementPage';
+import { AssetsPage } from '../pages/AssetsPage';
+import { OperationsPage } from '../pages/OperationsPage';
 
 export function App() {
   const { status } = useAuth();
@@ -71,6 +75,10 @@ export function App() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/crm" element={<CrmPage />} />
         <Route path="/integration" element={<IntegrationPage />} />
+        <Route path="/hr" element={<HrmsPage />} />
+        <Route path="/procurement" element={<ProcurementPage />} />
+        <Route path="/assets" element={<AssetsPage />} />
+        <Route path="/operations" element={<OperationsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
