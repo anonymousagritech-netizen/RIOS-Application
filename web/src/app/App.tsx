@@ -43,6 +43,7 @@ import { TreasuryPage } from '../pages/TreasuryPage';
 import { RiskCapitalPage } from '../pages/RiskCapitalPage';
 import { SearchPage } from '../pages/SearchPage';
 import { RetentionPage } from '../pages/RetentionPage';
+import { FieldSecurityPage } from '../pages/FieldSecurityPage';
 
 export function App() {
   const { status } = useAuth();
@@ -105,6 +106,7 @@ export function App() {
         <Route path="/risk-capital" element={<RiskCapitalPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/retention" element={<RetentionPage />} />
+        <Route path="/field-security" element={<FieldSecurityPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

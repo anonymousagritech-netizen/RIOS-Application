@@ -86,7 +86,9 @@ insert into permission (code, module, action, description) values
   ('risk:read',        'risk',       'read',   'View risk & capital, RDS scenarios'),
   ('risk:write',       'risk',       'write',  'Manage capital positions & RDS scenarios'),
   ('retention:read',   'retention',  'read',   'View retention policies & legal holds'),
-  ('retention:write',  'retention',  'write',  'Manage retention policies & legal holds')
+  ('retention:write',  'retention',  'write',  'Manage retention policies & legal holds'),
+  ('pii:view',         'pii',        'view',   'View unmasked PII / sensitive fields'),
+  ('fls:write',        'fls',        'write',  'Manage field-level security policies')
 on conflict (code) do nothing;
 
 insert into role (tenant_id, code, name, is_system) values
@@ -457,6 +459,14 @@ on conflict (tenant_id, entity_type) do nothing;
 insert into legal_hold (tenant_id, name, reason, entity_type, active)
 values (:'tenant_id'::uuid,'Windstorm litigation hold','Pending coverage dispute on 2026 Atlantic Windstorm','claim',true)
 on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Field-level security: mask a party's regulatory identifiers unless the viewer
+-- holds pii:view (§14). Masking is computed by @rios/domain.
+-- ---------------------------------------------------------------------------
+insert into field_policy (tenant_id, entity_type, field, classification, required_permission, strategy) values
+  (:'tenant_id'::uuid,'party','identifiers','PII','pii:view','redact')
+on conflict (tenant_id, entity_type, field) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- A catastrophe event and notified claims, so claims analytics & catastrophe
