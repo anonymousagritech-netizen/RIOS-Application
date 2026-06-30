@@ -1,0 +1,286 @@
+-- =============================================================================
+-- RIOS — Seed data: a demonstrable tenant with the vertical slice populated
+-- Brief §24.1 (realistic test data spanning treaty, fac, retro, accounting, claims)
+-- =============================================================================
+-- Idempotent-ish: safe to run on a freshly migrated database. Uses a fixed tenant
+-- id so the demo login and API examples are stable. Passwords are hashed with
+-- pgcrypto bcrypt; the server verifies via crypt() so seed and app agree.
+
+\set tenant_id '11111111-1111-1111-1111-111111111111'
+
+begin;
+
+-- ---------------------------------------------------------------------------
+-- Tenant & users
+-- ---------------------------------------------------------------------------
+insert into tenant (id, code, name, default_currency, default_locale)
+values (:'tenant_id'::uuid, 'demo', 'Demo Reinsurance Co.', 'USD', 'en-US')
+on conflict (id) do nothing;
+
+insert into app_user (tenant_id, email, display_name, password_hash)
+values
+  (:'tenant_id'::uuid, 'admin@demo.rios', 'Demo Administrator', crypt('demo1234', gen_salt('bf'))),
+  (:'tenant_id'::uuid, 'uw@demo.rios',    'Tara Underwood (Treaty UW)', crypt('demo1234', gen_salt('bf'))),
+  (:'tenant_id'::uuid, 'acct@demo.rios',  'Alan Counts (Tech Accountant)', crypt('demo1234', gen_salt('bf'))),
+  (:'tenant_id'::uuid, 'claims@demo.rios','Carla Mims (Claims)', crypt('demo1234', gen_salt('bf')))
+on conflict (tenant_id, email) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Permissions catalog (global) & roles
+-- ---------------------------------------------------------------------------
+insert into permission (code, module, action, description) values
+  ('admin:manage',     'admin',      'manage', 'Full administration & configuration'),
+  ('config:read',      'config',     'read',   'Read configuration / reference data'),
+  ('config:write',     'config',     'write',  'Change configuration / reference data'),
+  ('party:read',       'party',      'read',   'View parties'),
+  ('party:write',      'party',      'write',  'Create / edit parties'),
+  ('treaty:read',      'treaty',     'read',   'View treaties & contracts'),
+  ('treaty:write',     'treaty',     'write',  'Create / edit treaties & contracts'),
+  ('treaty:bind',      'treaty',     'bind',   'Bind a contract (state transition)'),
+  ('accounting:read',  'accounting', 'read',   'View accounting'),
+  ('accounting:post',  'accounting', 'post',   'Post journals / generate statements'),
+  ('claims:read',      'claims',     'read',   'View claims'),
+  ('claims:write',     'claims',     'write',  'Register / edit claims & reserves')
+on conflict (code) do nothing;
+
+insert into role (tenant_id, code, name, is_system) values
+  (:'tenant_id'::uuid, 'ADMIN',   'Administrator', true),
+  (:'tenant_id'::uuid, 'TREATY_UW', 'Treaty Underwriter', true),
+  (:'tenant_id'::uuid, 'ACCOUNTANT', 'Technical Accountant', true),
+  (:'tenant_id'::uuid, 'CLAIMS', 'Claims Handler', true)
+on conflict (tenant_id, code) do nothing;
+
+-- Admin gets everything
+insert into role_permission (tenant_id, role_id, permission)
+select :'tenant_id'::uuid, r.id, p.code
+from role r cross join permission p
+where r.tenant_id = :'tenant_id'::uuid and r.code = 'ADMIN'
+on conflict do nothing;
+
+-- Treaty UW
+insert into role_permission (tenant_id, role_id, permission)
+select :'tenant_id'::uuid, r.id, p.code
+from role r join permission p on p.code in
+  ('config:read','party:read','treaty:read','treaty:write','treaty:bind','accounting:read','claims:read')
+where r.tenant_id = :'tenant_id'::uuid and r.code = 'TREATY_UW'
+on conflict do nothing;
+
+-- Accountant
+insert into role_permission (tenant_id, role_id, permission)
+select :'tenant_id'::uuid, r.id, p.code
+from role r join permission p on p.code in
+  ('config:read','party:read','treaty:read','accounting:read','accounting:post')
+where r.tenant_id = :'tenant_id'::uuid and r.code = 'ACCOUNTANT'
+on conflict do nothing;
+
+-- Claims
+insert into role_permission (tenant_id, role_id, permission)
+select :'tenant_id'::uuid, r.id, p.code
+from role r join permission p on p.code in
+  ('config:read','party:read','treaty:read','claims:read','claims:write','accounting:read')
+where r.tenant_id = :'tenant_id'::uuid and r.code = 'CLAIMS'
+on conflict do nothing;
+
+-- Assign roles to the demo users
+insert into user_role (tenant_id, user_id, role_id)
+select :'tenant_id'::uuid, u.id, r.id from app_user u join role r on r.tenant_id = u.tenant_id
+where u.tenant_id = :'tenant_id'::uuid and (
+  (u.email='admin@demo.rios'  and r.code='ADMIN') or
+  (u.email='uw@demo.rios'     and r.code='TREATY_UW') or
+  (u.email='acct@demo.rios'   and r.code='ACCOUNTANT') or
+  (u.email='claims@demo.rios' and r.code='CLAIMS'))
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Currencies
+-- ---------------------------------------------------------------------------
+insert into currency (tenant_id, code, name, minor_units, symbol) values
+  (:'tenant_id'::uuid,'USD','US Dollar',2,'$'),
+  (:'tenant_id'::uuid,'EUR','Euro',2,'€'),
+  (:'tenant_id'::uuid,'GBP','Pound Sterling',2,'£'),
+  (:'tenant_id'::uuid,'JPY','Japanese Yen',0,'¥')
+on conflict do nothing;
+
+insert into exchange_rate (tenant_id, from_ccy, to_ccy, rate, rate_date) values
+  (:'tenant_id'::uuid,'EUR','USD',1.08,current_date),
+  (:'tenant_id'::uuid,'GBP','USD',1.27,current_date)
+on conflict do nothing;
+
+insert into numbering_scheme (tenant_id, key, pattern) values
+  (:'tenant_id'::uuid,'treaty_reference','TRTY-{YYYY}-{SEQ:5}'),
+  (:'tenant_id'::uuid,'claim_reference','CLM-{YYYY}-{SEQ:6}'),
+  (:'tenant_id'::uuid,'statement_reference','SOA-{YYYY}-{SEQ:5}')
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Code lists (the metadata-driven heart, §10)
+-- ---------------------------------------------------------------------------
+-- helper to insert a list + its values
+create temporary table _cl(key text, name text, code text, label text, sort int, meta jsonb) on commit drop;
+
+insert into _cl values
+  ('contract_status','Contract Status','DRAFT','Draft',1,'{"color":"slate"}'),
+  ('contract_status','Contract Status','QUOTED','Quoted',2,'{"color":"blue"}'),
+  ('contract_status','Contract Status','PLACING','Placing',3,'{"color":"indigo"}'),
+  ('contract_status','Contract Status','BOUND','Bound',4,'{"color":"violet"}'),
+  ('contract_status','Contract Status','ACTIVE','Active',5,'{"color":"green"}'),
+  ('contract_status','Contract Status','EXPIRING','Expiring',6,'{"color":"amber"}'),
+  ('contract_status','Contract Status','RUNOFF','Run-off',7,'{"color":"orange"}'),
+  ('contract_status','Contract Status','RENEWED','Renewed',8,'{"color":"teal"}'),
+  ('contract_status','Contract Status','LAPSED','Lapsed',9,'{"color":"gray"}'),
+  ('contract_status','Contract Status','COMMUTED','Commuted',10,'{"color":"rose"}'),
+  ('contract_status','Contract Status','CANCELLED','Cancelled',11,'{"color":"red"}'),
+  ('claim_status','Claim Status','NOTIFIED','Notified',1,'{"color":"blue"}'),
+  ('claim_status','Claim Status','UNDER_REVIEW','Under Review',2,'{"color":"indigo"}'),
+  ('claim_status','Claim Status','RESERVED','Reserved',3,'{"color":"violet"}'),
+  ('claim_status','Claim Status','PART_PAID','Part-Paid',4,'{"color":"amber"}'),
+  ('claim_status','Claim Status','SETTLED','Settled',5,'{"color":"green"}'),
+  ('claim_status','Claim Status','RECOVERING','Recovering',6,'{"color":"teal"}'),
+  ('claim_status','Claim Status','CLOSED','Closed',7,'{"color":"gray"}'),
+  ('claim_status','Claim Status','REOPENED','Reopened',8,'{"color":"orange"}'),
+  ('line_of_business','Line of Business','PROPERTY','Property',1,'{}'),
+  ('line_of_business','Line of Business','CASUALTY','Casualty',2,'{}'),
+  ('line_of_business','Line of Business','MARINE','Marine',3,'{}'),
+  ('line_of_business','Line of Business','AVIATION','Aviation',4,'{}'),
+  ('line_of_business','Line of Business','ENERGY','Energy',5,'{}'),
+  ('line_of_business','Line of Business','MOTOR','Motor',6,'{}'),
+  ('party_role','Party Role','cedent','Cedent',1,'{}'),
+  ('party_role','Party Role','reinsurer','Reinsurer',2,'{}'),
+  ('party_role','Party Role','retrocessionaire','Retrocessionaire',3,'{}'),
+  ('party_role','Party Role','broker','Broker',4,'{}'),
+  ('party_role','Party Role','coverholder','Coverholder',5,'{}'),
+  ('financial_event_type','Financial Event Type','DEPOSIT_PREMIUM','Deposit Premium',1,'{"dir":"DR"}'),
+  ('financial_event_type','Financial Event Type','INSTALMENT_PREMIUM','Instalment Premium',2,'{"dir":"DR"}'),
+  ('financial_event_type','Financial Event Type','ADJUSTMENT_PREMIUM','Adjustment Premium',3,'{"dir":"DR"}'),
+  ('financial_event_type','Financial Event Type','REINSTATEMENT_PREMIUM','Reinstatement Premium',4,'{"dir":"DR"}'),
+  ('financial_event_type','Financial Event Type','CEDING_COMMISSION','Ceding Commission',5,'{"dir":"CR"}'),
+  ('financial_event_type','Financial Event Type','OVERRIDING_COMMISSION','Overriding Commission',6,'{"dir":"CR"}'),
+  ('financial_event_type','Financial Event Type','PROFIT_COMMISSION','Profit Commission',7,'{"dir":"CR"}'),
+  ('financial_event_type','Financial Event Type','BROKERAGE','Brokerage',8,'{"dir":"CR"}'),
+  ('financial_event_type','Financial Event Type','TAX','Tax',9,'{"dir":"CR"}'),
+  ('financial_event_type','Financial Event Type','PAID_LOSS','Paid Loss',10,'{"dir":"CR"}'),
+  ('financial_event_type','Financial Event Type','RECOVERY','Recovery',11,'{"dir":"DR"}'),
+  ('statement_status','Statement Status','OPEN','Open',1,'{"color":"slate"}'),
+  ('statement_status','Statement Status','PREPARED','Prepared',2,'{"color":"blue"}'),
+  ('statement_status','Statement Status','UNDER_REVIEW','Under Review',3,'{"color":"indigo"}'),
+  ('statement_status','Statement Status','APPROVED','Approved',4,'{"color":"violet"}'),
+  ('statement_status','Statement Status','ISSUED','Issued',5,'{"color":"amber"}'),
+  ('statement_status','Statement Status','SETTLED','Settled',6,'{"color":"green"}'),
+  ('statement_status','Statement Status','CLOSED','Closed',7,'{"color":"gray"}'),
+  ('programme_status','Programme Status','OPEN','Open',1,'{"color":"blue"}'),
+  ('programme_status','Programme Status','BOUND','Bound',2,'{"color":"green"}'),
+  ('programme_status','Programme Status','CLOSED','Closed',3,'{"color":"gray"}');
+
+-- materialise lists
+insert into code_list (tenant_id, key, name, is_system)
+select distinct :'tenant_id'::uuid, key, name, true from _cl
+on conflict (tenant_id, key) do nothing;
+
+insert into code_value (tenant_id, code_list_id, code, label, sort_order, meta)
+select :'tenant_id'::uuid, cl.id, c.code, c.label, c.sort, c.meta
+from _cl c join code_list cl on cl.tenant_id = :'tenant_id'::uuid and cl.key = c.key
+on conflict (code_list_id, code, effective_from) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Parties (one entity can hold several roles — §7 implication)
+-- ---------------------------------------------------------------------------
+insert into party (tenant_id, reference, legal_name, short_name, kind, country, identifiers) values
+  (:'tenant_id'::uuid,'PTY-0001','Atlantic Mutual Insurance Company','Atlantic Mutual','organisation','US','{"naic":"12345"}'),
+  (:'tenant_id'::uuid,'PTY-0002','Helvetia Re AG','Helvetia Re','organisation','CH','{"lei":"5299000ABCDE"}'),
+  (:'tenant_id'::uuid,'PTY-0003','Meridian Reinsurance Brokers Ltd','Meridian Brokers','organisation','GB','{}'),
+  (:'tenant_id'::uuid,'PTY-0004','Coral Bay Captive Ltd','Coral Bay','captive','BM','{}'),
+  (:'tenant_id'::uuid,'PTY-0005','Syndicate 4242','Synd 4242','syndicate','GB','{"lloyds_syndicate":"4242"}')
+on conflict do nothing;
+
+insert into party_role (tenant_id, party_id, role_code)
+select :'tenant_id'::uuid, p.id, r.role_code from party p
+cross join (values ('cedent'),('reinsurer'),('broker')) as r(role_code)
+where p.tenant_id = :'tenant_id'::uuid and (
+  (p.short_name='Atlantic Mutual' and r.role_code='cedent') or
+  (p.short_name='Helvetia Re'     and r.role_code='reinsurer') or
+  (p.short_name='Helvetia Re'     and r.role_code='cedent') or   -- also cedes its own retro
+  (p.short_name='Meridian Brokers' and r.role_code='broker') or
+  (p.short_name='Coral Bay'        and r.role_code='cedent') or
+  (p.short_name='Synd 4242'        and r.role_code='reinsurer'))
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- A sample treaty: Atlantic Mutual property CAT XL, placed via Meridian
+-- ---------------------------------------------------------------------------
+insert into programme (tenant_id, reference, name, cedent_party_id, period_start, period_end, currency, status)
+select :'tenant_id'::uuid,'PRG-2026-001','Atlantic Mutual 2026 Property CAT Programme',
+       p.id, date '2026-01-01', date '2026-12-31','USD','OPEN'
+from party p where p.tenant_id=:'tenant_id'::uuid and p.short_name='Atlantic Mutual'
+on conflict do nothing;
+
+insert into contract (tenant_id, reference, name, contract_kind, basis, np_type, line_of_business,
+                      direction, programme_id, cedent_party_id, broker_party_id, currency,
+                      period_start, period_end, status, wording_ref)
+select :'tenant_id'::uuid,'TRTY-2026-00001','Atlantic Mutual Property CAT XL 2026',
+       'TREATY','NON_PROPORTIONAL','CAT_XL','PROPERTY','INWARDS',
+       prg.id, ced.id, brk.id, 'USD', date '2026-01-01', date '2026-12-31','BOUND','MRC-2026-AMIC-CATXL'
+from programme prg
+  join party ced on ced.tenant_id=:'tenant_id'::uuid and ced.short_name='Atlantic Mutual'
+  join party brk on brk.tenant_id=:'tenant_id'::uuid and brk.short_name='Meridian Brokers'
+where prg.tenant_id=:'tenant_id'::uuid and prg.reference='PRG-2026-001'
+on conflict do nothing;
+
+-- Two XL layers: $5m xs $5m and $10m xs $10m
+insert into contract_layer (tenant_id, contract_id, layer_no, name, currency,
+                            attachment_minor, limit_minor, reinstatements, reinstatement_rates, rate_on_line)
+select :'tenant_id'::uuid, c.id, 1, '$5m xs $5m', 'USD',
+       500000000, 500000000, 1, '[1.0]'::jsonb, 0.10
+from contract c where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+insert into contract_layer (tenant_id, contract_id, layer_no, name, currency,
+                            attachment_minor, limit_minor, reinstatements, reinstatement_rates, rate_on_line)
+select :'tenant_id'::uuid, c.id, 2, '$10m xs $10m', 'USD',
+       1000000000, 1000000000, 2, '[1.0,0.5]'::jsonb, 0.06
+from contract c where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+-- Reinsurer participations on layer 1 (signed down from written)
+insert into participation (tenant_id, contract_id, layer_id, party_id, written_line, signed_line, order_pct, status)
+select :'tenant_id'::uuid, c.id, l.id, re.id, 0.50, 0.40, 1.0, 'SIGNED'
+from contract c
+  join contract_layer l on l.contract_id=c.id and l.layer_no=1
+  join party re on re.tenant_id=:'tenant_id'::uuid and re.short_name='Helvetia Re'
+where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+insert into participation (tenant_id, contract_id, layer_id, party_id, written_line, signed_line, order_pct, status)
+select :'tenant_id'::uuid, c.id, l.id, re.id, 0.75, 0.60, 1.0, 'SIGNED'
+from contract c
+  join contract_layer l on l.contract_id=c.id and l.layer_no=1
+  join party re on re.tenant_id=:'tenant_id'::uuid and re.short_name='Synd 4242'
+where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+-- Term set (deposit premium, reinstatement basis, brokerage)
+insert into term_set (tenant_id, contract_id, terms)
+select :'tenant_id'::uuid, c.id, jsonb_build_object(
+  'estimatedPremiumIncome', 5000000,
+  'depositPremium', 500000,
+  'depositPct', 80,
+  'minimumPct', 90,
+  'brokeragePct', 10,
+  'taxesPct', 0,
+  'reinstatementBasis', 'pro-rata as to time and amount',
+  'currency','USD')
+from contract c where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- A standard GL chart (minimal) for posting demonstrations
+-- ---------------------------------------------------------------------------
+insert into gl_account (tenant_id, code, name, type, is_control) values
+  (:'tenant_id'::uuid,'1100','Reinsurance Debtors (Control)','asset',true),
+  (:'tenant_id'::uuid,'2100','Reinsurance Creditors (Control)','liability',true),
+  (:'tenant_id'::uuid,'4000','Ceded Premium Income','income',false),
+  (:'tenant_id'::uuid,'5000','Commission Expense','expense',false),
+  (:'tenant_id'::uuid,'5100','Claims / Loss Expense','expense',false),
+  (:'tenant_id'::uuid,'1000','Cash at Bank','asset',false)
+on conflict do nothing;
+
+commit;

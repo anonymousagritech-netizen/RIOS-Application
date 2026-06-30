@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rios
+          POSTGRES_PASSWORD: rios
+          POSTGRES_DB: rios
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rios -d rios"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://rios:rios@localhost:5432/rios
+      DATABASE_APP_URL: postgres://rios_app:rios_app@localhost:5432/rios
+      JWT_SECRET: ci-secret-value-at-least-32-characters-long
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck --workspaces --if-present
+
+      - name: Domain unit tests (no DB)
+        run: npm run test --workspace packages/domain
+
+      - name: Apply migrations
+        run: npm run db:migrate
+
+      - name: Seed demo data
+        run: npm run db:seed
+
+      - name: Server integration tests
+        run: npm run test --workspace server
+
+      - name: Build web
+        run: npm run build --workspace web
