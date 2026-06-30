@@ -61,7 +61,15 @@ insert into permission (code, module, action, description) values
   ('regulatory:run',   'regulatory', 'run',    'Run regulatory measurements'),
   ('workflow:read',    'workflow',   'read',   'View workflow / approvals / notifications'),
   ('workflow:write',   'workflow',   'write',  'Drive workflow & approvals'),
-  ('approval:decide',  'approval',   'decide', 'Approve / reject requests')
+  ('approval:decide',  'approval',   'decide', 'Approve / reject requests'),
+  ('documents:read',   'documents',  'read',   'View documents & templates'),
+  ('documents:write',  'documents',  'write',  'Author templates & generate documents'),
+  ('reporting:read',   'reporting',  'read',   'View & run reports'),
+  ('reporting:write',  'reporting',  'write',  'Author report definitions'),
+  ('crm:read',         'crm',        'read',   'View CRM activity & pipeline'),
+  ('crm:write',        'crm',        'write',  'Manage CRM activity & opportunities'),
+  ('integration:read', 'integration','read',   'View integrations & exports'),
+  ('integration:write','integration','write',  'Manage webhooks & data import/export')
 on conflict (code) do nothing;
 
 insert into role (tenant_id, code, name, is_system) values

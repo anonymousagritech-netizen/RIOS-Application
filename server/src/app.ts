@@ -24,6 +24,10 @@ import { statementsModule } from './modules/statements.js';
 import { financeModule } from './modules/finance.js';
 import { regulatoryModule } from './modules/regulatory.js';
 import { automationModule } from './modules/automation.js';
+import { documentsModule } from './modules/documents.js';
+import { reportingModule } from './modules/reporting.js';
+import { crmModule } from './modules/crm.js';
+import { integrationModule } from './modules/integration.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -125,6 +129,11 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(financeModule);
   await app.register(regulatoryModule);
   await app.register(automationModule);
+  // Content, reporting, relationship & integration modules
+  await app.register(documentsModule);
+  await app.register(reportingModule);
+  await app.register(crmModule);
+  await app.register(integrationModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);
