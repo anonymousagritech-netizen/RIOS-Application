@@ -1,0 +1,27 @@
+# RIOS API server image. Build from the repository root:
+#   docker build -f Dockerfile.server -t rios/server .
+FROM node:22-slim AS deps
+WORKDIR /app
+# Copy only manifests first for cached dependency installs across the workspace.
+COPY package.json package-lock.json ./
+COPY packages/domain/package.json packages/domain/
+COPY packages/shared/package.json packages/shared/
+COPY server/package.json server/
+COPY web/package.json web/
+RUN npm ci --no-audit --no-fund
+
+FROM node:22-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=4000
+# Bring in installed node_modules, then the source the server needs at runtime.
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY packages ./packages
+COPY server ./server
+COPY db ./db
+# Run as the unprivileged node user.
+USER node
+EXPOSE 4000
+# Liveness/readiness are served at /live and /ready (see src/observability.ts).
+CMD ["npm", "run", "start", "--workspace", "server"]

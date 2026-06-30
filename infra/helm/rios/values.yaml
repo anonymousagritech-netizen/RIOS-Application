@@ -1,0 +1,68 @@
+# Default values for the RIOS Helm chart.
+# Override per environment: helm install rios ./infra/helm/rios -f prod-values.yaml
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: ghcr.io/your-org
+  server:
+    repository: rios/server
+    tag: "0.1.0"
+  web:
+    repository: rios/web
+    tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+server:
+  replicas: 2
+  port: 4000
+  resources:
+    requests: { cpu: "100m", memory: "256Mi" }
+    limits: { cpu: "500m", memory: "512Mi" }
+  # Migrations run as a pre-install/pre-upgrade Job (see migrate-job.yaml).
+  runMigrationsOnDeploy: true
+
+web:
+  replicas: 2
+  port: 80
+  resources:
+    requests: { cpu: "50m", memory: "64Mi" }
+    limits: { cpu: "200m", memory: "128Mi" }
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+# Database connection. In production point these at a managed PostgreSQL.
+# The owner URL runs migrations; the app URL is the low-privilege RLS role.
+database:
+  url: "postgres://rios:rios@rios-postgres:5432/rios"
+  appUrl: "postgres://rios_app:rios_app@rios-postgres:5432/rios"
+
+# Secrets — supply via --set or a sealed secret in real environments.
+secrets:
+  jwtSecret: "change-me-in-production-at-least-32-characters"
+  anthropicApiKey: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  host: rios.example.com
+  tls:
+    enabled: true
+    secretName: rios-tls
+  annotations: {}
+
+# Prometheus scrape of the API /metrics endpoint.
+metrics:
+  enabled: true
+  path: /metrics
+  port: 4000
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000

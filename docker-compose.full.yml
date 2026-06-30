@@ -1,0 +1,65 @@
+# Full-stack RIOS for local/integration: db + redis + migrated API + web.
+# Usage:
+#   docker compose -f docker-compose.full.yml up --build
+# Then open http://localhost:8080 and log in with admin@demo.rios / demo1234 / demo.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: rios
+      POSTGRES_PASSWORD: rios
+      POSTGRES_DB: rios
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rios -d rios"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - rios_pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+
+  # One-shot: apply migrations + seed, then exit.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    environment:
+      DATABASE_URL: postgres://rios:rios@db:5432/rios
+      DATABASE_APP_URL: postgres://rios_app:rios_app@db:5432/rios
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-c", "npm run migrate --workspace server && npm run seed --workspace server"]
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: postgres://rios:rios@db:5432/rios
+      DATABASE_APP_URL: postgres://rios_app:rios_app@db:5432/rios
+      JWT_SECRET: compose-only-secret-change-me-32-characters
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:4000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+
+volumes:
+  rios_pgdata:

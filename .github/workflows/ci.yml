@@ -43,6 +43,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck --workspaces --if-present
 
+      - name: Dependency audit (high severity)
+        run: npm audit --audit-level=high || true
+
       - name: Domain unit tests (no DB)
         run: npm run test --workspace packages/domain
 
@@ -57,3 +60,58 @@ jobs:
 
       - name: Build web
         run: npm run build --workspace web
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rios
+          POSTGRES_PASSWORD: rios
+          POSTGRES_DB: rios
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rios -d rios"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://rios:rios@localhost:5432/rios
+      DATABASE_APP_URL: postgres://rios_app:rios_app@localhost:5432/rios
+      JWT_SECRET: ci-secret-value-at-least-32-characters-long
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Install e2e deps + browser
+        run: |
+          npm --prefix e2e ci || npm --prefix e2e install
+          npx --prefix e2e playwright install --with-deps chromium
+      - name: Migrate + seed
+        run: npm run db:migrate && npm run db:seed
+      - name: Run e2e (boots API + web, runs Playwright)
+        run: |
+          unset RIOS_CHROMIUM   # use Playwright's own browser in CI
+          bash e2e/run.sh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+
+  images:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build server image
+        run: docker build -f Dockerfile.server -t rios/server:ci .
+      - name: Build web image
+        run: docker build -f Dockerfile.web -t rios/web:ci .

@@ -1,0 +1,31 @@
+{{- if .Values.server.runMigrationsOnDeploy }}
+# Runs database migrations + (first-time) seed before the app rolls out.
+# Helm hook so it completes ahead of the Deployment, on install and upgrade.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "rios.fullname" . }}-migrate
+  labels: {{- include "rios.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {{- include "rios.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "rios.serverImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "rios.fullname" . }}-config
+            - secretRef:
+                name: {{ include "rios.fullname" . }}-secrets
+          command: ["npm", "run", "migrate", "--workspace", "server"]
+{{- end }}
