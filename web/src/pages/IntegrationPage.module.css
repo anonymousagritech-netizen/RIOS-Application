@@ -1,0 +1,35 @@
+.tabBar { padding: 0 var(--space-4); }
+.tabBody { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-5); }
+
+.panelGrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); align-items: start; }
+
+.panel { display: flex; flex-direction: column; gap: var(--space-4); }
+.panelActions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+
+.eventTypes { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.result {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-size: var(--text-sm);
+}
+.resultErrors { margin: var(--space-2) 0 0; padding-left: var(--space-4); font-size: var(--text-xs); color: var(--text-muted); }
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 360px;
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+@media (max-width: 900px) {
+  .panelGrid { grid-template-columns: 1fr; }
+}
