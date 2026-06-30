@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Menu, Search, Sparkles, ChevronDown, LogOut } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { initials } from '../lib/format';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -29,16 +30,18 @@ export function TopBar({ onOpenPalette, onOpenAssistant, onToggleNav }: TopBarPr
 
   return (
     <header className={styles.bar}>
-      <button className={styles.menuBtn} onClick={onToggleNav} aria-label="Toggle navigation">≡</button>
+      <button className={styles.menuBtn} onClick={onToggleNav} aria-label="Toggle navigation">
+        <Menu size={20} />
+      </button>
 
       <button className={styles.search} onClick={onOpenPalette}>
-        <span className={styles.searchIcon} aria-hidden>⌕</span>
-        <span className={styles.searchText}>Search treaties, parties…</span>
+        <Search className={styles.searchIcon} size={16} aria-hidden />
+        <span className={styles.searchText}>Search treaties, parties...</span>
         <kbd className={styles.kbd}>{isMac ? '⌘' : 'Ctrl'} K</kbd>
       </button>
 
       <div className={styles.actions}>
-        <Button variant="subtle" size="sm" onClick={onOpenAssistant} icon={<span aria-hidden>✦</span>}>
+        <Button variant="subtle" size="sm" onClick={onOpenAssistant} icon={<Sparkles size={16} />}>
           Assistant
         </Button>
         <ThemeToggle />
@@ -51,7 +54,7 @@ export function TopBar({ onOpenPalette, onOpenAssistant, onToggleNav }: TopBarPr
           >
             <span className={styles.avatar} aria-hidden>{initials(user?.displayName)}</span>
             <span className={styles.userName}>{user?.displayName}</span>
-            <span className={styles.chev} aria-hidden>▾</span>
+            <ChevronDown className={styles.chev} size={15} aria-hidden />
           </button>
           {menuOpen && (
             <div className={styles.menu} role="menu">
@@ -65,7 +68,7 @@ export function TopBar({ onOpenPalette, onOpenAssistant, onToggleNav }: TopBarPr
                 </div>
               ) : null}
               <button className={styles.menuItem} onClick={logout} role="menuitem">
-                Sign out
+                <LogOut size={15} /> Sign out
               </button>
             </div>
           )}
