@@ -60,6 +60,8 @@ import { devPortalModule } from './modules/devportal.js';
 import { kmsModule } from './modules/kms.js';
 import { securityOpsModule } from './modules/securityOps.js';
 import { samlModule } from './modules/saml.js';
+import { intelligenceModule } from './modules/intelligence.js';
+import { mobileModule } from './modules/mobile.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -218,6 +220,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(kmsModule);
   await app.register(securityOpsModule);
   await app.register(samlModule);
+  await app.register(intelligenceModule);
+  await app.register(mobileModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);

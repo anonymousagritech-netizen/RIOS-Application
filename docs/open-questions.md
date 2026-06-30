@@ -154,6 +154,22 @@ lifecycle are exercised by the server test-suite.
 - **Backup/DR** — the run **catalog** (markers, status, restore points) is real and
   tested; the actual snapshot/restore is driven by the **DB/infra layer**, not the app.
 
+## 13. AI & channels: real reasoning, external sensors (§5, §9.4, §9.11)
+
+- **OCR / document intelligence** — deterministic **field extraction from text** is
+  implemented and tested; the **image/PDF → text** step is an external OCR engine.
+- **Voice assistant** — a transcript is normalised and routed through the existing
+  deterministic assistant; **speech-to-text and text-to-speech** are captured
+  on-device / by a managed speech service.
+- **AI prediction & insights** — renewal-likelihood scoring is a **transparent,
+  unit-tested heuristic** (no black box); an optional LLM may narrate it.
+- **AI generation** — executive summaries are produced by **template-merge over live
+  KPIs**; the optional LLM layer (already wired for the assistant) can elaborate.
+- **Mobile portal** — a condensed projection + PWA manifest served to the responsive
+  web client; a **native shell** is out of scope.
+- Still genuinely deferred: **WebAuthn** (needs an authenticator), and the
+  **API Marketplace** (brief §26 marks it ▷ later-phase).
+
 ## Assumptions
 
 - This is a **foundation/vertical-slice**, intended to prove correctness, security, audit, and the

@@ -15,6 +15,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Dashboard', to: '/dashboard', icon: '◧' },
       { label: 'Search', to: '/search', icon: '⌕' },
+      { label: 'Intelligence', to: '/intelligence', icon: '✶' },
+      { label: 'Mobile', to: '/mobile', icon: '▯' },
     ],
   },
   {
