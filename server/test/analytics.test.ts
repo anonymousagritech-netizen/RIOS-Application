@@ -73,6 +73,21 @@ describe('Catastrophe analytics', () => {
     expect(ws.claimCount).toBe(2);
   });
 
+  it('forecasts a metric series with a linear trend', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };
+    const res = await app.inject({
+      method: 'POST', url: '/api/analytics/forecast', headers: auth,
+      payload: { series: [10, 20, 30, 40], periods: 2, method: 'linear' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().fit.slope).toBeCloseTo(10, 6);
+    expect(res.json().forecast).toEqual([
+      { index: 4, value: 50 },
+      { index: 5, value: 60 },
+    ]);
+  });
+
   it('computes AAL and a PML profile from a supplied ELT', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };

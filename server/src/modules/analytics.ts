@@ -16,6 +16,10 @@ import {
   averageAnnualLoss,
   exceedanceCurve,
   pmlProfile,
+  movingAverage,
+  linearRegression,
+  linearTrendForecast,
+  smoothedForecast,
   type Measure,
   type EltEvent,
 } from '@rios/domain';
@@ -87,6 +91,14 @@ const pivotSchema = z.object({
     agg: z.enum(['sum', 'count', 'avg', 'min', 'max']),
     as: z.string().optional(),
   })).min(1),
+});
+
+const forecastSchema = z.object({
+  series: z.array(z.number()).min(2),
+  periods: z.number().int().positive().max(60).default(3),
+  method: z.enum(['linear', 'smoothing']).default('linear'),
+  alpha: z.number().min(0).max(1).default(0.5),
+  maWindow: z.number().int().positive().max(24).optional(),
 });
 
 const eltSchema = z.object({
@@ -179,6 +191,26 @@ export async function analyticsModule(app: FastifyInstance): Promise<void> {
       averageAnnualLossMinor: averageAnnualLoss(elt),
       exceedanceCurve: exceedanceCurve(elt),
       pmlProfile: pmlProfile(elt, parsed.data.returnPeriods),
+    };
+  });
+
+  // Forecast a metric series forward (linear trend or exponential smoothing).
+  app.post('/api/analytics/forecast', { preHandler: requirePermission('reporting:read') }, async (req, reply) => {
+    const parsed = forecastSchema.safeParse(req.body);
+    if (!parsed.success) {
+      reply.code(400);
+      return { error: 'Invalid forecast request', details: parsed.error.flatten() };
+    }
+    const { series, periods, method, alpha, maWindow } = parsed.data;
+    const fit = linearRegression(series);
+    const forecast = method === 'smoothing'
+      ? Array.from({ length: periods }, (_, k) => ({ index: series.length + k, value: smoothedForecast(series, alpha) }))
+      : linearTrendForecast(series, periods);
+    return {
+      method,
+      fit,
+      forecast,
+      trailingAverage: maWindow ? movingAverage(series, maWindow) : undefined,
     };
   });
 }
