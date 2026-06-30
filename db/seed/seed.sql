@@ -398,4 +398,42 @@ insert into gl_account (tenant_id, code, name, type, is_control) values
   (:'tenant_id'::uuid,'1000','Cash at Bank','asset',false)
 on conflict do nothing;
 
+-- ---------------------------------------------------------------------------
+-- A catastrophe event and notified claims, so claims analytics & catastrophe
+-- summaries have real data to aggregate (§13). Claims are independent of the
+-- financial_event/statement reconciliation chain the integration tests assert.
+-- ---------------------------------------------------------------------------
+insert into cat_event (tenant_id, event_code, name, peril, region, event_date, status) values
+  (:'tenant_id'::uuid,'WS-2026-ATLANTIC','2026 Atlantic Windstorm','Windstorm','North Atlantic', date '2026-03-14','OPEN')
+on conflict (tenant_id, event_code) do nothing;
+
+insert into claim (tenant_id, reference, contract_id, cat_event_id, description, loss_date,
+                   currency, gross_loss_minor, outstanding_minor, paid_minor, status)
+select :'tenant_id'::uuid, 'CLM-2026-000001', c.id, ce.id,
+       'Windstorm property damage — coastal portfolio', date '2026-03-14',
+       'USD', 750000000, 500000000, 250000000, 'RESERVED'
+from contract c
+  join cat_event ce on ce.tenant_id=:'tenant_id'::uuid and ce.event_code='WS-2026-ATLANTIC'
+where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+insert into claim (tenant_id, reference, contract_id, cat_event_id, description, loss_date,
+                   currency, gross_loss_minor, outstanding_minor, paid_minor, status)
+select :'tenant_id'::uuid, 'CLM-2026-000002', c.id, ce.id,
+       'Windstorm — secondary surge losses', date '2026-03-15',
+       'USD', 320000000, 320000000, 0, 'NOTIFIED'
+from contract c
+  join cat_event ce on ce.tenant_id=:'tenant_id'::uuid and ce.event_code='WS-2026-ATLANTIC'
+where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+insert into claim (tenant_id, reference, contract_id, description, loss_date,
+                   currency, gross_loss_minor, outstanding_minor, paid_minor, status)
+select :'tenant_id'::uuid, 'CLM-2026-000003', c.id,
+       'Attritional fire loss', date '2026-02-02',
+       'USD', 90000000, 0, 90000000, 'SETTLED'
+from contract c
+where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
 commit;

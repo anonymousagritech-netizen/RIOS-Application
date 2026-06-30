@@ -16,3 +16,5 @@ export * from './solvency2.js';
 export * from './payroll.js';
 export * from './workflow.js';
 export * from './rules.js';
+export * from './analytics.js';
+export * from './catastrophe.js';
