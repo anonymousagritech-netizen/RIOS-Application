@@ -32,6 +32,11 @@ import { hrmsModule } from './modules/hrms.js';
 import { procurementModule } from './modules/procurement.js';
 import { assetsModule } from './modules/assets.js';
 import { operationsModule } from './modules/operations.js';
+import { treatyAdjustmentsModule } from './modules/treatyAdjustments.js';
+import { claimsAdvancedModule } from './modules/claimsAdvanced.js';
+import { payrollModule } from './modules/payroll.js';
+import { periodCloseModule } from './modules/periodClose.js';
+import { regulatoryAdvancedModule } from './modules/regulatoryAdvanced.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -143,6 +148,12 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(procurementModule);
   await app.register(assetsModule);
   await app.register(operationsModule);
+  // Depth modules (treaty adjustments, claims, payroll, period-close, regulatory)
+  await app.register(treatyAdjustmentsModule);
+  await app.register(claimsAdvancedModule);
+  await app.register(payrollModule);
+  await app.register(periodCloseModule);
+  await app.register(regulatoryAdvancedModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);
