@@ -19,17 +19,17 @@ import styles from './IntegrationPage.module.css';
 interface Subscription {
   id: string;
   url: string;
-  event_types: string[];
-  is_active: boolean;
-  created_at: string;
+  eventTypes: string[];
+  isActive: boolean;
+  createdAt: string;
 }
 interface SubscriptionsResponse { subscriptions: Subscription[]; }
 interface Delivery {
   id: string;
-  event_type: string;
+  eventType: string;
   status: string;
   attempts: number;
-  created_at: string;
+  createdAt: string;
 }
 interface DeliveriesResponse { deliveries: Delivery[]; }
 interface EmitResponse { enqueued: number; }
@@ -128,23 +128,23 @@ function WebhooksTab() {
       key: 'events', header: 'Event types',
       render: (s) => (
         <div className={styles.eventTypes}>
-          {s.event_types.length
-            ? s.event_types.map((e) => <Badge key={e} color="indigo">{e}</Badge>)
+          {s.eventTypes?.length
+            ? s.eventTypes.map((e) => <Badge key={e} color="indigo">{e}</Badge>)
             : <span className={shared.cellSub}>—</span>}
         </div>
       ),
     },
     {
-      key: 'active', header: 'Active', sortValue: (s) => (s.is_active ? 1 : 0),
-      render: (s) => <StatusPill status={s.is_active ? 'ACTIVE' : 'DISABLED'} metaColors={{ ACTIVE: 'green', DISABLED: 'slate' }} />,
+      key: 'active', header: 'Active', sortValue: (s) => (s.isActive ? 1 : 0),
+      render: (s) => <StatusPill status={s.isActive ? 'ACTIVE' : 'DISABLED'} metaColors={{ ACTIVE: 'green', DISABLED: 'slate' }} />,
     },
-    { key: 'created', header: 'Created', sortValue: (s) => s.created_at, render: (s) => formatDateTime(s.created_at) },
+    { key: 'created', header: 'Created', sortValue: (s) => s.createdAt, render: (s) => formatDateTime(s.createdAt) },
     {
       key: 'actions', header: '', align: 'right',
       render: (s) => (
         <div onClick={(e) => e.stopPropagation()} className={styles.panelActions} style={{ justifyContent: 'flex-end' }}>
           <Button size="sm" variant="ghost" onClick={() => setSelected(s)}>Deliveries</Button>
-          {canWrite && s.is_active && <DisableCell sub={s} />}
+          {canWrite && s.isActive && <DisableCell sub={s} />}
         </div>
       ),
     },
@@ -153,7 +153,7 @@ function WebhooksTab() {
   return (
     <>
       <div style={{ padding: 'var(--space-4) var(--space-5) 0' }} className={shared.toolbar}>
-        <span className={shared.cellSub}>{data?.subscriptions.length ?? 0} subscription{(data?.subscriptions.length ?? 0) === 1 ? '' : 's'}</span>
+        <span className={shared.cellSub}>{data?.subscriptions?.length ?? 0} subscription{(data?.subscriptions?.length ?? 0) === 1 ? '' : 's'}</span>
         <div className={shared.spacer} />
         {canWrite && (
           <>
@@ -314,10 +314,10 @@ function DeliveriesModal({ subscription, onClose }: { subscription: Subscription
   const { data, isLoading } = useDeliveries(subscription?.id ?? null);
 
   const columns: Column<Delivery>[] = [
-    { key: 'event', header: 'Event', sortValue: (d) => d.event_type, render: (d) => <span className={shared.cellMain}>{d.event_type}</span> },
+    { key: 'event', header: 'Event', sortValue: (d) => d.eventType, render: (d) => <span className={shared.cellMain}>{d.eventType}</span> },
     { key: 'status', header: 'Status', sortValue: (d) => d.status, render: (d) => <StatusPill status={d.status} /> },
     { key: 'attempts', header: 'Attempts', align: 'right', sortValue: (d) => d.attempts, render: (d) => d.attempts },
-    { key: 'created', header: 'Created', sortValue: (d) => d.created_at, render: (d) => formatDateTime(d.created_at) },
+    { key: 'created', header: 'Created', sortValue: (d) => d.createdAt, render: (d) => formatDateTime(d.createdAt) },
   ];
 
   return (
