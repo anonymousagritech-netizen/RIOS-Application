@@ -64,6 +64,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Regulatory', to: '/regulatory', icon: '§', permission: 'regulatory:read' },
       { label: 'Returns', to: '/returns', icon: '⊟', permission: 'regulatory:read' },
       { label: 'Workflow', to: '/workflow', icon: '◉', permission: 'workflow:read' },
+      { label: 'Delegation', to: '/delegation', icon: '⇄' },
       { label: 'Designer', to: '/designer', icon: '✦', permission: 'config:read' },
     ],
   },
@@ -72,6 +73,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'People', to: '/hr', icon: '☻', permission: 'hr:read' },
       { label: 'Payroll', to: '/payroll', icon: '⊡', permission: 'hr:read' },
+      { label: 'Performance', to: '/performance', icon: '★', permission: 'hr:read' },
       { label: 'Procurement', to: '/procurement', icon: '⊞', permission: 'procurement:read' },
       { label: 'Assets', to: '/assets', icon: '▢', permission: 'asset:read' },
     ],
