@@ -80,7 +80,9 @@ insert into permission (code, module, action, description) values
   ('asset:write',      'asset',      'write',  'Manage assets, licenses & entitlements'),
   ('ops:read',         'ops',        'read',   'View operations, audit & SLA'),
   ('ops:write',        'ops',        'write',  'Manage SLA targets & operations'),
-  ('portal:read',      'portal',     'read',   'Access an external counterparty portal')
+  ('portal:read',      'portal',     'read',   'Access an external counterparty portal'),
+  ('treasury:read',    'treasury',   'read',   'View investments, treasury & tax levies'),
+  ('treasury:write',   'treasury',   'write',  'Manage investments & tax levy configuration')
 on conflict (code) do nothing;
 
 insert into role (tenant_id, code, name, is_system) values
@@ -397,6 +399,29 @@ insert into gl_account (tenant_id, code, name, type, is_control) values
   (:'tenant_id'::uuid,'5100','Claims / Loss Expense','expense',false),
   (:'tenant_id'::uuid,'1000','Cash at Bank','asset',false)
 on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Treasury: an investment portfolio backing reserves, and a premium-tax /
+-- levy stack (§9, §13). Valuations & levy maths live in @rios/domain.
+-- ---------------------------------------------------------------------------
+insert into investment_holding (tenant_id, portfolio, name, instrument_type, currency,
+                                face_value_minor, book_value_minor, market_value_minor, coupon_rate, maturity_date)
+values
+  (:'tenant_id'::uuid,'GENERAL','US Treasury 2.5% 2029','BOND','USD',
+     500000000, 498000000, 505000000, 0.025, date '2029-05-15'),
+  (:'tenant_id'::uuid,'GENERAL','Corporate Bond AA 4.2% 2031','BOND','USD',
+     300000000, 300000000, 294000000, 0.042, date '2031-03-01'),
+  (:'tenant_id'::uuid,'GENERAL','3-month T-Bill','BILL','USD',
+     200000000, 199000000, 199500000, 0.0480, date '2026-09-30'),
+  (:'tenant_id'::uuid,'GENERAL','Money Market Fund','FUND','USD',
+     0, 150000000, 150000000, null, null)
+on conflict do nothing;
+
+insert into tax_levy (tenant_id, code, name, jurisdiction, rate, basis, active) values
+  (:'tenant_id'::uuid,'PREM_TAX','Premium Tax','US', 0.0500,'premium',true),
+  (:'tenant_id'::uuid,'FET','Federal Excise Tax','US', 0.0100,'premium',true),
+  (:'tenant_id'::uuid,'STAMP','Stamp Duty','GB', 0.0050,'premium',true)
+on conflict (tenant_id, code) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- A catastrophe event and notified claims, so claims analytics & catastrophe
