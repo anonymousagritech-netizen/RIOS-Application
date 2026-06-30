@@ -16,6 +16,8 @@ jobs:
     env:
       DATABASE_URL: postgres://rios:rios@localhost:5432/rios
       DATABASE_APP_URL: postgres://rios_app:rios_app@localhost:5432/rios
+      # 0008 reads this to create the rios_app role; keep it matching the URL above.
+      RIOS_APP_DB_PASSWORD: rios_app
       JWT_SECRET: ci-secret-value-at-least-32-characters-long
 
     steps:
@@ -64,6 +66,8 @@ jobs:
     env:
       DATABASE_URL: postgres://rios:rios@localhost:5432/rios
       DATABASE_APP_URL: postgres://rios_app:rios_app@localhost:5432/rios
+      # 0008 reads this to create the rios_app role; keep it matching the URL above.
+      RIOS_APP_DB_PASSWORD: rios_app
       JWT_SECRET: ci-secret-value-at-least-32-characters-long
     steps:
       - uses: actions/checkout@v4
