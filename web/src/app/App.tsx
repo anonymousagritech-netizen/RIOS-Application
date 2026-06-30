@@ -48,6 +48,9 @@ import { SchedulerPage } from '../pages/SchedulerPage';
 import { DelegationPage } from '../pages/DelegationPage';
 import { PerformancePage } from '../pages/PerformancePage';
 import { ProductsPage } from '../pages/ProductsPage';
+import { CompaniesPage } from '../pages/CompaniesPage';
+import { FeaturesPage } from '../pages/FeaturesPage';
+import { CostPage } from '../pages/CostPage';
 
 export function App() {
   const { status } = useAuth();
@@ -115,6 +118,9 @@ export function App() {
         <Route path="/delegation" element={<DelegationPage />} />
         <Route path="/performance" element={<PerformancePage />} />
         <Route path="/products" element={<ProductsPage />} />
+        <Route path="/organisation" element={<CompaniesPage />} />
+        <Route path="/features" element={<FeaturesPage />} />
+        <Route path="/cost" element={<CostPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
