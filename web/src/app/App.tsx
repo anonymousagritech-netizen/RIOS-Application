@@ -56,6 +56,8 @@ import { IntegrationHubPage } from '../pages/IntegrationHubPage';
 import { SecurityOpsPage } from '../pages/SecurityOpsPage';
 import { IntelligencePage } from '../pages/IntelligencePage';
 import { MobilePage } from '../pages/MobilePage';
+import { MarketplacePage } from '../pages/MarketplacePage';
+import { AutomationStudioPage } from '../pages/AutomationStudioPage';
 
 export function App() {
   const { status } = useAuth();
@@ -131,6 +133,8 @@ export function App() {
         <Route path="/security-ops" element={<SecurityOpsPage />} />
         <Route path="/intelligence" element={<IntelligencePage />} />
         <Route path="/mobile" element={<MobilePage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/automation-studio" element={<AutomationStudioPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

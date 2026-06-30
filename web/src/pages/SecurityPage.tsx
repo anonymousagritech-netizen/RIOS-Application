@@ -84,6 +84,76 @@ export function SecurityPage() {
           )}
         </div>
       </Card>
+
+      <PasskeysCard />
     </>
+  );
+}
+
+interface Passkey { id: string; label?: string | null; signCount: number; createdAt: string }
+
+function b64uToBuf(s: string): ArrayBuffer {
+  const pad = s.length % 4 === 0 ? '' : '='.repeat(4 - (s.length % 4));
+  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/') + pad);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+function bufToB64u(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function PasskeysCard() {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['passkeys'], queryFn: () => api<{ credentials: Passkey[] }>('/api/auth/webauthn/credentials') });
+  const [busy, setBusy] = useState(false);
+
+  const register = async () => {
+    if (!('credentials' in navigator) || !window.PublicKeyCredential) { toast.error('This browser does not support passkeys.'); return; }
+    setBusy(true);
+    try {
+      const opts = await api<{ challenge: string; rp: { name: string; id: string }; user: { id: string; name: string; displayName: string }; pubKeyCredParams: { type: string; alg: number }[] }>('/api/auth/webauthn/register/begin', { body: {} });
+      const cred = await navigator.credentials.create({
+        publicKey: {
+          challenge: b64uToBuf(opts.challenge),
+          rp: { name: opts.rp.name },
+          user: { id: new TextEncoder().encode(opts.user.id), name: opts.user.name, displayName: opts.user.displayName },
+          pubKeyCredParams: opts.pubKeyCredParams as PublicKeyCredentialParameters[],
+          timeout: 60000, attestation: 'none',
+        },
+      }) as PublicKeyCredential | null;
+      if (!cred) throw new Error('cancelled');
+      const resp = cred.response as AuthenticatorAttestationResponse;
+      await api('/api/auth/webauthn/register/finish', { body: { credentialId: bufToB64u(cred.rawId), publicKey: bufToB64u(resp.getPublicKey?.() ?? new ArrayBuffer(0)), label: 'Passkey' } });
+      toast.success('Passkey registered'); qc.invalidateQueries({ queryKey: ['passkeys'] });
+    } catch {
+      toast.error('Passkey registration was cancelled or unavailable.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = useMutation({
+    mutationFn: (id: string) => api(`/api/auth/webauthn/credentials/${id}`, { method: 'POST' }),
+    onSuccess: () => { toast.success('Passkey removed'); qc.invalidateQueries({ queryKey: ['passkeys'] }); },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not remove'),
+  });
+
+  return (
+    <Card>
+      <CardHeader title="Passkeys (WebAuthn)" subtitle="Sign in with a device passkey or security key." actions={<Badge color="slate">{q.data?.credentials.length ?? 0}</Badge>} />
+      <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-4)', maxWidth: 560 }}>
+        {(q.data?.credentials ?? []).map((c) => (
+          <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--space-2)' }}>
+            <span className={shared.cellMain}>{c.label ?? 'Passkey'}</span>
+            <Button variant="ghost" onClick={() => remove.mutate(c.id)} loading={remove.isPending}>Remove</Button>
+          </div>
+        ))}
+        <div><Button variant="primary" onClick={register} loading={busy}>Register a passkey</Button></div>
+      </div>
+    </Card>
   );
 }

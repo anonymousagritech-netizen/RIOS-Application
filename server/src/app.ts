@@ -62,6 +62,10 @@ import { securityOpsModule } from './modules/securityOps.js';
 import { samlModule } from './modules/saml.js';
 import { intelligenceModule } from './modules/intelligence.js';
 import { mobileModule } from './modules/mobile.js';
+import { webauthnModule } from './modules/webauthn.js';
+import { marketplaceModule } from './modules/marketplace.js';
+import { automationStudioModule } from './modules/automationStudio.js';
+import { assistantEvalModule } from './modules/assistantEval.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -222,6 +226,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(samlModule);
   await app.register(intelligenceModule);
   await app.register(mobileModule);
+  await app.register(webauthnModule);
+  await app.register(marketplaceModule);
+  await app.register(automationStudioModule);
+  await app.register(assistantEvalModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);
