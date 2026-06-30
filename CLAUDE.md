@@ -45,6 +45,8 @@ Useful: `npm run db:migrate`, `npm run db:seed`, `npm run build`, `npm run typec
 | `uw@demo.rios` | TREATY_UW | read config/parties, write+bind treaties, read accounting/claims |
 | `acct@demo.rios` | ACCOUNTANT | read; post accounting (no treaty write) |
 | `claims@demo.rios` | CLAIMS | read; write claims |
+| `broker@demo.rios` | PORTAL | broker portal — only its own party's contracts/statements/claims |
+| `cedent@demo.rios` | PORTAL | cedent portal — only its own party's contracts/statements/claims |
 
 ```bash
 curl -s localhost:4000/api/auth/login -H 'content-type: application/json' \

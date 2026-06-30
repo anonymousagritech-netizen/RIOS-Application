@@ -39,6 +39,7 @@ import { payrollModule } from './modules/payroll.js';
 import { periodCloseModule } from './modules/periodClose.js';
 import { regulatoryAdvancedModule } from './modules/regulatoryAdvanced.js';
 import { securityModule } from './modules/security.js';
+import { portalsModule } from './modules/portals.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -176,6 +177,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(periodCloseModule);
   await app.register(regulatoryAdvancedModule);
   await app.register(securityModule);
+  await app.register(portalsModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);
