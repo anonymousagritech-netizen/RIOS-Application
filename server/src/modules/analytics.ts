@@ -23,8 +23,9 @@ import {
   type Measure,
   type EltEvent,
 } from '@rios/domain';
-import { runAs } from '../db.js';
+import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
+import { writeAudit } from '../audit.js';
 
 /**
  * Each source declares a fixed SELECT (already aliased to camelCase flat keys),
@@ -83,6 +84,37 @@ const SOURCES: Record<string, {
   },
 };
 
+/**
+ * Validate a pivot request against the source whitelist and run it. Returns the
+ * result or a typed error — shared by the ad-hoc pivot and saved reports.
+ */
+async function executePivot(
+  db: Db, source: string, dimensions: string[], measures: Measure[],
+): Promise<{ error: string; status: number } | { result: Record<string, unknown> }> {
+  const src = SOURCES[source];
+  if (!src) return { error: `Unknown source "${source}"`, status: 404 };
+  const dimSet = new Set(src.dimensions.map((d) => d.key));
+  const measSet = new Set(src.measures.map((m) => m.field));
+  const badDim = dimensions.find((d) => !dimSet.has(d));
+  if (badDim) return { error: `Dimension "${badDim}" is not available on ${source}`, status: 422 };
+  const badMeasure = measures.find((m) => m.agg !== 'count' && (!m.field || !measSet.has(m.field)));
+  if (badMeasure) return { error: `Measure field "${badMeasure.field}" is not available on ${source}`, status: 422 };
+  const { rows } = await db.query(src.sql);
+  return { result: { source, dimensions, cells: pivot(rows, dimensions, measures), totals: totals(rows, measures), factCount: rows.length } };
+}
+
+const reportSchema = z.object({
+  key: z.string().min(1),
+  name: z.string().min(1),
+  source: z.string().min(1),
+  dimensions: z.array(z.string()).default([]),
+  measures: z.array(z.object({
+    field: z.string().optional(),
+    agg: z.enum(['sum', 'count', 'avg', 'min', 'max']),
+    as: z.string().optional(),
+  })).min(1),
+});
+
 const pivotSchema = z.object({
   source: z.string(),
   dimensions: z.array(z.string()).default([]),
@@ -129,33 +161,10 @@ export async function analyticsModule(app: FastifyInstance): Promise<void> {
       reply.code(400);
       return { error: 'Invalid pivot request', details: parsed.error.flatten() };
     }
-    const src = SOURCES[parsed.data.source];
-    if (!src) {
-      reply.code(404);
-      return { error: `Unknown source "${parsed.data.source}"` };
-    }
-    const dimSet = new Set(src.dimensions.map((d) => d.key));
-    const measSet = new Set(src.measures.map((m) => m.field));
-    const badDim = parsed.data.dimensions.find((d) => !dimSet.has(d));
-    if (badDim) {
-      reply.code(422);
-      return { error: `Dimension "${badDim}" is not available on ${parsed.data.source}` };
-    }
-    const measures = parsed.data.measures as Measure[];
-    const badMeasure = measures.find((m) => m.agg !== 'count' && (!m.field || !measSet.has(m.field)));
-    if (badMeasure) {
-      reply.code(422);
-      return { error: `Measure field "${badMeasure.field}" is not available on ${parsed.data.source}` };
-    }
     return runAs(ctx, async (db) => {
-      const { rows } = await db.query(src.sql);
-      return {
-        source: parsed.data.source,
-        dimensions: parsed.data.dimensions,
-        cells: pivot(rows, parsed.data.dimensions, measures),
-        totals: totals(rows, measures),
-        factCount: rows.length,
-      };
+      const out = await executePivot(db, parsed.data.source, parsed.data.dimensions, parsed.data.measures as Measure[]);
+      if ('error' in out) { reply.code(out.status); return { error: out.error }; }
+      return out.result;
     });
   });
 
@@ -213,4 +222,70 @@ export async function analyticsModule(app: FastifyInstance): Promise<void> {
       trailingAverage: maWindow ? movingAverage(series, maWindow) : undefined,
     };
   });
+
+  // --- Report Designer: saved report definitions over the fact sources ---
+
+  // List the latest version of every saved report.
+  app.get('/api/analytics/reports', { preHandler: requirePermission('reporting:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query(
+        `select distinct on (key) key, version, status, body->>'name' as name, body
+           from config_document where kind = 'report'
+          order by key, version desc`,
+      );
+      return { reports: rows };
+    });
+  });
+
+  // Save a report definition (validated against the source whitelist), published.
+  app.post('/api/analytics/reports', { preHandler: requirePermission('reporting:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const parsed = reportSchema.safeParse(req.body);
+    if (!parsed.success) {
+      reply.code(400);
+      return { error: 'Invalid report', details: parsed.error.flatten() };
+    }
+    const def = parsed.data;
+    const src = SOURCES[def.source];
+    if (!src) { reply.code(422); return { error: `Unknown source "${def.source}"` }; }
+    return runAs(ctx, async (db) => {
+      const next = await db.query<{ v: number }>(
+        `select coalesce(max(version),0)+1 as v from config_document where kind = 'report' and key = $1`, [def.key],
+      );
+      await db.query(`update config_document set status='archived' where kind='report' and key=$1 and status='published'`, [def.key]);
+      const { rows } = await db.query<{ id: string }>(
+        `insert into config_document (tenant_id, kind, key, version, status, body, created_by)
+         values ($1,'report',$2,$3,'published',$4,$5) returning id`,
+        [ctx.tenantId, def.key, next.rows[0]!.v, JSON.stringify(def), ctx.userId],
+      );
+      await writeAudit(db, ctx, {
+        action: 'publish', entityType: 'config_document:report', entityId: rows[0]!.id,
+        after: { key: def.key, version: next.rows[0]!.v }, actorLabel: req.auth?.displayName,
+      });
+      reply.code(201);
+      return { id: rows[0]!.id, key: def.key, version: next.rows[0]!.v };
+    });
+  });
+
+  // Run a saved report: load its definition and execute the pivot.
+  app.post<{ Params: { key: string } }>(
+    '/api/analytics/reports/:key/run',
+    { preHandler: requirePermission('reporting:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{ body: { source: string; dimensions: string[]; measures: Measure[] } }>(
+          `select body from config_document where kind='report' and key=$1
+            order by (status='published') desc, version desc limit 1`,
+          [req.params.key],
+        );
+        if (!rows[0]) { reply.code(404); return { error: 'Report not found' }; }
+        const def = rows[0].body;
+        const out = await executePivot(db, def.source, def.dimensions ?? [], def.measures);
+        if ('error' in out) { reply.code(out.status); return { error: out.error }; }
+        return { key: req.params.key, ...out.result };
+      });
+    },
+  );
 }
