@@ -1,0 +1,108 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
+import { Button } from '../components/Button';
+import { TextField } from '../components/Form';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { ApiError } from '../lib/api';
+import styles from './LoginPage.module.css';
+
+const DEMO_ACCOUNTS = [
+  { email: 'admin@demo.rios', label: 'Administrator', note: 'All permissions' },
+  { email: 'uw@demo.rios', label: 'Underwriter', note: 'Treaty management' },
+  { email: 'acct@demo.rios', label: 'Accountant', note: 'Accounting & posting' },
+  { email: 'claims@demo.rios', label: 'Claims handler', note: 'Claims' },
+];
+
+export function LoginPage() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('admin@demo.rios');
+  const [password, setPassword] = useState('demo1234');
+  const [tenantCode, setTenantCode] = useState('demo');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await login(email, password, tenantCode);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to sign in. Check your credentials.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const quickFill = (e: string) => {
+    setEmail(e);
+    setPassword('demo1234');
+    setTenantCode('demo');
+  };
+
+  return (
+    <div className={styles.wrap}>
+      <div className={styles.themeToggle}><ThemeToggle /></div>
+
+      <aside className={styles.brandPanel}>
+        <div className={styles.brandTop}>
+          <span className={styles.logo} aria-hidden>R</span>
+          <span className={styles.brandName}>RIOS</span>
+        </div>
+        <div className={styles.brandBody}>
+          <h1 className={styles.tagline}>The reinsurance operating system for modern carriers.</h1>
+          <p className={styles.blurb}>
+            Treaty lifecycle, claims, accounting and configurable workflows — unified in one
+            confident, auditable platform.
+          </p>
+          <ul className={styles.featureList}>
+            <li>Full treaty lifecycle with booked financial events</li>
+            <li>Reconciled statements of account & GL posting</li>
+            <li>No-code configuration of statuses and code lists</li>
+          </ul>
+        </div>
+        <p className={styles.brandFoot}>Reinsurance Intelligent Operating System</p>
+      </aside>
+
+      <main className={styles.formPanel}>
+        <form className={styles.card} onSubmit={submit}>
+          <h2 className={styles.title}>Sign in</h2>
+          <p className={styles.subtitle}>Use a demo account below or enter your credentials.</p>
+
+          <div className={styles.fields}>
+            <TextField label="Email" type="email" value={email} onChange={setEmail} required />
+            <TextField label="Password" type="password" value={password} onChange={setPassword} required />
+            <TextField label="Tenant code" value={tenantCode} onChange={setTenantCode} required />
+          </div>
+
+          {error && <p className={styles.error} role="alert">{error}</p>}
+
+          <Button type="submit" variant="primary" size="lg" loading={busy} className={styles.submit}>
+            Sign in
+          </Button>
+
+          <div className={styles.divider}><span>Quick-fill demo accounts</span></div>
+
+          <div className={styles.demoGrid}>
+            {DEMO_ACCOUNTS.map((a) => (
+              <button
+                type="button"
+                key={a.email}
+                className={`${styles.demo} ${email === a.email ? styles.demoActive : ''}`}
+                onClick={() => quickFill(a.email)}
+              >
+                <strong>{a.label}</strong>
+                <span className={styles.demoEmail}>{a.email}</span>
+                <span className={styles.demoNote}>{a.note}</span>
+              </button>
+            ))}
+          </div>
+          <p className={styles.hint}>All demo passwords are <code>demo1234</code>, tenant <code>demo</code>.</p>
+        </form>
+      </main>
+    </div>
+  );
+}
