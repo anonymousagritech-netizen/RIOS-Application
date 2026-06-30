@@ -637,4 +637,30 @@ insert into identity_provider (tenant_id, key, name, type, issuer, enabled)
 values (:'tenant_id'::uuid,'okta-saml','Okta (SAML)','saml','https://demo.okta.com', true)
 on conflict (tenant_id, key) do nothing;
 
+-- ---------------------------------------------------------------------------
+-- API marketplace catalog and a sample automation flow (§26).
+-- ---------------------------------------------------------------------------
+insert into marketplace_listing (tenant_id, key, name, category, publisher, description, version) values
+  (:'tenant_id'::uuid,'acord-connector','ACORD Messaging Connector','Integration','RIOS','Map ACORD EBOT/ECOT messages to financial events.','1.2.0'),
+  (:'tenant_id'::uuid,'verisk-cat','Verisk Cat Model Link','Analytics','RIOS','Pull modelled PML/AAL from a Verisk account.','0.9.0'),
+  (:'tenant_id'::uuid,'docusign-esign','DocuSign e-Signature','Documents','RIOS','Send generated documents for signature.','2.0.0'),
+  (:'tenant_id'::uuid,'slack-alerts','Slack Alerts','Notifications','RIOS','Post approvals and SLA breaches to Slack.','1.0.0')
+on conflict (tenant_id, key) do nothing;
+
+insert into marketplace_install (tenant_id, listing_key, enabled)
+values (:'tenant_id'::uuid,'slack-alerts', true)
+on conflict (tenant_id, listing_key) do nothing;
+
+-- An automation flow: when a treaty is bound, run the bind-guard rule set.
+insert into config_document (tenant_id, kind, key, version, status, body)
+values (:'tenant_id'::uuid,'automation','treaty.bind.autocheck',1,'published', jsonb_build_object(
+  'key','treaty.bind.autocheck',
+  'name','Treaty bind auto-check',
+  'trigger', jsonb_build_object('eventType','treaty.bound'),
+  'ruleSetKey','treaty.bind.guards',
+  'actions', jsonb_build_array(
+    jsonb_build_object('type','notify','target','underwriting'),
+    jsonb_build_object('type','publish','target','event:treaty.checked'))))
+on conflict (tenant_id, kind, key, version) do nothing;
+
 commit;

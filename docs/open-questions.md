@@ -170,6 +170,25 @@ lifecycle are exercised by the server test-suite.
 - Still genuinely deferred: **WebAuthn** (needs an authenticator), and the
   **API Marketplace** (brief §26 marks it ▷ later-phase).
 
+## 14. WebAuthn, marketplace, automation, eval — mechanics built (§14.1, §26, §5)
+
+- **WebAuthn / passkeys** — the registration & authentication **ceremonies**
+  (challenge issuance, credential registry, sign-count, allow-lists) are
+  implemented and tested, and the browser client runs `navigator.credentials`.
+  Full **attestation/assertion signature verification** still needs a WebAuthn
+  library + a real authenticator — wired at deployment.
+- **API marketplace** — a working catalog + per-tenant install lifecycle (the
+  brief §26 marks the marketplace ▷ later-phase; the install plumbing is real,
+  the listed third-party apps are illustrative).
+- **AI Automation Studio** — composes the existing rules engine + event bus
+  (trigger → rule set → actions), evaluated live; not a second engine.
+- **Assistant evaluation** — a real, reproducible prompt-suite regression check
+  on the deterministic intent engine.
+
+With this, every §26 catalog item is delivered as a working, tested slice or has
+its external boundary documented above; nothing in the catalog is silently
+omitted.
+
 ## Assumptions
 
 - This is a **foundation/vertical-slice**, intended to prove correctness, security, audit, and the
