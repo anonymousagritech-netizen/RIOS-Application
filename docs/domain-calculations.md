@@ -346,3 +346,35 @@ reconcilable (§16, §20).
   exposure rating** (§7.2, §7.8) are not yet in the domain library - see [open-questions.md](./open-questions.md).
 - Reinstatement rate selection uses a simple cumulative-fraction index; complex tiered reinstatement
   schedules may need richer modelling.
+
+---
+
+## Recent additions (reinsurance core depth, HRMS, parametric)
+
+These pure functions live in `packages/domain/src/` and are unit-tested with
+hand-worked examples (run `npm test --workspace packages/domain`).
+
+- **Commission** (`commission.ts`): flat ceding, sliding-scale (provisional vs
+  final, loss-ratio bands), overriding (broker) and brokerage. Profit commission
+  with deficit carry-forward and sliding scale also exist in `proportional.ts`.
+- **Rating** (`rating.ts`): burning-cost rate, exposure-curve interpolation,
+  Increased Limit Factors (ILF), premium-at-limit, rate-on-line inverse, and a
+  catastrophe loss load applying a modeled AAL/PML to a layer. (Burning cost and
+  exposure rating also exist in `pricing.ts`.)
+- **XL structures** (`xlStructures.ts`): per-risk, per-occurrence/cat, aggregate
+  XL / stop loss with an Annual Aggregate Deductible, whole-account stop loss in
+  loss-ratio terms, and reinstatement capacity. Built on `nonproportional.ts`.
+- **Stochastic simulation** (`simulation.ts`): a deterministic (seeded) Monte
+  Carlo engine - Poisson frequency, lognormal/Pareto severity - applied through a
+  layer structure, returning mean, std-dev, VaR and TVaR at p95/p99, plus a
+  compare-structures view using common random numbers.
+- **Parametric & ILW** (`parametric.ts`): parametric payout evaluation (binary,
+  stepped, linear capped at limit) and Industry Loss Warranty evaluation with the
+  standard dual trigger (industry index AND minimum own loss); BINARY pays the
+  full limit, INDEMNITY pays `min(own loss, limit)`. Surfaced via
+  `/api/products/evaluate-parametric` and `/api/products/evaluate-ilw`.
+- **Geofence** (`geofence.ts`): haversine distance and a radius+buffer geofence
+  check, used by attendance punch validation.
+
+> The earlier note that swing/burning-cost and exposure rating "are not yet in
+> the domain library" is superseded - both exist (`pricing.ts`, `rating.ts`).
