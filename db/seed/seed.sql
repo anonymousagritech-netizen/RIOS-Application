@@ -469,6 +469,16 @@ insert into field_policy (tenant_id, entity_type, field, classification, require
 on conflict (tenant_id, entity_type, field) do nothing;
 
 -- ---------------------------------------------------------------------------
+-- Scheduled jobs (§3). Next-run/due decisions are computed by @rios/domain.
+-- ---------------------------------------------------------------------------
+insert into scheduled_job (tenant_id, key, name, job_type, interval_minutes, enabled, next_run_at) values
+  (:'tenant_id'::uuid,'statement-sweep','Statement sweep','statement_sweep', 1440, true, now()),
+  (:'tenant_id'::uuid,'retention-scan','Retention eligibility scan','retention_scan', 1440, true, now()),
+  (:'tenant_id'::uuid,'fx-refresh','FX rate refresh','fx_refresh', 60, true, now()),
+  (:'tenant_id'::uuid,'audit-archive','Audit archive','audit_archive', 10080, false, null)
+on conflict (tenant_id, key) do nothing;
+
+-- ---------------------------------------------------------------------------
 -- A catastrophe event and notified claims, so claims analytics & catastrophe
 -- summaries have real data to aggregate (§13). Claims are independent of the
 -- financial_event/statement reconciliation chain the integration tests assert.
