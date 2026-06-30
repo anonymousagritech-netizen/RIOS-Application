@@ -1,0 +1,29 @@
+# Render Blueprint for the RIOS backend (Fastify API).
+# Deploy: New → Blueprint → point at this repo. Then set the two DATABASE_* vars
+# to your Neon connection strings (see DEPLOY.md). JWT_SECRET is auto-generated.
+services:
+  - type: web
+    name: rios-server
+    runtime: node
+    plan: starter            # 'free' spins down on idle; 'starter' stays warm
+    branch: main
+    buildCommand: npm ci
+    # Migrations run before every deploy; the demo seed is a one-time manual step
+    # (run `npm run db:seed` once from the Render Shell) — not re-run on deploy.
+    preDeployCommand: npm run db:migrate
+    startCommand: npm run start --workspace server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true   # Render generates a strong secret
+      - key: DATABASE_URL      # Neon DIRECT endpoint (owner; migrations/login)
+        sync: false            # set in the dashboard
+      - key: DATABASE_APP_URL  # Neon POOLED endpoint (app role; RLS queries)
+        sync: false
+      # Optional: enable the LLM-backed assistant
+      # - key: ANTHROPIC_API_KEY
+      #   sync: false
