@@ -50,6 +50,27 @@ describe('Pivot / data warehouse', () => {
     expect(ws!.values.gross).toBe(1070000000);
   });
 
+  it('saves a report definition and runs it', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };
+    const save = await app.inject({
+      method: 'POST', url: '/api/analytics/reports', headers: auth,
+      payload: {
+        key: 'claims-by-status', name: 'Claims by status', source: 'claim',
+        dimensions: ['status'], measures: [{ field: 'grossLossMinor', agg: 'sum', as: 'gross' }, { agg: 'count' }],
+      },
+    });
+    expect(save.statusCode).toBe(201);
+
+    const list = await app.inject({ method: 'GET', url: '/api/analytics/reports', headers: auth });
+    expect(list.json().reports.some((r: { key: string }) => r.key === 'claims-by-status')).toBe(true);
+
+    const run = await app.inject({ method: 'POST', url: '/api/analytics/reports/claims-by-status/run', headers: auth });
+    expect(run.statusCode).toBe(200);
+    expect(run.json().cells.length).toBeGreaterThan(0);
+    expect(run.json().source).toBe('claim');
+  });
+
   it('rejects a dimension outside the source whitelist', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };

@@ -88,7 +88,9 @@ insert into permission (code, module, action, description) values
   ('retention:read',   'retention',  'read',   'View retention policies & legal holds'),
   ('retention:write',  'retention',  'write',  'Manage retention policies & legal holds'),
   ('pii:view',         'pii',        'view',   'View unmasked PII / sensitive fields'),
-  ('fls:write',        'fls',        'write',  'Manage field-level security policies')
+  ('fls:write',        'fls',        'write',  'Manage field-level security policies'),
+  ('product:read',     'product',    'read',   'View insurance products'),
+  ('product:write',    'product',    'write',  'Author products & drive lifecycle')
 on conflict (code) do nothing;
 
 insert into role (tenant_id, code, name, is_system) values
@@ -511,6 +513,18 @@ select :'tenant_id'::uuid, e.id, 'FY2026','in_review',
   3.83,'meets','Strong technical year; develop leadership exposure.'
 from employee e where e.tenant_id=:'tenant_id'::uuid and e.employee_no='EMP-90001'
 on conflict (tenant_id, employee_id, period) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Insurance products (§14). Lifecycle driven by @rios/domain PRODUCT_LIFECYCLE.
+-- ---------------------------------------------------------------------------
+insert into insurance_product (tenant_id, code, name, line_of_business, version, status, definition) values
+  (:'tenant_id'::uuid,'PROP-CAT-XL','Property Catastrophe XL','PROPERTY',1,'ACTIVE',
+    '{"basis":"NON_PROPORTIONAL","npType":"CAT_XL","reinstatements":2}'::jsonb),
+  (:'tenant_id'::uuid,'MARINE-QS','Marine Quota Share','MARINE',1,'DRAFT',
+    '{"basis":"PROPORTIONAL","proportionalType":"QUOTA_SHARE","cededShare":0.4}'::jsonb),
+  (:'tenant_id'::uuid,'CAS-XL','Casualty Per-Risk XL','CASUALTY',1,'SUSPENDED',
+    '{"basis":"NON_PROPORTIONAL","npType":"PER_RISK_XL"}'::jsonb)
+on conflict (tenant_id, code, version) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- A catastrophe event and notified claims, so claims analytics & catastrophe

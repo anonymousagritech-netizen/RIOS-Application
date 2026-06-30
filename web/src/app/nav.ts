@@ -25,6 +25,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Retrocession', to: '/retrocession', icon: '⇄', permission: 'retro:read' },
       { label: 'Placement', to: '/placement', icon: '✎', permission: 'placement:read' },
       { label: 'Pricing', to: '/pricing', icon: '⊿', permission: 'pricing:read' },
+      { label: 'Products', to: '/products', icon: '❖', permission: 'product:read' },
       { label: 'Adjustments', to: '/adjustments', icon: '⇅', permission: 'treaty:read' },
     ],
   },

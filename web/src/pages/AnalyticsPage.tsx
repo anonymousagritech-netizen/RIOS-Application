@@ -7,8 +7,10 @@
  */
 
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api, ApiError } from '../lib/api';
+import { useAuth } from '../lib/auth';
+import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
 import { KpiCard } from '../components/KpiCard';
@@ -32,12 +34,13 @@ export function AnalyticsPage() {
       <PageHeader title="Analytics" description="Pivot the data warehouse and model catastrophe loss — built on pure, reconcilable engines." />
       <Card>
         <Tabs
-          tabs={[{ id: 'pivot', label: 'Data warehouse' }, { id: 'cat', label: 'Catastrophe' }, { id: 'forecast', label: 'Forecast' }]}
+          tabs={[{ id: 'pivot', label: 'Data warehouse' }, { id: 'reports', label: 'Reports' }, { id: 'cat', label: 'Catastrophe' }, { id: 'forecast', label: 'Forecast' }]}
           active={tab}
           onChange={setTab}
         />
         <div style={{ padding: 'var(--space-5)' }}>
           {tab === 'pivot' && <PivotBuilder />}
+          {tab === 'reports' && <ReportsConsole />}
           {tab === 'cat' && <CatConsole />}
           {tab === 'forecast' && <ForecastConsole />}
         </div>
@@ -285,6 +288,116 @@ function ForecastConsole() {
             rowKey={(p) => String(p.index)}
           />
         </>
+      )}
+    </div>
+  );
+}
+
+/* ----------------------------- Reports ----------------------------- */
+
+interface SavedReport { key: string; name: string; body: { source: string; dimensions: string[]; measures: { field?: string; agg: string; as?: string }[] } }
+
+function ReportsConsole() {
+  const { hasPermission } = useAuth();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const canWrite = hasPermission('reporting:write');
+  const sources = useQuery({ queryKey: ['analytics-sources'], queryFn: () => api<{ sources: SourceMeta[] }>('/api/analytics/sources') });
+  const reports = useQuery({ queryKey: ['analytics-reports'], queryFn: () => api<{ reports: SavedReport[] }>('/api/analytics/reports') });
+
+  const [name, setName] = useState('');
+  const [sourceKey, setSourceKey] = useState('claim');
+  const [dimension, setDimension] = useState('');
+  const [measureField, setMeasureField] = useState('');
+  const [result, setResult] = useState<PivotResult | null>(null);
+
+  const source = sources.data?.sources.find((s) => s.key === sourceKey);
+  const dims = source?.dimensions ?? [];
+  const measures = source?.measures ?? [];
+  const activeDim = dimension || dims[0]?.key || '';
+  const activeMeasure = measureField || measures[0]?.field || '';
+  const keyFromName = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+  const save = useMutation({
+    mutationFn: () => api('/api/analytics/reports', {
+      body: { key: keyFromName, name: name.trim(), source: sourceKey, dimensions: activeDim ? [activeDim] : [], measures: [{ field: activeMeasure, agg: 'sum', as: 'total' }, { agg: 'count' }] },
+    }),
+    onSuccess: () => { toast.success('Report saved'); setName(''); qc.invalidateQueries({ queryKey: ['analytics-reports'] }); },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not save report'),
+  });
+  const run = useMutation({
+    mutationFn: (key: string) => api<PivotResult>(`/api/analytics/reports/${key}/run`, { body: {} }),
+    onSuccess: (r) => setResult(r),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not run report'),
+  });
+
+  if (sources.isLoading || reports.isLoading) return <PageLoader label="Loading reports…" />;
+
+  return (
+    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+      <Card>
+        <CardHeader title="Saved reports" subtitle="Named definitions over the fact sources — run on demand." />
+        <div style={{ padding: 'var(--space-4)' }}>
+          <Table
+            columns={[
+              { key: 'name', header: 'Report', render: (r: SavedReport) => <span className={shared.cellMain}>{r.name}</span> },
+              { key: 'source', header: 'Source', render: (r: SavedReport) => r.body.source },
+              { key: 'dims', header: 'Grouped by', render: (r: SavedReport) => (r.body.dimensions ?? []).join(', ') || '—' },
+              { key: 'act', header: '', align: 'right', render: (r: SavedReport) => <Button variant="primary" onClick={() => run.mutate(r.key)} loading={run.isPending}>Run</Button> },
+            ]}
+            rows={reports.data?.reports}
+            rowKey={(r) => r.key}
+            empty={<EmptyState title="No reports" message="No reports saved yet." />}
+          />
+        </div>
+      </Card>
+
+      {result && (
+        <Card>
+          <CardHeader title="Result" actions={<Badge color="slate">{result.factCount} facts</Badge>} />
+          <div style={{ padding: 'var(--space-4)' }}>
+            <Table
+              columns={[
+                { key: 'k', header: 'Group', render: (c: PivotCell) => <span className={shared.cellMain}>{Object.values(c.key).map(String).join(' · ') || 'All'}</span> },
+                { key: 't', header: 'Total', align: 'right', render: (c: PivotCell) => formatMoney(c.values.total) },
+                { key: 'n', header: 'Facts', align: 'right', render: (c: PivotCell) => formatNumber(c.count) },
+              ]}
+              rows={result.cells}
+              rowKey={(c) => JSON.stringify(c.key)}
+            />
+          </div>
+        </Card>
+      )}
+
+      {canWrite && (
+        <Card>
+          <CardHeader title="Design a report" subtitle="Pick a source, a grouping and a measure, then save it by name." />
+          <div style={{ padding: 'var(--space-5)', display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ minWidth: 200 }}><FormField label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Claims by status" /></FormField></div>
+            <div style={{ minWidth: 160 }}>
+              <FormField label="Source">
+                <Select value={sourceKey} onChange={(e) => { setSourceKey(e.target.value); setDimension(''); setMeasureField(''); }}>
+                  {sources.data?.sources.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                </Select>
+              </FormField>
+            </div>
+            <div style={{ minWidth: 160 }}>
+              <FormField label="Group by">
+                <Select value={activeDim} onChange={(e) => setDimension(e.target.value)}>
+                  {dims.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+                </Select>
+              </FormField>
+            </div>
+            <div style={{ minWidth: 160 }}>
+              <FormField label="Measure (sum)">
+                <Select value={activeMeasure} onChange={(e) => setMeasureField(e.target.value)}>
+                  {measures.map((m) => <option key={m.field} value={m.field}>{m.label}</option>)}
+                </Select>
+              </FormField>
+            </div>
+            <Button variant="primary" onClick={() => save.mutate()} loading={save.isPending} disabled={keyFromName.length < 2}>Save report</Button>
+          </div>
+        </Card>
       )}
     </div>
   );
