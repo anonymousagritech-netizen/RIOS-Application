@@ -4,6 +4,7 @@
  * suite. Both exercise the live engines server-side.
  */
 
+import { CheckCircle2, Hash } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
@@ -103,8 +104,8 @@ function Eval() {
       {result && (
         <>
           <div className={shared.kpiGrid}>
-            <KpiCard label="Score" value={formatPercent(result.score)} accent={result.score >= 0.8 ? 'var(--c-green)' : 'var(--c-amber)'} icon="✓" />
-            <KpiCard label="Passed" value={`${result.passed} / ${result.total}`} icon="≡" />
+            <KpiCard label="Score" value={formatPercent(result.score)} accent={result.score >= 0.8 ? 'var(--c-green)' : 'var(--c-amber)'} icon={<CheckCircle2 size={20} />} />
+            <KpiCard label="Passed" value={`${result.passed} / ${result.total}`} icon={<Hash size={20} />} />
           </div>
           <Table
             columns={[

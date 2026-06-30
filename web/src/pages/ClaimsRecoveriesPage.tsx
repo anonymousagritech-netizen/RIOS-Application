@@ -1,3 +1,4 @@
+import { ArrowRight, HandCoins, Plus, ReceiptText, ShieldAlert, Sigma, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
@@ -232,10 +233,10 @@ function NetPositionKpis({ claimId, fallbackCurrency }: { claimId: string; fallb
   const ccy = data?.currency ?? fallbackCurrency;
   return (
     <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
-      <KpiCard label="Gross loss" value={formatMoney(data?.grossLossMinor, ccy)} loading={isLoading} icon="◬" />
-      <KpiCard label="Paid" value={formatMoney(data?.paidMinor, ccy)} loading={isLoading} icon="→" accent="var(--c-amber)" />
-      <KpiCard label="Recovered" value={formatMoney(data?.recoveredMinor, ccy)} loading={isLoading} icon="←" accent="var(--c-green)" />
-      <KpiCard label="Net retained" value={formatMoney(data?.netMinor, ccy)} loading={isLoading} icon="Σ" />
+      <KpiCard label="Gross loss" value={formatMoney(data?.grossLossMinor, ccy)} loading={isLoading} icon={<ShieldAlert size={20} />} />
+      <KpiCard label="Paid" value={formatMoney(data?.paidMinor, ccy)} loading={isLoading} icon={<ArrowRight size={20} />} accent="var(--c-amber)" />
+      <KpiCard label="Recovered" value={formatMoney(data?.recoveredMinor, ccy)} loading={isLoading} icon={<Undo2 size={20} />} accent="var(--c-green)" />
+      <KpiCard label="Net retained" value={formatMoney(data?.netMinor, ccy)} loading={isLoading} icon={<Sigma size={20} />} />
     </div>
   );
 }
@@ -260,7 +261,7 @@ function RecoveriesTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite: bo
         <CardHeader
           title="Recoveries"
           subtitle="Reinsurance, salvage and subrogation recoveries booked against the claim."
-          actions={canWrite ? <Button size="sm" variant="primary" onClick={() => setShowAdd(true)} icon={<span aria-hidden>+</span>}>Add recovery</Button> : undefined}
+          actions={canWrite ? <Button size="sm" variant="primary" onClick={() => setShowAdd(true)} icon={<Plus size={16} />}>Add recovery</Button> : undefined}
         />
       </div>
       <Table
@@ -268,7 +269,7 @@ function RecoveriesTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite: bo
         rows={recoveries}
         loading={isLoading}
         rowKey={(r) => r.id}
-        empty={<EmptyState title="No recoveries" message="No recoveries have been booked against this claim." icon="←" />}
+        empty={<EmptyState title="No recoveries" message="No recoveries have been booked against this claim." icon={<Undo2 size={16} />} />}
       />
       <AddRecoveryModal claim={claim} open={showAdd} onClose={() => setShowAdd(false)} />
     </>
@@ -377,14 +378,14 @@ function CashCallsTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite: boo
         <CardHeader
           title="Cash calls"
           subtitle="Advances requested against the loss. Calls raised in this session appear below."
-          actions={canWrite ? <Button size="sm" variant="primary" onClick={() => setShowRaise(true)} icon={<span aria-hidden>+</span>}>Raise cash call</Button> : undefined}
+          actions={canWrite ? <Button size="sm" variant="primary" onClick={() => setShowRaise(true)} icon={<Plus size={16} />}>Raise cash call</Button> : undefined}
         />
       </div>
       <Table
         columns={columns}
         rows={calls}
         rowKey={(c) => c.id}
-        empty={<EmptyState title="No cash calls" message="No cash calls have been raised in this session." icon="◇" />}
+        empty={<EmptyState title="No cash calls" message="No cash calls have been raised in this session." icon={<HandCoins size={16} />} />}
       />
       <RaiseCashCallModal
         claim={claim}
@@ -541,7 +542,7 @@ function ReinstatementTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite:
                 columns={chargeColumns}
                 rows={(result.charges ?? []).map((c, idx) => ({ ...c, idx }))}
                 rowKey={(c) => String(c.idx)}
-                empty={<EmptyState title="No charges" message="No reinstatement charges were generated." icon="§" />}
+                empty={<EmptyState title="No charges" message="No reinstatement charges were generated." icon={<ReceiptText size={16} />} />}
               />
               <div style={{ marginTop: 'var(--space-4)' }}>
                 <DefinitionList

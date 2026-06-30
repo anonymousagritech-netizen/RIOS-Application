@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Search, LayoutDashboard, FileText, Users, ShieldAlert, BookOpen, Settings } from 'lucide-react';
 import { api, qs } from '../lib/api';
 import type { TreatiesResponse, PartiesResponse } from '../lib/types';
 import styles from './CommandPalette.module.css';
@@ -12,16 +13,16 @@ interface Item {
   sublabel?: string;
   group: string;
   to: string;
-  icon: string;
+  icon: ReactNode;
 }
 
 const NAV_ITEMS: Item[] = [
-  { id: 'nav-dashboard', label: 'Dashboard', group: 'Navigate', to: '/dashboard', icon: '◧' },
-  { id: 'nav-treaties', label: 'Treaties', group: 'Navigate', to: '/treaties', icon: '▤' },
-  { id: 'nav-parties', label: 'Parties', group: 'Navigate', to: '/parties', icon: '◎' },
-  { id: 'nav-claims', label: 'Claims', group: 'Navigate', to: '/claims', icon: '◬' },
-  { id: 'nav-accounting', label: 'Accounting', group: 'Navigate', to: '/accounting', icon: '$' },
-  { id: 'nav-admin', label: 'Admin', group: 'Navigate', to: '/admin', icon: '⚙' },
+  { id: 'nav-dashboard', label: 'Dashboard', group: 'Navigate', to: '/dashboard', icon: <LayoutDashboard size={16} /> },
+  { id: 'nav-treaties', label: 'Treaties', group: 'Navigate', to: '/treaties', icon: <FileText size={16} /> },
+  { id: 'nav-parties', label: 'Parties', group: 'Navigate', to: '/parties', icon: <Users size={16} /> },
+  { id: 'nav-claims', label: 'Claims', group: 'Navigate', to: '/claims', icon: <ShieldAlert size={16} /> },
+  { id: 'nav-accounting', label: 'Accounting', group: 'Navigate', to: '/accounting', icon: <BookOpen size={16} /> },
+  { id: 'nav-admin', label: 'Admin', group: 'Navigate', to: '/admin', icon: <Settings size={16} /> },
 ];
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -69,7 +70,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         sublabel: `${t.reference} · ${t.cedentName ?? t.contractKind}`,
         group: 'Treaties',
         to: `/treaties/${t.id}`,
-        icon: '▤',
+        icon: <FileText size={16} />,
       }));
     const parties: Item[] = (partySearch.data?.parties ?? [])
       .slice(0, 6)
@@ -79,7 +80,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         sublabel: `${p.reference ?? ''} · ${p.kind}`,
         group: 'Parties',
         to: `/parties/${p.id}`,
-        icon: '◎',
+        icon: <Users size={16} />,
       }));
     return [...nav, ...treaties, ...parties];
   }, [trimmed, treatySearch.data, partySearch.data]);
@@ -112,7 +113,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     <div className={styles.overlay} onMouseDown={onClose}>
       <div className={styles.panel} role="dialog" aria-modal="true" aria-label="Command palette" onMouseDown={(e) => e.stopPropagation()}>
         <div className={styles.searchRow}>
-          <span className={styles.icon} aria-hidden>⌕</span>
+          <Search className={styles.icon} size={18} aria-hidden />
           <input
             ref={inputRef}
             className={styles.input}

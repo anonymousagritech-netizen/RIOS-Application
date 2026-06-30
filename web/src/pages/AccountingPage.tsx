@@ -1,3 +1,4 @@
+import { DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTreaties, useStatusColors } from '../lib/queries';
 import { useAuth } from '../lib/auth';
@@ -57,7 +58,7 @@ export function AccountingPage() {
           loading={isLoading}
           rowKey={(t) => t.id}
           onRowClick={(t) => navigate(`/treaties/${t.id}`)}
-          empty={<EmptyState title="Nothing to post" message="Bind a treaty to generate a statement of account." icon="$" />}
+          empty={<EmptyState title="Nothing to post" message="Bind a treaty to generate a statement of account." icon={<DollarSign size={16} />} />}
         />
       </Card>
     </>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { DollarSign, ArrowLeftRight } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useStatusColors, useCurrencies } from '../lib/queries';
@@ -127,7 +128,7 @@ export function RetrocessionPage() {
           rows={net?.positions}
           loading={netLoading}
           rowKey={(p) => p.currency}
-          empty={<EmptyState title="No net position" message="Bind retrocession protections to see the gross / ceded / net split." icon="$" />}
+          empty={<EmptyState title="No net position" message="Bind retrocession protections to see the gross / ceded / net split." icon={<DollarSign size={16} />} />}
           skeletonRows={3}
         />
       </Card>
@@ -141,7 +142,7 @@ export function RetrocessionPage() {
           rows={data?.treaties}
           loading={isLoading}
           rowKey={(r) => r.id}
-          empty={<EmptyState title="No retrocession contracts" message="Create a new retrocession to protect your net account." icon="▤" />}
+          empty={<EmptyState title="No retrocession contracts" message="Create a new retrocession to protect your net account." icon={<ArrowLeftRight size={16} />} />}
         />
       </Card>
 

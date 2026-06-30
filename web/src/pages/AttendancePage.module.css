@@ -64,8 +64,45 @@
   gap: var(--space-4);
 }
 
+/* ---- Employee workspace widgets ---- */
+.widgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.widget { display: flex; flex-direction: column; gap: var(--space-3); min-height: 150px; }
+.widgetWide { grid-column: span 2; }
+.widgetHead {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-xs); font-weight: var(--weight-bold);
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
+}
+.widgetMeta { font-size: var(--text-sm); color: var(--text-muted); }
+
+.leaveTop { display: flex; align-items: baseline; gap: var(--space-2); }
+.leaveBig { font-size: var(--text-3xl); font-weight: var(--weight-bold); letter-spacing: -0.02em; color: var(--text); }
+.leaveUnit { font-size: var(--text-sm); color: var(--text-muted); text-transform: capitalize; }
+.bar { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.barFill { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent-emerald), var(--accent-cyan)); }
+
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.list li {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-2) 0; border-bottom: 1px solid var(--border);
+}
+.list li:last-child { border-bottom: none; }
+.listMain { font-size: var(--text-sm); color: var(--text); font-weight: var(--weight-medium); }
+.listSub { font-size: var(--text-xs); color: var(--text-muted); white-space: nowrap; }
+
+.annList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.annList li { display: flex; flex-direction: column; gap: 2px; }
+.annTitle { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--text); }
+.annBody { font-size: var(--text-xs); color: var(--text-muted); line-height: var(--leading-normal); }
+
 @media (max-width: 960px) {
   .hero { grid-template-columns: 1fr; }
   .statCol { grid-template-rows: none; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
   .clockValue { font-size: 2.75rem; }
+  .widgetWide { grid-column: span 1; }
 }

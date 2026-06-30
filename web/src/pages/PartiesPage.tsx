@@ -11,6 +11,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
 import { titleCase } from '../lib/format';
+import { Users } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import type { PartyListItem } from '../lib/types';
 import shared from './shared.module.css';
@@ -93,7 +94,7 @@ export function PartiesPage() {
           loading={isLoading}
           rowKey={(p) => p.id}
           onRowClick={(p) => navigate(`/parties/${p.id}`)}
-          empty={<EmptyState title="No parties found" message="Adjust your search or add a new party." icon="◎" />}
+          empty={<EmptyState title="No parties found" message="Adjust your search or add a new party." icon={<Users size={16} />} />}
         />
       </Card>
 

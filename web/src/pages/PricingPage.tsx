@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LineChart } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useCurrencies } from '../lib/queries';
@@ -103,7 +104,7 @@ export function PricingPage() {
           rows={runsData?.runs}
           loading={runsLoading}
           rowKey={(r) => r.id}
-          empty={<EmptyState title="No rating runs" message="Run a burning-cost or exposure rating to populate this list." icon="∿" />}
+          empty={<EmptyState title="No rating runs" message="Run a burning-cost or exposure rating to populate this list." icon={<LineChart size={16} />} />}
           skeletonRows={3}
         />
       </Card>

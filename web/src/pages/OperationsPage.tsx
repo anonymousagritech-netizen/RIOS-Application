@@ -14,6 +14,7 @@ import { Modal } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
 import { ErrorState } from '../components/Feedback';
 import { formatNumber, formatDateTime, titleCase } from '../lib/format';
+import { Database, Clock, AlertTriangle, CheckCircle2, Gauge, ArrowLeftRight } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
 
@@ -142,11 +143,11 @@ function HealthTab() {
 
   return (
     <div className={shared.kpiGrid}>
-      <KpiCard label="Audit events" value={formatNumber(data?.auditEvents)} loading={isLoading} icon="▦" />
-      <KpiCard label="Pending events" value={formatNumber(data?.pendingEvents)} loading={isLoading} icon="◷" accent="var(--c-amber)" />
-      <KpiCard label="Open claims" value={formatNumber(data?.openClaims)} loading={isLoading} icon="◬" accent="var(--c-rose)" />
-      <KpiCard label="Active contracts" value={formatNumber(data?.activeContracts)} loading={isLoading} icon="●" accent="var(--c-green)" />
-      <KpiCard label="SLA targets" value={formatNumber(data?.slaTargets)} loading={isLoading} icon="◎" />
+      <KpiCard label="Audit events" value={formatNumber(data?.auditEvents)} loading={isLoading} icon={<Database size={20} />} />
+      <KpiCard label="Pending events" value={formatNumber(data?.pendingEvents)} loading={isLoading} icon={<Clock size={20} />} accent="var(--c-amber)" />
+      <KpiCard label="Open claims" value={formatNumber(data?.openClaims)} loading={isLoading} icon={<AlertTriangle size={20} />} accent="var(--c-rose)" />
+      <KpiCard label="Active contracts" value={formatNumber(data?.activeContracts)} loading={isLoading} icon={<CheckCircle2 size={20} />} accent="var(--c-green)" />
+      <KpiCard label="SLA targets" value={formatNumber(data?.slaTargets)} loading={isLoading} icon={<Gauge size={20} />} />
     </div>
   );
 }
@@ -226,7 +227,7 @@ function AuditTab() {
         rows={data?.entries}
         loading={isLoading}
         rowKey={(e) => `${e.entityId}-${e.occurredAt ?? ''}-${e.action}`}
-        empty={<EmptyState title="No audit entries" message="No audit activity matches the current filter." icon="▦" />}
+        empty={<EmptyState title="No audit entries" message="No audit activity matches the current filter." icon={<Database size={16} />} />}
       />
     </>
   );
@@ -272,7 +273,7 @@ function EventsTab() {
         rows={data?.events}
         loading={isLoading}
         rowKey={(e) => e.id}
-        empty={<EmptyState title="No events" message="No outbox events match the current filter." icon="⇆" />}
+        empty={<EmptyState title="No events" message="No outbox events match the current filter." icon={<ArrowLeftRight size={16} />} />}
       />
     </>
   );
@@ -304,7 +305,7 @@ function SlaTab({ canWrite }: { canWrite: boolean }) {
         rows={data?.slaTargets}
         loading={isLoading}
         rowKey={(s) => s.id}
-        empty={<EmptyState title="No SLA targets" message="Define a service-level objective to begin tracking." icon="◎" />}
+        empty={<EmptyState title="No SLA targets" message="Define a service-level objective to begin tracking." icon={<Gauge size={16} />} />}
       />
       <NewSlaModal open={creating} onClose={() => setCreating(false)} />
     </>

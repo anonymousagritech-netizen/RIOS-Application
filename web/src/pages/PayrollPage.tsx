@@ -11,6 +11,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
+import { Banknote } from 'lucide-react';
 import shared from './shared.module.css';
 
 /* ---------------- Types ---------------- */
@@ -165,7 +166,7 @@ export function PayrollPage() {
           rows={data?.runs}
           loading={isLoading}
           rowKey={(r) => r.id}
-          empty={<EmptyState title="No payroll runs" message="Run payroll to generate payslips for the workforce." icon="◍" />}
+          empty={<EmptyState title="No payroll runs" message="Run payroll to generate payslips for the workforce." icon={<Banknote size={16} />} />}
         />
       </Card>
 
@@ -361,7 +362,7 @@ function PayslipsModal({ id, onClose }: { id: string | null; onClose: () => void
         rows={isLoading ? undefined : slips}
         loading={isLoading}
         rowKey={(s) => s.id}
-        empty={<EmptyState title="No payslips" message="This run produced no payslips." icon="◍" />}
+        empty={<EmptyState title="No payslips" message="This run produced no payslips." icon={<Banknote size={16} />} />}
       />
     </Modal>
   );

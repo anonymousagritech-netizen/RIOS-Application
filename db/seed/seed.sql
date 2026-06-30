@@ -664,3 +664,33 @@ values (:'tenant_id'::uuid,'automation','treaty.bind.autocheck',1,'published', j
 on conflict (tenant_id, kind, key, version) do nothing;
 
 commit;
+
+-- ---------------------------------------------------------------------------
+-- Employee self-service workspace demo data (migration 0033):
+-- birthdays, an admin-linked employee, company holidays and announcements.
+-- ---------------------------------------------------------------------------
+update employee set date_of_birth = date '1988-07-20'
+ where tenant_id=:'tenant_id'::uuid and employee_no='EMP-90001';
+update employee set date_of_birth = date '1992-03-05'
+ where tenant_id=:'tenant_id'::uuid and employee_no='EMP-90002';
+
+insert into employee (tenant_id, employee_no, first_name, last_name, email, position, user_id, hire_date, date_of_birth, status)
+select :'tenant_id'::uuid, 'EMP-90000','Demo','Administrator','admin@demo.rios','Platform Administrator', u.id, date '2019-01-07', date '1990-07-12','active'
+from app_user u where u.tenant_id=:'tenant_id'::uuid and u.email='admin@demo.rios'
+on conflict (tenant_id, employee_no) do nothing;
+
+insert into company_holiday (tenant_id, holiday_date, name, region) values
+  (:'tenant_id'::uuid, date '2026-07-04', 'Independence Day', 'US'),
+  (:'tenant_id'::uuid, date '2026-08-31', 'Summer Bank Holiday', 'UK'),
+  (:'tenant_id'::uuid, date '2026-11-26', 'Thanksgiving', 'US'),
+  (:'tenant_id'::uuid, date '2026-12-25', 'Christmas Day', 'Global')
+on conflict (tenant_id, holiday_date, name) do nothing;
+
+insert into announcement (tenant_id, title, body, category, posted_by)
+select :'tenant_id'::uuid, 'Q3 town hall scheduled', 'Join the all-hands on the first Friday of the quarter to review portfolio performance and the renewal pipeline.', 'company', u.id
+from app_user u where u.tenant_id=:'tenant_id'::uuid and u.email='admin@demo.rios'
+  and not exists (select 1 from announcement a where a.tenant_id=:'tenant_id'::uuid and a.title='Q3 town hall scheduled');
+insert into announcement (tenant_id, title, body, category, posted_by)
+select :'tenant_id'::uuid, 'New leave policy in effect', 'Annual leave entitlement is now 20 days. Submit requests through the HRMS leave workflow for manager approval.', 'hr', u.id
+from app_user u where u.tenant_id=:'tenant_id'::uuid and u.email='admin@demo.rios'
+  and not exists (select 1 from announcement a where a.tenant_id=:'tenant_id'::uuid and a.title='New leave policy in effect');

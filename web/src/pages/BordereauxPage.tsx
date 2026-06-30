@@ -1,3 +1,4 @@
+import { Grid2x2, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
@@ -108,7 +109,7 @@ export function BordereauxPage() {
         description="Ingest premium and loss bordereaux. Malformed rows are rejected with line-level errors; validated bordereaux produce financial events and claims."
         actions={
           canWrite ? (
-            <Button variant="primary" onClick={() => setShowUpload(true)} icon={<span aria-hidden>+</span>}>
+            <Button variant="primary" onClick={() => setShowUpload(true)} icon={<Plus size={16} />}>
               Upload bordereau
             </Button>
           ) : (
@@ -124,7 +125,7 @@ export function BordereauxPage() {
           <EmptyState
             title="No bordereau selected"
             message="Upload a bordereau to validate its rows. The validation summary and line-level results will appear here."
-            icon="▦"
+            icon={<Grid2x2 size={16} />}
           />
         </Card>
       )}

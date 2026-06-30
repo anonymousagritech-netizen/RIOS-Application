@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Scale, ShieldCheck, Sigma, Coins, Percent } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -191,7 +192,7 @@ function Ifrs17Tab({ canRun }: { canRun: boolean }) {
         rows={data?.groups}
         loading={isLoading}
         rowKey={(g) => g.id}
-        empty={<EmptyState title="No groups" message="Create a group of contracts to begin IFRS 17 measurement." icon="§" />}
+        empty={<EmptyState title="No groups" message="Create a group of contracts to begin IFRS 17 measurement." icon={<Scale size={16} />} />}
       />
       <NewGroupModal open={showNew} onClose={() => setShowNew(false)} />
       <MeasureModal group={measureFor} onClose={() => setMeasureFor(null)} />
@@ -483,9 +484,9 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
 
           {result && (
             <div className={styles.measureGrid} style={{ marginTop: 'var(--space-5)' }}>
-              <KpiCard label="SCR" value={fmtMajor(result.scr)} hint={`Basic SCR ${fmtMajor(result.basicScr)}`} icon="Σ" />
-              <KpiCard label="MCR" value={fmtMajor(result.mcr)} icon="◇" accent="var(--c-amber)" />
-              <KpiCard label="Solvency ratio" value={formatPercent(result.solvencyRatio)} icon="%" accent="var(--c-green)" />
+              <KpiCard label="SCR" value={fmtMajor(result.scr)} hint={`Basic SCR ${fmtMajor(result.basicScr)}`} icon={<Sigma size={20} />} />
+              <KpiCard label="MCR" value={fmtMajor(result.mcr)} icon={<Coins size={20} />} accent="var(--c-amber)" />
+              <KpiCard label="Solvency ratio" value={formatPercent(result.solvencyRatio)} icon={<Percent size={20} />} accent="var(--c-green)" />
             </div>
           )}
         </Card>
@@ -499,7 +500,7 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
             rows={data?.runs}
             loading={isLoading}
             rowKey={(r) => r.id}
-            empty={<EmptyState title="No runs yet" message="Run an SCR calculation to see history here." icon="§" />}
+            empty={<EmptyState title="No runs yet" message="Run an SCR calculation to see history here." icon={<ShieldCheck size={16} />} />}
           />
         </Card>
       </div>

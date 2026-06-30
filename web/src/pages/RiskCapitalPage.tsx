@@ -19,6 +19,7 @@ import { FormField, Textarea, Input } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatNumber, formatDate } from '../lib/format';
 import type { TokenColor } from '../lib/status';
+import { Wallet, BookOpen, Plus, Percent, Gauge, TrendingDown, ShieldAlert, Sigma } from 'lucide-react';
 import shared from './shared.module.css';
 
 interface Position { asOfDate: string; currency: string; ownFundsMinor: number; scrMinor: number; mcrMinor: number; note?: string | null }
@@ -62,11 +63,11 @@ function CapitalPanel() {
   return (
     <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
       <div className={shared.kpiGrid}>
-        <KpiCard label="Own funds" value={formatMoney(position.ownFundsMinor, position.currency)} icon="$" />
-        <KpiCard label="SCR" value={formatMoney(position.scrMinor, position.currency)} icon="▣" />
-        <KpiCard label="Surplus" value={formatMoney(adequacy.surplusMinor, position.currency)} accent={adequacy.surplusMinor >= 0 ? 'var(--c-green)' : 'var(--c-red)'} icon="±" />
-        <KpiCard label="Solvency ratio" value={ratioLabel(adequacy.solvencyRatio)} icon="%" accent={`var(--c-${STATUS_COLOR[adequacy.status]})`} />
-        <KpiCard label="MCR" value={formatMoney(position.mcrMinor, position.currency)} icon="▢" />
+        <KpiCard label="Own funds" value={formatMoney(position.ownFundsMinor, position.currency)} icon={<Wallet size={20} />} />
+        <KpiCard label="SCR" value={formatMoney(position.scrMinor, position.currency)} icon={<BookOpen size={20} />} />
+        <KpiCard label="Surplus" value={formatMoney(adequacy.surplusMinor, position.currency)} accent={adequacy.surplusMinor >= 0 ? 'var(--c-green)' : 'var(--c-red)'} icon={<Plus size={20} />} />
+        <KpiCard label="Solvency ratio" value={ratioLabel(adequacy.solvencyRatio)} icon={<Percent size={20} />} accent={`var(--c-${STATUS_COLOR[adequacy.status]})`} />
+        <KpiCard label="MCR" value={formatMoney(position.mcrMinor, position.currency)} icon={<Gauge size={20} />} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
         <Badge color={STATUS_COLOR[adequacy.status]}>{adequacy.status.toUpperCase()}</Badge>
@@ -146,9 +147,9 @@ function VarPanel() {
       </div>
       {result && (
         <div className={shared.kpiGrid}>
-          <KpiCard label={`VaR @ ${ratioLabel(result.confidence)}`} value={formatNumber(result.valueAtRiskMinor)} icon="◭" accent="var(--c-amber)" />
-          <KpiCard label={`Tail-VaR @ ${ratioLabel(result.confidence)}`} value={formatNumber(result.tailValueAtRiskMinor)} icon="◮" accent="var(--c-red)" />
-          <KpiCard label="Sample size" value={formatNumber(result.sampleSize)} icon="≡" />
+          <KpiCard label={`VaR @ ${ratioLabel(result.confidence)}`} value={formatNumber(result.valueAtRiskMinor)} icon={<ShieldAlert size={20} />} accent="var(--c-amber)" />
+          <KpiCard label={`Tail-VaR @ ${ratioLabel(result.confidence)}`} value={formatNumber(result.tailValueAtRiskMinor)} icon={<TrendingDown size={20} />} accent="var(--c-red)" />
+          <KpiCard label="Sample size" value={formatNumber(result.sampleSize)} icon={<Sigma size={20} />} />
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { Plus, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClaims, useCreateClaim, useTreaties, useCurrencies, useStatusColors } from '../lib/queries';
@@ -53,7 +54,7 @@ export function ClaimsPage() {
         description="Loss notifications, reserves and settlements across treaties."
         actions={
           hasPermission('claims:write') ? (
-            <Button variant="primary" onClick={() => setShowNew(true)} icon={<span aria-hidden>+</span>}>Register claim</Button>
+            <Button variant="primary" onClick={() => setShowNew(true)} icon={<Plus size={16} />}>Register claim</Button>
           ) : null
         }
       />
@@ -77,7 +78,7 @@ export function ClaimsPage() {
           loading={isLoading}
           rowKey={(c) => c.id}
           onRowClick={(c) => navigate(`/claims/${c.id}`)}
-          empty={<EmptyState title="No claims" message="No claims match the current filter." icon="◬" />}
+          empty={<EmptyState title="No claims" message="No claims match the current filter." icon={<ShieldAlert size={16} />} />}
         />
       </Card>
 

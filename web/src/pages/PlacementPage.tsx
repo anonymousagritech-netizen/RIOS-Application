@@ -12,6 +12,7 @@ import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
 import { formatPercent } from '../lib/format';
+import { PenLine } from 'lucide-react';
 import shared from './shared.module.css';
 
 interface SlipItem {
@@ -158,7 +159,7 @@ export function PlacementPage() {
             <EmptyState
               title={contractId ? 'No slips' : 'Pick a contract'}
               message={contractId ? 'Create a new slip to start placing this contract in the market.' : 'Choose a contract above to view its placement slips.'}
-              icon="▤"
+              icon={<PenLine size={16} />}
             />
           }
         />

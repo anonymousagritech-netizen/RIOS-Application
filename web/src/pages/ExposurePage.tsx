@@ -12,6 +12,7 @@ import { Modal } from '../components/Modal';
 import { FormField, Input, Select } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatPercent, titleCase } from '../lib/format';
+import { Radar } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './ExposurePage.module.css';
 
@@ -180,7 +181,7 @@ export function ExposurePage() {
           rows={rows}
           loading={isLoading}
           rowKey={(a) => a.id}
-          empty={<EmptyState title="No accumulations" message="Create an accumulation to start tracking exposure." icon="◎" />}
+          empty={<EmptyState title="No accumulations" message="Create an accumulation to start tracking exposure." icon={<Radar size={16} />} />}
         />
       </Card>
 

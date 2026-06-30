@@ -13,6 +13,7 @@ import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, Select } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
+import { ReceiptText } from 'lucide-react';
 import shared from './shared.module.css';
 
 /* ---------------- Types ---------------- */
@@ -209,7 +210,7 @@ export function StatementsPage() {
           loading={isLoading}
           rowKey={(s) => s.id}
           onRowClick={(s) => setSelectedId(s.id)}
-          empty={<EmptyState title="No statements" message="Pick a contract and generate a statement from its un-statemented events." icon="$" />}
+          empty={<EmptyState title="No statements" message="Pick a contract and generate a statement from its un-statemented events." icon={<ReceiptText size={16} />} />}
         />
       </Card>
 

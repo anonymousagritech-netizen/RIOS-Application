@@ -19,6 +19,7 @@ import { legalTransitions } from '../lib/status';
 import { formatMoney, formatDate, formatPercent, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
 import type { FinancialEventDTO } from '@rios/shared';
+import { ClipboardList, DollarSign } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './TreatyDetailPage.module.css';
 
@@ -184,7 +185,7 @@ function StructureTab({ treaty, currency }: { treaty: ReturnType<typeof useTreat
 function TermsTab({ terms }: { terms?: Record<string, unknown> }) {
   const entries = Object.entries(terms ?? {});
   if (!entries.length) {
-    return <EmptyState title="No terms recorded" message="Commercial terms for this treaty have not been captured." icon="≣" />;
+    return <EmptyState title="No terms recorded" message="Commercial terms for this treaty have not been captured." icon={<ClipboardList size={16} />} />;
   }
   return (
     <DefinitionList
@@ -220,7 +221,7 @@ function FinancialsTab({ id, currency }: { id: string; currency: string }) {
       rows={data?.events}
       loading={isLoading}
       rowKey={(e) => e.id}
-      empty={<EmptyState title="No financial events" message="Events are booked as the treaty progresses through its lifecycle (e.g. on binding)." icon="$" />}
+      empty={<EmptyState title="No financial events" message="Events are booked as the treaty progresses through its lifecycle (e.g. on binding)." icon={<DollarSign size={16} />} />}
     />
   );
 }

@@ -12,6 +12,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
 import { formatPercent, titleCase } from '../lib/format';
+import { FileCheck2 } from 'lucide-react';
 import shared from './shared.module.css';
 
 interface FacultativeItem {
@@ -105,7 +106,7 @@ export function FacultativePage() {
           rows={data?.treaties}
           loading={isLoading}
           rowKey={(r) => r.id}
-          empty={<EmptyState title="No facultative cessions" message="Create a new cession to place a single risk facultatively." icon="▤" />}
+          empty={<EmptyState title="No facultative cessions" message="Create a new cession to place a single risk facultatively." icon={<FileCheck2 size={16} />} />}
         />
       </Card>
 

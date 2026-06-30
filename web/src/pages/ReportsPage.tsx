@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { BarChart3, FileBarChart } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
@@ -220,7 +221,7 @@ export function ReportsPage() {
             columns={resultColumns}
             rows={result.rows}
             rowKey={(r) => String(r.id ?? JSON.stringify(r))}
-            empty={<EmptyState title="No rows" message="The query returned no rows. Adjust the filter." icon="▤" />}
+            empty={<EmptyState title="No rows" message="The query returned no rows. Adjust the filter." icon={<BarChart3 size={16} />} />}
           />
         </Card>
       )}
@@ -324,7 +325,7 @@ function SavedDefinitions() {
           rows={data?.definitions}
           loading={isLoading}
           rowKey={(d) => d.id}
-          empty={<EmptyState title="No saved definitions" message="Build a report above and save it to reuse later." icon="▤" />}
+          empty={<EmptyState title="No saved definitions" message="Build a report above and save it to reuse later." icon={<FileBarChart size={16} />} />}
         />
       </Card>
 

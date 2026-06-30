@@ -13,6 +13,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { Badge } from '../components/Badge';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatNumber, formatPercent, titleCase } from '../lib/format';
+import { DollarSign, BookOpen, Receipt, ShieldAlert, FileText } from 'lucide-react';
 import shared from './shared.module.css';
 
 interface CostRecord {
@@ -46,11 +47,11 @@ export function CostPage() {
       <PageHeader title="Cost & capacity" description="Spend by category with capacity utilisation, and live operational throughput." />
 
       <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
-        <KpiCard label="Total spend" value={formatMoney(cost.data?.totalSpendMinor)} icon="$" />
-        <KpiCard label="Audit events" value={formatNumber(perf.data?.totals.auditEvents)} icon="≡" />
-        <KpiCard label="Financial events" value={formatNumber(perf.data?.totals.financialEvents)} icon="▤" />
-        <KpiCard label="Claims" value={formatNumber(perf.data?.totals.claims)} icon="◬" />
-        <KpiCard label="Contracts" value={formatNumber(perf.data?.totals.contracts)} icon="▥" />
+        <KpiCard label="Total spend" value={formatMoney(cost.data?.totalSpendMinor)} icon={<DollarSign size={20} />} />
+        <KpiCard label="Audit events" value={formatNumber(perf.data?.totals.auditEvents)} icon={<BookOpen size={20} />} />
+        <KpiCard label="Financial events" value={formatNumber(perf.data?.totals.financialEvents)} icon={<Receipt size={20} />} />
+        <KpiCard label="Claims" value={formatNumber(perf.data?.totals.claims)} icon={<ShieldAlert size={20} />} />
+        <KpiCard label="Contracts" value={formatNumber(perf.data?.totals.contracts)} icon={<FileText size={20} />} />
       </div>
 
       <Card>

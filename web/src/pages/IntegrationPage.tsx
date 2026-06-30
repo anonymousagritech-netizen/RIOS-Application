@@ -12,6 +12,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, Textarea } from '../components/Form';
 import { formatDateTime, titleCase } from '../lib/format';
+import { Network } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './IntegrationPage.module.css';
 
@@ -169,7 +170,7 @@ function WebhooksTab() {
         loading={isLoading}
         rowKey={(s) => s.id}
         onRowClick={(s) => setSelected(s)}
-        empty={<EmptyState title="No webhooks" message="Register a webhook subscription to receive events." icon="⚡" />}
+        empty={<EmptyState title="No webhooks" message="Register a webhook subscription to receive events." icon={<Network size={16} />} />}
       />
 
       <NewWebhookModal open={showNew} onClose={() => setShowNew(false)} />
@@ -335,7 +336,7 @@ function DeliveriesModal({ subscription, onClose }: { subscription: Subscription
         loading={isLoading}
         rowKey={(d) => d.id}
         skeletonRows={4}
-        empty={<EmptyState title="No deliveries" message="No events have been delivered to this subscription yet." icon="⚡" />}
+        empty={<EmptyState title="No deliveries" message="No events have been delivered to this subscription yet." icon={<Network size={16} />} />}
       />
     </Modal>
   );

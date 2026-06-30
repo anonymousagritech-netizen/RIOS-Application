@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Scale, FileSpreadsheet } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -393,7 +394,7 @@ function MeasurementsCard({ group }: { group: Ifrs17Group }) {
         rows={measurements}
         loading={isLoading}
         rowKey={(m) => m.id}
-        empty={<EmptyState title="No measurements" message="Run a measurement to see history here." icon="§" />}
+        empty={<EmptyState title="No measurements" message="Run a measurement to see history here." icon={<Scale size={16} />} />}
       />
     </Card>
   );
@@ -489,7 +490,7 @@ function ReturnsTab({ canRun }: { canRun: boolean }) {
             rows={returns}
             loading={isLoading}
             rowKey={(r) => r.id}
-            empty={<EmptyState title="No returns" message="Generate a return to build a regulatory pack." icon="§" />}
+            empty={<EmptyState title="No returns" message="Generate a return to build a regulatory pack." icon={<FileSpreadsheet size={16} />} />}
           />
         </Card>
       </div>

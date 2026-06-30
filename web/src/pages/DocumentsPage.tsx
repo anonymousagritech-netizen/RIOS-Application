@@ -12,6 +12,7 @@ import { FormField, Input, Select, Textarea, TextField } from '../components/For
 import { Tabs } from '../components/Tabs';
 import { formatDate, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
+import { FileText, Lock, Clock, FolderOpen } from 'lucide-react';
 import shared from './shared.module.css';
 
 const DOC_TYPES = ['SLIP', 'COVER_NOTE', 'ENDORSEMENT', 'STATEMENT', 'LETTER', 'CONTRACT', 'OTHER'];
@@ -126,7 +127,7 @@ function TemplatesTab({ canWrite }: { canWrite: boolean }) {
           rows={data?.templates}
           loading={isLoading}
           rowKey={(t) => t.id}
-          empty={<EmptyState title="No templates" message="Create a template to start generating documents." icon="▤" />}
+          empty={<EmptyState title="No templates" message="Create a template to start generating documents." icon={<FileText size={16} />} />}
         />
       </Card>
 
@@ -252,7 +253,7 @@ function GenerateTab({ canWrite }: { canWrite: boolean }) {
         <EmptyState
           title="Read-only access"
           message="You need the documents:write permission to generate documents."
-          icon="🔒"
+          icon={<Lock size={16} />}
         />
       </Card>
     );
@@ -307,7 +308,7 @@ function GenerateTab({ canWrite }: { canWrite: boolean }) {
             {rendered}
           </pre>
         ) : (
-          <EmptyState title="Nothing generated yet" message="Pick a template and run the merge to preview output." icon="◷" />
+          <EmptyState title="Nothing generated yet" message="Pick a template and run the merge to preview output." icon={<Clock size={16} />} />
         )}
       </Card>
     </div>
@@ -349,7 +350,7 @@ function DocumentsTab() {
           loading={isLoading}
           rowKey={(d) => d.id}
           onRowClick={(d) => setOpenId(d.id)}
-          empty={<EmptyState title="No documents" message="Generate a document to see it here." icon="▤" />}
+          empty={<EmptyState title="No documents" message="Generate a document to see it here." icon={<FolderOpen size={16} />} />}
         />
       </Card>
 

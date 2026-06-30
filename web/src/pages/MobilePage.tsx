@@ -11,6 +11,7 @@ import { KpiCard } from '../components/KpiCard';
 import { EmptyState } from '../components/Table';
 import { PageLoader } from '../components/Feedback';
 import { formatNumber, formatDate, titleCase } from '../lib/format';
+import { Smartphone } from 'lucide-react';
 import shared from './shared.module.css';
 
 interface Home { tiles: { label: string; value: number }[]; recent: { type: string; label: string; when: string }[] }
@@ -22,7 +23,7 @@ export function MobilePage() {
     <>
       <PageHeader title="Mobile home" description="A condensed, touch-first view for on-the-go." />
       <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
-        {q.data?.tiles.map((t) => <KpiCard key={t.label} label={t.label} value={formatNumber(t.value)} icon="◧" />)}
+        {q.data?.tiles.map((t) => <KpiCard key={t.label} label={t.label} value={formatNumber(t.value)} icon={<Smartphone size={20} />} />)}
       </div>
       <Card>
         <div style={{ padding: 'var(--space-4)' }}>

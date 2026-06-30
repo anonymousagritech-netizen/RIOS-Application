@@ -6,6 +6,7 @@
  * EP curve and a PML profile - rates are explicit assumptions, never invented).
  */
 
+import { DollarSign, Grid2x2, Hash, Sigma, Target, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
@@ -120,9 +121,9 @@ function PivotBuilder() {
       {result && (
         <>
           <div className={shared.kpiGrid}>
-            <KpiCard label="Groups" value={formatNumber(result.cells.length)} icon="▦" />
-            <KpiCard label="Facts" value={formatNumber(result.factCount)} icon="≡" />
-            <KpiCard label="Grand total" value={formatMoney(result.totals.total)} icon="$" />
+            <KpiCard label="Groups" value={formatNumber(result.cells.length)} icon={<Grid2x2 size={20} />} />
+            <KpiCard label="Facts" value={formatNumber(result.factCount)} icon={<Hash size={20} />} />
+            <KpiCard label="Grand total" value={formatMoney(result.totals.total)} icon={<DollarSign size={20} />} />
           </div>
           <Table columns={cols} rows={result.cells} rowKey={(c) => JSON.stringify(c.key)}
             empty={<EmptyState title="No facts" message="No rows match this source yet." />} />
@@ -198,9 +199,9 @@ function CatConsole() {
       {metrics && (
         <>
           <div className={shared.kpiGrid}>
-            <KpiCard label="Average Annual Loss" value={formatMoney(metrics.averageAnnualLossMinor)} icon="∑" accent="var(--c-amber)" />
+            <KpiCard label="Average Annual Loss" value={formatMoney(metrics.averageAnnualLossMinor)} icon={<Sigma size={20} />} accent="var(--c-amber)" />
             {metrics.pmlProfile.filter((p) => [50, 100, 250].includes(p.returnPeriod)).map((p) => (
-              <KpiCard key={p.returnPeriod} label={`PML 1-in-${p.returnPeriod}`} value={formatMoney(p.lossMinor)} icon="◭" />
+              <KpiCard key={p.returnPeriod} label={`PML 1-in-${p.returnPeriod}`} value={formatMoney(p.lossMinor)} icon={<TrendingUp size={20} />} />
             ))}
           </div>
 
@@ -277,8 +278,8 @@ function ForecastConsole() {
       {result && (
         <>
           <div className={shared.kpiGrid}>
-            <KpiCard label="Trend slope" value={formatNumber(Math.round(result.fit.slope))} icon="↗" />
-            <KpiCard label="Fit R²" value={formatPercent(result.fit.r2)} icon="◎" accent={result.fit.r2 >= 0.8 ? 'var(--c-green)' : 'var(--c-amber)'} />
+            <KpiCard label="Trend slope" value={formatNumber(Math.round(result.fit.slope))} icon={<TrendingUp size={20} />} />
+            <KpiCard label="Fit R²" value={formatPercent(result.fit.r2)} icon={<Target size={20} />} accent={result.fit.r2 >= 0.8 ? 'var(--c-green)' : 'var(--c-amber)'} />
           </div>
           <Table
             columns={[
@@ -463,7 +464,7 @@ function DashboardsConsole() {
           <CardHeader title={rendered.name} />
           <div className={shared.kpiGrid} style={{ padding: 'var(--space-4)' }}>
             {rendered.widgets.map((w) => (
-              <KpiCard key={w.title} label={w.title} value={w.error ? '-' : formatMoney(w.total)} hint={w.error ?? `${w.groups} groups · ${w.factCount} facts`} icon="▦" />
+              <KpiCard key={w.title} label={w.title} value={w.error ? '-' : formatMoney(w.total)} hint={w.error ?? `${w.groups} groups · ${w.factCount} facts`} icon={<Grid2x2 size={20} />} />
             ))}
           </div>
         </Card>

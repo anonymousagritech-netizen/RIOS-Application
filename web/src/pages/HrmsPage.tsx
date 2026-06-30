@@ -13,6 +13,7 @@ import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, Input, Select, TextField, Textarea } from '../components/Form';
 import { formatDate, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
+import { UserRound, CalendarClock, Building2 } from 'lucide-react';
 import shared from './shared.module.css';
 
 /* ---------------- Types ---------------- */
@@ -142,8 +143,8 @@ export function HrmsPage() {
       />
 
       <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
-        <KpiCard label="Employees" value={employeeCount} loading={employees.isLoading} icon="◍" />
-        <KpiCard label="Pending leave" value={pendingLeave} loading={leave.isLoading} icon="⏚" />
+        <KpiCard label="Employees" value={employeeCount} loading={employees.isLoading} icon={<UserRound size={20} />} />
+        <KpiCard label="Pending leave" value={pendingLeave} loading={leave.isLoading} icon={<CalendarClock size={20} />} />
       </div>
 
       <Card padded={false}>
@@ -208,7 +209,7 @@ function PeopleTab({ canWrite }: { canWrite: boolean }) {
         rows={data?.employees}
         loading={isLoading}
         rowKey={(e) => e.id}
-        empty={<EmptyState title="No employees" message="No employees match the current filter." icon="◍" />}
+        empty={<EmptyState title="No employees" message="No employees match the current filter." icon={<UserRound size={16} />} />}
       />
 
       <NewEmployeeModal open={showNew} onClose={() => setShowNew(false)} departments={departments} />
@@ -332,7 +333,7 @@ function DepartmentsTab({ canWrite }: { canWrite: boolean }) {
         rows={data?.departments}
         loading={isLoading}
         rowKey={(d) => d.id}
-        empty={<EmptyState title="No departments" message="Create a department to organise employees." icon="▤" />}
+        empty={<EmptyState title="No departments" message="Create a department to organise employees." icon={<Building2 size={16} />} />}
       />
 
       <NewDepartmentModal open={showNew} onClose={() => setShowNew(false)} />
@@ -461,7 +462,7 @@ function LeaveTab({ canWrite }: { canWrite: boolean }) {
         rows={data?.leaveRequests}
         loading={isLoading}
         rowKey={(l) => l.id}
-        empty={<EmptyState title="No leave requests" message="No leave requests match the current filter." icon="⏚" />}
+        empty={<EmptyState title="No leave requests" message="No leave requests match the current filter." icon={<CalendarClock size={16} />} />}
       />
 
       <RequestLeaveModal open={showNew} onClose={() => setShowNew(false)} />

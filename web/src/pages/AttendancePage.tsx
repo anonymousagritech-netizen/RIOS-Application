@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Clock, LogIn, LogOut, Coffee, Play, CalendarDays, Timer, CheckCircle2,
+  CalendarCheck, Cake, Megaphone, Award,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { PageHeader } from '../components/PageHeader';
@@ -24,6 +25,15 @@ interface AttRecord {
   onBreak: boolean;
 }
 interface MeResponse { today: AttRecord | null; history: AttRecord[] }
+
+interface Workspace {
+  hasEmployee: boolean;
+  leaveBalance: { entitlement: number; used: number; remaining: number };
+  upcomingHolidays: { date: string; name: string }[];
+  birthdays: { name: string; date: string; inDays: number }[];
+  announcements: { title: string; body: string; category: string; postedAt: string }[];
+  performance: { period: string; band: string | null; overallScore: number } | null;
+}
 
 function fmtDuration(min: number): string {
   const h = Math.floor(min / 60);
@@ -56,6 +66,12 @@ export function AttendancePage() {
     queryKey: ['attendance-me'],
     queryFn: () => api<MeResponse>('/api/attendance/me'),
     refetchInterval: 60_000,
+  });
+
+  const { data: ws } = useQuery({
+    queryKey: ['me-workspace'],
+    queryFn: () => api<Workspace>('/api/me/workspace'),
+    staleTime: 300_000,
   });
 
   // Tick every second so the working-hours clock stays live.
@@ -155,6 +171,82 @@ export function AttendancePage() {
           <KpiCard label="Days this month" value={String(stats.monthDays)} hint="Days with attendance" icon={<CalendarDays size={20} />} accent="var(--accent-violet)" loading={isLoading} />
           <KpiCard label="Average / day" value={fmtDuration(stats.avg)} hint="This month" icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" loading={isLoading} />
         </div>
+      </div>
+
+      <div className={styles.widgets}>
+        <Card padded className={styles.widget}>
+          <div className={styles.widgetHead}><CalendarCheck size={16} /> Leave balance</div>
+          {ws ? (
+            <>
+              <div className={styles.leaveTop}>
+                <span className={styles.leaveBig}>{ws.leaveBalance.remaining}</span>
+                <span className={styles.leaveUnit}>days left</span>
+              </div>
+              <div className={styles.bar}>
+                <span
+                  className={styles.barFill}
+                  style={{ width: `${Math.min(100, (ws.leaveBalance.used / Math.max(1, ws.leaveBalance.entitlement)) * 100)}%` }}
+                />
+              </div>
+              <div className={styles.widgetMeta}>{ws.leaveBalance.used} of {ws.leaveBalance.entitlement} annual days used</div>
+            </>
+          ) : <div className={styles.widgetMeta}>Loading...</div>}
+        </Card>
+
+        <Card padded className={styles.widget}>
+          <div className={styles.widgetHead}><CalendarDays size={16} /> Upcoming holidays</div>
+          {ws?.upcomingHolidays.length ? (
+            <ul className={styles.list}>
+              {ws.upcomingHolidays.map((h) => (
+                <li key={h.date + h.name}>
+                  <span className={styles.listMain}>{h.name}</span>
+                  <span className={styles.listSub}>{new Date(h.date + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short' })}</span>
+                </li>
+              ))}
+            </ul>
+          ) : <div className={styles.widgetMeta}>No upcoming holidays.</div>}
+        </Card>
+
+        <Card padded className={styles.widget}>
+          <div className={styles.widgetHead}><Cake size={16} /> Birthdays</div>
+          {ws?.birthdays.length ? (
+            <ul className={styles.list}>
+              {ws.birthdays.map((b) => (
+                <li key={b.name + b.date}>
+                  <span className={styles.listMain}>{b.name}</span>
+                  <span className={styles.listSub}>{b.inDays === 0 ? 'Today' : b.inDays === 1 ? 'Tomorrow' : `in ${b.inDays} days`}</span>
+                </li>
+              ))}
+            </ul>
+          ) : <div className={styles.widgetMeta}>No birthdays in the next 45 days.</div>}
+        </Card>
+
+        <Card padded className={styles.widget}>
+          <div className={styles.widgetHead}><Award size={16} /> Performance</div>
+          {ws?.performance ? (
+            <>
+              <div className={styles.leaveTop}>
+                <span className={styles.leaveBig}>{ws.performance.overallScore.toFixed(1)}</span>
+                <span className={styles.leaveUnit}>{ws.performance.band ?? 'rated'}</span>
+              </div>
+              <div className={styles.widgetMeta}>Latest review: {ws.performance.period}</div>
+            </>
+          ) : <div className={styles.widgetMeta}>No performance review yet.</div>}
+        </Card>
+
+        <Card padded className={`${styles.widget} ${styles.widgetWide}`}>
+          <div className={styles.widgetHead}><Megaphone size={16} /> Announcements</div>
+          {ws?.announcements.length ? (
+            <ul className={styles.annList}>
+              {ws.announcements.map((a) => (
+                <li key={a.title}>
+                  <span className={styles.annTitle}>{a.title}</span>
+                  <span className={styles.annBody}>{a.body}</span>
+                </li>
+              ))}
+            </ul>
+          ) : <div className={styles.widgetMeta}>No announcements.</div>}
+        </Card>
       </div>
 
       <Card>

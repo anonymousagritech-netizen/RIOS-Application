@@ -13,6 +13,7 @@ import { FormField, Input, Select, TextField } from '../components/Form';
 import { formatDate, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
 import type { TreatyListItem } from '../lib/types';
+import { Plus, FileText } from 'lucide-react';
 import shared from './shared.module.css';
 
 const STATUSES = ['DRAFT', 'QUOTED', 'PLACING', 'BOUND', 'ACTIVE', 'EXPIRING', 'RUNOFF', 'COMMUTED', 'CANCELLED'];
@@ -77,7 +78,7 @@ export function TreatiesPage() {
         description="Inwards and outwards reinsurance contracts across the portfolio."
         actions={
           hasPermission('treaty:write') ? (
-            <Button variant="primary" onClick={() => setShowNew(true)} icon={<span aria-hidden>+</span>}>
+            <Button variant="primary" onClick={() => setShowNew(true)} icon={<Plus size={16} />}>
               New treaty
             </Button>
           ) : null
@@ -114,7 +115,7 @@ export function TreatiesPage() {
             <EmptyState
               title="No treaties match"
               message="Adjust the filters or create a new treaty to get started."
-              icon="▤"
+              icon={<FileText size={16} />}
             />
           }
         />

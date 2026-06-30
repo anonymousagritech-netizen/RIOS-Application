@@ -12,6 +12,7 @@ import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, Input, Select } from '../components/Form';
 import { formatMoney, formatDate, formatDateTime, titleCase } from '../lib/format';
+import { CalendarCheck, DollarSign } from 'lucide-react';
 import shared from './shared.module.css';
 
 /* ---------------- Types ---------------- */
@@ -197,7 +198,7 @@ function PeriodsTab({ canPost }: { canPost: boolean }) {
         rows={data?.periods}
         loading={isLoading}
         rowKey={(p) => p.id}
-        empty={<EmptyState title="No periods" message="Open an accounting period to begin month-end close." icon="▤" />}
+        empty={<EmptyState title="No periods" message="Open an accounting period to begin month-end close." icon={<CalendarCheck size={16} />} />}
       />
 
       <NewPeriodModal open={showNew} onClose={() => setShowNew(false)} />
@@ -386,7 +387,7 @@ function FxTab({ canPost }: { canPost: boolean }) {
               columns={detailColumns}
               rows={result.detail ?? []}
               rowKey={(d) => d.currency}
-              empty={<EmptyState title="No detail" message="No non-base balances were revalued." icon="$" />}
+              empty={<EmptyState title="No detail" message="No non-base balances were revalued." icon={<DollarSign size={16} />} />}
             />
           </Card>
         )}
@@ -399,7 +400,7 @@ function FxTab({ canPost }: { canPost: boolean }) {
           rows={pastData?.revaluations}
           loading={pastLoading}
           rowKey={(r) => r.id}
-          empty={<EmptyState title="No revaluations" message="No FX revaluations have been booked yet." icon="$" />}
+          empty={<EmptyState title="No revaluations" message="No FX revaluations have been booked yet." icon={<DollarSign size={16} />} />}
         />
       </div>
     </div>

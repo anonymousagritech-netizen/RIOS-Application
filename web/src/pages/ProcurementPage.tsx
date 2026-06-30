@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ShoppingCart, ClipboardList, Store } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
@@ -257,7 +258,7 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
         loading={isLoading}
         rowKey={(o) => o.id}
         onRowClick={(o) => setSelectedId((cur) => (cur === o.id ? null : o.id))}
-        empty={<EmptyState title="No purchase orders" message="No purchase orders match the current filter." icon="▦" />}
+        empty={<EmptyState title="No purchase orders" message="No purchase orders match the current filter." icon={<ShoppingCart size={16} />} />}
       />
 
       {selectedId && (
@@ -507,7 +508,7 @@ function RequisitionsTab({ canWrite }: { canWrite: boolean }) {
         rows={data?.requisitions}
         loading={isLoading}
         rowKey={(r) => r.id}
-        empty={<EmptyState title="No requisitions" message="No requisitions match the current filter." icon="▤" />}
+        empty={<EmptyState title="No requisitions" message="No requisitions match the current filter." icon={<ClipboardList size={16} />} />}
       />
 
       <NewRequisitionModal open={showNew} onClose={() => setShowNew(false)} />
@@ -603,7 +604,7 @@ function VendorsTab({ canWrite }: { canWrite: boolean }) {
         rows={data?.vendors}
         loading={isLoading}
         rowKey={(v) => v.id}
-        empty={<EmptyState title="No vendors" message="Add a vendor to raise purchase orders." icon="◇" />}
+        empty={<EmptyState title="No vendors" message="Add a vendor to raise purchase orders." icon={<Store size={16} />} />}
       />
 
       <NewVendorModal open={showNew} onClose={() => setShowNew(false)} />

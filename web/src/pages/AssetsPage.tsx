@@ -1,3 +1,4 @@
+import { BadgeCheck, FileText, Package, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
@@ -214,14 +215,14 @@ function AssetsTab({ canWrite }: { canWrite: boolean }) {
         </div>
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} asset{rows.length === 1 ? '' : 's'}</span>
-        {canWrite && <Button size="sm" variant="primary" onClick={() => setCreating(true)} icon={<span aria-hidden>+</span>}>New asset</Button>}
+        {canWrite && <Button size="sm" variant="primary" onClick={() => setCreating(true)} icon={<Plus size={16} />}>New asset</Button>}
       </div>
       <Table
         columns={columns}
         rows={data?.assets}
         loading={isLoading}
         rowKey={(a) => a.id}
-        empty={<EmptyState title="No assets" message="No assets match the current filter." icon="▤" />}
+        empty={<EmptyState title="No assets" message="No assets match the current filter." icon={<Package size={16} />} />}
       />
       <NewAssetModal open={creating} onClose={() => setCreating(false)} />
       <AssignModal asset={assignTarget} onClose={() => setAssignTarget(null)} />
@@ -387,14 +388,14 @@ function LicensesTab({ canWrite }: { canWrite: boolean }) {
         <CardHeader title="Software licenses" subtitle="Seat utilisation and renewal windows." />
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} license{rows.length === 1 ? '' : 's'}</span>
-        {canWrite && <Button size="sm" variant="primary" onClick={() => setCreating(true)} icon={<span aria-hidden>+</span>}>New license</Button>}
+        {canWrite && <Button size="sm" variant="primary" onClick={() => setCreating(true)} icon={<Plus size={16} />}>New license</Button>}
       </div>
       <Table
         columns={columns}
         rows={data?.licenses}
         loading={isLoading}
         rowKey={(l) => l.id}
-        empty={<EmptyState title="No licenses" message="Register a software license to track seats." icon="◇" />}
+        empty={<EmptyState title="No licenses" message="Register a software license to track seats." icon={<FileText size={16} />} />}
       />
       <NewLicenseModal open={creating} onClose={() => setCreating(false)} />
     </>
@@ -545,14 +546,14 @@ function EntitlementsTab({ canWrite }: { canWrite: boolean }) {
         <CardHeader title="Feature entitlements" subtitle="Toggle a feature per tenant instantly - no deployment required." />
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} feature{rows.length === 1 ? '' : 's'}</span>
-        {canWrite && <Button size="sm" variant="primary" onClick={() => setAdding(true)} icon={<span aria-hidden>+</span>}>Add entitlement</Button>}
+        {canWrite && <Button size="sm" variant="primary" onClick={() => setAdding(true)} icon={<Plus size={16} />}>Add entitlement</Button>}
       </div>
       <Table
         columns={columns}
         rows={data?.entitlements}
         loading={isLoading}
         rowKey={(e) => e.featureKey}
-        empty={<EmptyState title="No entitlements" message="Add a feature entitlement to control access per tenant." icon="⚑" />}
+        empty={<EmptyState title="No entitlements" message="Add a feature entitlement to control access per tenant." icon={<BadgeCheck size={16} />} />}
       />
       <AddEntitlementModal open={adding} onClose={() => setAdding(false)} />
     </>

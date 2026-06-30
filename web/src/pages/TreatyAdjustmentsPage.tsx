@@ -11,6 +11,7 @@ import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/Modal';
 import { FormField, Input, Select, Textarea } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
+import { SlidersHorizontal, DollarSign } from 'lucide-react';
 import shared from './shared.module.css';
 
 /* ---------------- Types ---------------- */
@@ -110,7 +111,7 @@ export function TreatyAdjustmentsPage() {
 
       {!selected ? (
         <Card>
-          <EmptyState title="No treaty selected" message="Choose a treaty above to run adjustments." icon="▤" />
+          <EmptyState title="No treaty selected" message="Choose a treaty above to run adjustments." icon={<SlidersHorizontal size={16} />} />
         </Card>
       ) : (
         <div className={shared.cols} style={{ marginTop: 'var(--space-5)' }}>
@@ -219,7 +220,7 @@ function ProfitCommissionCard({ treaty, canWrite }: { treaty: TreatyOption; canW
           loading={isLoading}
           rowKey={(r) => r.id}
           skeletonRows={3}
-          empty={<EmptyState title="No prior runs" message="No profit commission has been run for this treaty." icon="$" />}
+          empty={<EmptyState title="No prior runs" message="No profit commission has been run for this treaty." icon={<DollarSign size={16} />} />}
         />
       </div>
     </Card>

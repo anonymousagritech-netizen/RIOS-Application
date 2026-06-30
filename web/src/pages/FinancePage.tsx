@@ -12,6 +12,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
+import { Landmark, Receipt, Wallet } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
 
@@ -174,7 +175,7 @@ function TrialBalanceTab() {
         rows={data?.accounts}
         loading={isLoading}
         rowKey={(a) => a.code}
-        empty={<EmptyState title="No accounts" message="The general ledger has no posted entries yet." icon="$" />}
+        empty={<EmptyState title="No accounts" message="The general ledger has no posted entries yet." icon={<Landmark size={16} />} />}
       />
     </>
   );
@@ -234,7 +235,7 @@ function InvoicesTab({ kind, canPost }: { kind: 'ar' | 'ap'; canPost: boolean })
         rows={data?.invoices}
         loading={isLoading}
         rowKey={(r) => r.id}
-        empty={<EmptyState title={`No ${isAr ? 'receivables' : 'payables'}`} message="No invoices match the current filter." icon="$" />}
+        empty={<EmptyState title={`No ${isAr ? 'receivables' : 'payables'}`} message="No invoices match the current filter." icon={<Receipt size={16} />} />}
       />
       <CashModal
         invoice={target}
@@ -359,7 +360,7 @@ function BankTab({ canPost }: { canPost: boolean }) {
         rows={data?.accounts}
         loading={isLoading}
         rowKey={(a) => a.id}
-        empty={<EmptyState title="No bank accounts" message="Configure a settlement account to manage cash." icon="$" />}
+        empty={<EmptyState title="No bank accounts" message="Configure a settlement account to manage cash." icon={<Wallet size={16} />} />}
       />
     </>
   );

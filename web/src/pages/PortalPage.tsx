@@ -8,6 +8,7 @@
  */
 
 import { useMemo, useState } from 'react';
+import { Layers, CheckCircle2, AlertTriangle, Wallet, Receipt, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api, qs } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -177,12 +178,12 @@ export function PortalPage() {
       {ready && !noAccess && (
         <>
           <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
-            <KpiCard label="Contracts" value={formatNumber(s?.contracts)} loading={overview.isLoading} icon="▤" />
-            <KpiCard label="Active" value={formatNumber(s?.activeContracts)} loading={overview.isLoading} icon="●" accent="var(--c-green)" />
-            <KpiCard label="Open claims" value={formatNumber(s?.claims)} loading={overview.isLoading} icon="◬" accent="var(--c-amber)" />
-            <KpiCard label="Outstanding" value={formatMoney(s?.outstandingMinor)} loading={overview.isLoading} icon="$" />
-            <KpiCard label="Statement balance" value={formatMoney(s?.statementBalanceMinor)} loading={overview.isLoading} icon="▥" />
-            <KpiCard label="Open statements" value={formatNumber(s?.openStatements)} loading={overview.isLoading} icon="⊟" accent="var(--c-amber)" />
+            <KpiCard label="Contracts" value={formatNumber(s?.contracts)} loading={overview.isLoading} icon={<Layers size={20} />} />
+            <KpiCard label="Active" value={formatNumber(s?.activeContracts)} loading={overview.isLoading} icon={<CheckCircle2 size={20} />} accent="var(--c-green)" />
+            <KpiCard label="Open claims" value={formatNumber(s?.claims)} loading={overview.isLoading} icon={<AlertTriangle size={20} />} accent="var(--c-amber)" />
+            <KpiCard label="Outstanding" value={formatMoney(s?.outstandingMinor)} loading={overview.isLoading} icon={<Wallet size={20} />} />
+            <KpiCard label="Statement balance" value={formatMoney(s?.statementBalanceMinor)} loading={overview.isLoading} icon={<Receipt size={20} />} />
+            <KpiCard label="Open statements" value={formatNumber(s?.openStatements)} loading={overview.isLoading} icon={<Clock size={20} />} accent="var(--c-amber)" />
           </div>
 
           <Card>

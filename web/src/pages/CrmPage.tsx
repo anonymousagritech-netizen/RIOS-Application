@@ -13,6 +13,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, TextField, Textarea } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
+import { Target, ClipboardList } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './CrmPage.module.css';
 
@@ -258,7 +259,7 @@ function PipelineTab() {
         rows={opps?.opportunities}
         loading={oppsLoading}
         rowKey={(o) => o.id}
-        empty={<EmptyState title="No opportunities" message="No opportunities match the current filter." icon="◇" />}
+        empty={<EmptyState title="No opportunities" message="No opportunities match the current filter." icon={<Target size={16} />} />}
       />
 
       <NewOpportunityModal open={showNew} onClose={() => setShowNew(false)} />
@@ -445,7 +446,7 @@ function ActivitiesTab() {
         rows={data?.activities}
         loading={isLoading}
         rowKey={(a) => a.id}
-        empty={<EmptyState title="No activities" message="No activities logged for this filter." icon="☷" />}
+        empty={<EmptyState title="No activities" message="No activities logged for this filter." icon={<ClipboardList size={16} />} />}
       />
 
       <LogActivityModal open={showNew} onClose={() => setShowNew(false)} />

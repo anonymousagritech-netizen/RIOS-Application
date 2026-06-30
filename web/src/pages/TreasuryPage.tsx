@@ -20,6 +20,7 @@ import { Tabs } from '../components/Tabs';
 import { FormField, Input } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatNumber, formatPercent, formatDate, titleCase } from '../lib/format';
+import { Hash, Wallet, TrendingUp, Plus, Percent, Sigma, Scale } from 'lucide-react';
 import shared from './shared.module.css';
 
 interface Holding {
@@ -70,11 +71,11 @@ function Portfolio() {
     <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
       {summary && (
         <div className={shared.kpiGrid}>
-          <KpiCard label="Holdings" value={formatNumber(summary.count)} icon="▣" />
-          <KpiCard label="Book value" value={formatMoney(summary.bookValueMinor, summary.currency)} icon="$" />
-          <KpiCard label="Market value" value={formatMoney(summary.marketValueMinor, summary.currency)} icon="◷" />
-          <KpiCard label="Unrealised P&L" value={formatMoney(summary.unrealisedMinor, summary.currency)} accent={summary.unrealisedMinor >= 0 ? 'var(--c-green)' : 'var(--c-red)'} icon="±" />
-          <KpiCard label="Book yield" value={formatPercent(summary.bookYield)} icon="%" />
+          <KpiCard label="Holdings" value={formatNumber(summary.count)} icon={<Hash size={20} />} />
+          <KpiCard label="Book value" value={formatMoney(summary.bookValueMinor, summary.currency)} icon={<Wallet size={20} />} />
+          <KpiCard label="Market value" value={formatMoney(summary.marketValueMinor, summary.currency)} icon={<TrendingUp size={20} />} />
+          <KpiCard label="Unrealised P&L" value={formatMoney(summary.unrealisedMinor, summary.currency)} accent={summary.unrealisedMinor >= 0 ? 'var(--c-green)' : 'var(--c-red)'} icon={<Plus size={20} />} />
+          <KpiCard label="Book yield" value={formatPercent(summary.bookYield)} icon={<Percent size={20} />} />
         </div>
       )}
       <Table columns={cols} rows={q.data?.holdings} rowKey={(h) => h.id}
@@ -142,9 +143,9 @@ function TaxLevies() {
                 rowKey={(l) => l.code}
               />
               <div className={shared.kpiGrid}>
-                <KpiCard label="Base" value={formatMoney(result.baseMinor)} icon="$" />
-                <KpiCard label="Total levies" value={formatMoney(result.totalLevyMinor)} accent="var(--c-amber)" icon="∑" />
-                <KpiCard label="Gross inclusive" value={formatMoney(result.grossInclusiveMinor)} icon="=" />
+                <KpiCard label="Base" value={formatMoney(result.baseMinor)} icon={<Wallet size={20} />} />
+                <KpiCard label="Total levies" value={formatMoney(result.totalLevyMinor)} accent="var(--c-amber)" icon={<Sigma size={20} />} />
+                <KpiCard label="Gross inclusive" value={formatMoney(result.grossInclusiveMinor)} icon={<Scale size={20} />} />
               </div>
             </>
           )}

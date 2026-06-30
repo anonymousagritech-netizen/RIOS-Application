@@ -19,6 +19,7 @@ import { Tabs } from '../components/Tabs';
 import { FormField, Select, Input } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatDateTime, formatNumber, titleCase } from '../lib/format';
+import { Shield } from 'lucide-react';
 import shared from './shared.module.css';
 
 export function SecurityOpsPage() {
@@ -51,7 +52,7 @@ function Soc() {
   return (
     <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
       <div className={shared.kpiGrid}>
-        {(q.data?.byAction ?? []).slice(0, 4).map((a) => <KpiCard key={a.action} label={titleCase(a.action.replace(/_/g, ' '))} value={formatNumber(a.n)} icon="⛨" />)}
+        {(q.data?.byAction ?? []).slice(0, 4).map((a) => <KpiCard key={a.action} label={titleCase(a.action.replace(/_/g, ' '))} value={formatNumber(a.n)} icon={<Shield size={20} />} />)}
       </div>
       <Table
         columns={[

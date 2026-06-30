@@ -13,6 +13,7 @@ import { Modal, ConfirmDialog } from '../components/Modal';
 import { Select, TextField } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatDateTime, titleCase } from '../lib/format';
+import { Plus, CheckCircle2, Inbox } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
 
@@ -163,7 +164,7 @@ function ApprovalsTab({ canWrite, canDecide }: { canWrite: boolean; canDecide: b
         </div>
         <div className={shared.spacer} />
         {canWrite && (
-          <Button size="sm" variant="primary" onClick={() => setShowNew(true)} icon={<span aria-hidden>+</span>}>New approval</Button>
+          <Button size="sm" variant="primary" onClick={() => setShowNew(true)} icon={<Plus size={16} />}>New approval</Button>
         )}
       </div>
       <Table
@@ -171,7 +172,7 @@ function ApprovalsTab({ canWrite, canDecide }: { canWrite: boolean; canDecide: b
         rows={data?.approvals}
         loading={isLoading}
         rowKey={(a) => a.id}
-        empty={<EmptyState title="No approval requests" message="There are no requests matching this status." icon="✓" />}
+        empty={<EmptyState title="No approval requests" message="There are no requests matching this status." icon={<CheckCircle2 size={16} />} />}
       />
 
       <NewApprovalModal open={showNew} onClose={() => setShowNew(false)} />
@@ -265,7 +266,7 @@ function NotificationsTab() {
       {isLoading ? (
         <PageLoader label="Loading notifications…" />
       ) : notifications.length === 0 ? (
-        <EmptyState title="No notifications" message="You're all caught up." icon="🔔" />
+        <EmptyState title="No notifications" message="You're all caught up." icon={<Inbox size={16} />} />
       ) : (
         <div className={styles.notifList}>
           {notifications.map((n) => (
