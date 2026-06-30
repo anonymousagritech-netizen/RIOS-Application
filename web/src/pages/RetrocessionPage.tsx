@@ -86,7 +86,7 @@ export function RetrocessionPage() {
       sortValue: (r) => r.basis,
       render: (r) => <span>{titleCase(r.basis)}{r.npType ? ` · ${r.npType}` : ''}</span>,
     },
-    { key: 'lineOfBusiness', header: 'LOB', sortValue: (r) => r.lineOfBusiness ?? '', render: (r) => titleCase(r.lineOfBusiness) || '—' },
+    { key: 'lineOfBusiness', header: 'LOB', sortValue: (r) => r.lineOfBusiness ?? '', render: (r) => titleCase(r.lineOfBusiness) || '-' },
     { key: 'currency', header: 'CCY', sortValue: (r) => r.currency, render: (r) => r.currency },
     { key: 'status', header: 'Status', align: 'right', sortValue: (r) => r.status, render: (r) => <StatusPill status={r.status} metaColors={statusColors} /> },
   ], [statusColors]);
@@ -113,9 +113,9 @@ export function RetrocessionPage() {
       />
 
       <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
-        <KpiCard label="Gross liability" value={headline ? formatMoneyCompact(headline.grossMinor, headline.currency) : '—'} hint={headline ? headline.currency : 'No positions'} loading={netLoading} />
-        <KpiCard label="Ceded out" value={headline ? formatMoneyCompact(headline.cededMinor, headline.currency) : '—'} hint={headline ? headline.currency : 'No positions'} loading={netLoading} />
-        <KpiCard label="Net retained" value={headline ? formatMoneyCompact(headline.netMinor, headline.currency) : '—'} hint={headline ? headline.currency : 'No positions'} loading={netLoading} />
+        <KpiCard label="Gross liability" value={headline ? formatMoneyCompact(headline.grossMinor, headline.currency) : '-'} hint={headline ? headline.currency : 'No positions'} loading={netLoading} />
+        <KpiCard label="Ceded out" value={headline ? formatMoneyCompact(headline.cededMinor, headline.currency) : '-'} hint={headline ? headline.currency : 'No positions'} loading={netLoading} />
+        <KpiCard label="Net retained" value={headline ? formatMoneyCompact(headline.netMinor, headline.currency) : '-'} hint={headline ? headline.currency : 'No positions'} loading={netLoading} />
       </div>
 
       <Card padded={false}>

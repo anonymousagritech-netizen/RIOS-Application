@@ -62,7 +62,7 @@ export function SecurityPage() {
 
           {enroll && (
             <>
-              <p className={shared.cellSub}>1. Add this account to your authenticator app — scan the URI as a QR code, or enter the secret manually.</p>
+              <p className={shared.cellSub}>1. Add this account to your authenticator app - scan the URI as a QR code, or enter the secret manually.</p>
               <TextField label="Account" value={`RIOS:${user?.email ?? ''}`} onChange={() => {}} />
               <TextField label="Secret (manual entry)" value={enroll.secret} onChange={() => {}} />
               <TextField label="otpauth URI" value={enroll.otpauthUri} onChange={() => {}} />

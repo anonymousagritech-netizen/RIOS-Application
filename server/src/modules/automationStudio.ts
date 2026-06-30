@@ -1,7 +1,7 @@
 /**
  * AI Automation Studio (brief §5). Binds a trigger (event type) to a business
  * rule set and a set of actions: when the trigger fires, the pure @rios/domain
- * rules engine evaluates the event and — if it passes — the configured actions
+ * rules engine evaluates the event and - if it passes - the configured actions
  * are returned for dispatch. Flows are versioned config_document rows (kind
  * 'automation'); this composes the existing rules engine + event bus rather than
  * adding a parallel one. config:read to view/run, config:write to author.

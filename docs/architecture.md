@@ -1,4 +1,4 @@
-# RIOS — Solution & Technical Architecture
+# RIOS - Solution & Technical Architecture
 
 **Phase:** 3 / 5 (Module & Service Architecture) · **Version:** 1.0
 **Roles consulted:** CTO, Enterprise Solution Architect, Security Architect, Database Architect, DevOps
@@ -12,13 +12,13 @@ the module domains (§9), the tech stack, the multi-tenancy & RLS model, the rec
 chain, the request/auth flow, and observability/outbox notes.
 
 This document describes the **reality** of what is built and explicitly marks what is designed-for. RIOS today
-is a correct, secure, audited **vertical slice** — not a finished commercial product. Where the build deviates
+is a correct, secure, audited **vertical slice** - not a finished commercial product. Where the build deviates
 from the brief's full target (e.g. one deployable instead of a microservice fleet), the deviation is a
 recorded, justified decision (§3.2), captured in the ADRs.
 
 ---
 
-## 1. Architectural style — modular monolith, microservices-ready
+## 1. Architectural style - modular monolith, microservices-ready
 
 The brief targets a microservices topology with a Kafka backbone (§15.2). RIOS is built as a **modular
 monolith** with **clean-architecture / DDD boundaries** that map 1:1 to the functional domains, so the seams
@@ -28,14 +28,14 @@ premature decomposition would multiply operational surface before it earns its k
 
 The layering is strict:
 
-- **Domain core (`packages/domain`)** — pure reinsurance mathematics. No I/O, framework, clock, or DB.
+- **Domain core (`packages/domain`)** - pure reinsurance mathematics. No I/O, framework, clock, or DB.
   Deterministic and unit-tested (38 tests) so financial correctness is provable in isolation (§4.4).
-- **Application/server (`server/src`)** — Fastify, organised into **module routers** (`reference`,
+- **Application/server (`server/src`)** - Fastify, organised into **module routers** (`reference`,
   `parties`, `treaties`, `accounting`, `claims`, `assistant`), each a candidate bounded context / future
   service. Cross-cutting concerns (`auth`, `db`/tenant-context, `audit`) are shared platform code.
-- **Contracts (`packages/shared`)** — the DTO types shared by server and web (the lightweight stand-in for
+- **Contracts (`packages/shared`)** - the DTO types shared by server and web (the lightweight stand-in for
   the OpenAPI contract, and an approximation of future inter-service contracts).
-- **Web (`web`)** — React/Vite client (design system delivered; application UI in progress).
+- **Web (`web`)** - React/Vite client (design system delivered; application UI in progress).
 
 ### Bounded contexts ↔ module domains (§9)
 
@@ -74,8 +74,8 @@ Shared-schema multi-tenancy with **PostgreSQL Row-Level Security** as the defaul
 ([ADR 0002](./adr/0002-multitenancy-rls.md)). Every tenant-scoped table carries `tenant_id` and is protected
 by a `tenant_isolation` RLS policy keyed on `current_setting('app.tenant_id')`. Two connections:
 
-- **`DATABASE_URL`** (owner) — migrations, seeding, and the pre-tenant login lookup. Bypasses RLS.
-- **`DATABASE_APP_URL`** (the low-privilege **`rios_app`** role) — all tenant-scoped queries. RLS is
+- **`DATABASE_URL`** (owner) - migrations, seeding, and the pre-tenant login lookup. Bypasses RLS.
+- **`DATABASE_APP_URL`** (the low-privilege **`rios_app`** role) - all tenant-scoped queries. RLS is
   *enforced* because `rios_app` is neither owner nor superuser.
 
 A per-request helper, **`runAs`**, opens a transaction on the app pool and sets `app.tenant_id` / `app.user_id`
@@ -188,9 +188,9 @@ the token, so changes apply on next login. Full detail in [security.md](./securi
 - **Logging:** Fastify structured logging with per-request ids (`genReqId`). Metrics, distributed tracing,
   SLOs, and dashboards (§15.6) are **designed-for**.
 - **Outbox:** an `outbox` table exists for the transactional-outbox pattern (reliable event publication tied
-  to the local transaction, §15.2/§9.3). The **relay/dispatcher and the event bus are not yet built** — the
+  to the local transaction, §15.2/§9.3). The **relay/dispatcher and the event bus are not yet built** - the
   substrate is in place for the future microservice split.
-- **Audit:** every material mutation writes a hash-chained `audit_log` row (tamper-evident, append-only) —
+- **Audit:** every material mutation writes a hash-chained `audit_log` row (tamper-evident, append-only) -
   the observability of *what changed and by whom* is delivered.
 
 ## Traceability
@@ -208,8 +208,8 @@ chain (§7.6, §16); metadata-driven config (§10); assistant within permissions
 
 ## Open Questions / Assumptions / Gaps
 
-- **Microservices, API gateway, Kafka, outbox relay** — designed-for; today one deployable. See
+- **Microservices, API gateway, Kafka, outbox relay** - designed-for; today one deployable. See
   [ADR 0001](./adr/0001-architecture-style.md).
 - **Observability** (metrics/traces/SLOs), **IaC/Kubernetes/CI-CD**, **Redis/search/object-storage wiring**,
-  **DR (RTO/RPO)** — designed-for. See [phases.md](./phases.md) and [open-questions.md](./open-questions.md).
-- **CQRS read models / event sourcing** beyond the append-only event logs — designed-for.
+  **DR (RTO/RPO)** - designed-for. See [phases.md](./phases.md) and [open-questions.md](./open-questions.md).
+- **CQRS read models / event sourcing** beyond the append-only event logs - designed-for.

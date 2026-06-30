@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0008: Row-Level Security policies & the application role
+-- RIOS - Migration 0008: Row-Level Security policies & the application role
 -- Brief §14.2 (RLS), §14.5 (tenant isolation), §16.3 (data-layer tenancy)
 -- =============================================================================
 -- The application connects as rios_app (NOT the owner). Per request it runs
@@ -78,5 +78,5 @@ create policy tenant_self on tenant
   using (id = app_current_tenant())
   with check (id = app_current_tenant());
 
--- The `permission` catalog is global, read-only reference data — readable by all.
+-- The `permission` catalog is global, read-only reference data - readable by all.
 grant select on permission to rios_app;

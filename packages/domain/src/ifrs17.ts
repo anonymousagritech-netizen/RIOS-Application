@@ -1,12 +1,12 @@
 /**
- * IFRS 17 — Premium Allocation Approach (PAA) measurement (brief §18.1).
+ * IFRS 17 - Premium Allocation Approach (PAA) measurement (brief §18.1).
  *
  * Implements the PAA mechanics most relevant to short-duration reinsurance:
  * the Liability for Remaining Coverage (LRC) roll-forward, the Liability for
  * Incurred Claims (LIC) as discounted fulfilment cash flows plus a risk
  * adjustment, and onerous-contract loss-component identification.
  *
- * This is an explainable, reconcilable skeleton (brief §4.4) — not a full
+ * This is an explainable, reconcilable skeleton (brief §4.4) - not a full
  * actuarial engine (GMM/VFA, CSM amortisation schedules, and discounting curves
  * are designed-for; see docs/open-questions.md). All amounts are minor units.
  */
@@ -123,7 +123,7 @@ export function insuranceContractLiability(input: InsuranceLiabilityInput): Mone
 }
 
 // ---------------------------------------------------------------------------
-// General Measurement Model (GMM / BBA) — brief §18.1
+// General Measurement Model (GMM / BBA) - brief §18.1
 // ---------------------------------------------------------------------------
 
 export interface GmmInitialInput {
@@ -225,7 +225,7 @@ export function csmRollforward(input: CsmRollforwardInput): CsmRollforwardResult
 }
 
 // ---------------------------------------------------------------------------
-// Variable Fee Approach (VFA) — brief §18.1
+// Variable Fee Approach (VFA) - brief §18.1
 // ---------------------------------------------------------------------------
 
 export interface VfaRollforwardInput extends CsmRollforwardInput {

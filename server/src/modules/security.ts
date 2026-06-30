@@ -69,7 +69,7 @@ export async function securityModule(app: FastifyInstance): Promise<void> {
       }
       if (!verifyTotp(r.rows[0].secret, code, Date.now())) {
         reply.code(400);
-        return { error: 'Invalid code — check your authenticator and try again' };
+        return { error: 'Invalid code - check your authenticator and try again' };
       }
       await db.query(`update mfa_credential set enabled = true, verified_at = now() where user_id = $1 and type = 'totp'`, [ctx.userId]);
       await writeAudit(db, ctx, { action: 'mfa_enable', entityType: 'mfa_credential', entityId: ctx.userId, actorLabel: user.displayName });

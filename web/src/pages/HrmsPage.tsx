@@ -181,8 +181,8 @@ function PeopleTab({ canWrite }: { canWrite: boolean }) {
         </div>
       ),
     },
-    { key: 'department', header: 'Department', sortValue: (e) => e.departmentName ?? '', render: (e) => e.departmentName ?? '—' },
-    { key: 'position', header: 'Position', sortValue: (e) => e.position ?? '', render: (e) => e.position ?? '—' },
+    { key: 'department', header: 'Department', sortValue: (e) => e.departmentName ?? '', render: (e) => e.departmentName ?? '-' },
+    { key: 'position', header: 'Position', sortValue: (e) => e.position ?? '', render: (e) => e.position ?? '-' },
     { key: 'status', header: 'Status', align: 'right', sortValue: (e) => e.status, render: (e) => <StatusPill status={e.status} /> },
   ];
 
@@ -313,7 +313,7 @@ function DepartmentsTab({ canWrite }: { canWrite: boolean }) {
   const columns: Column<Department>[] = [
     { key: 'code', header: 'Code', sortValue: (d) => d.code, render: (d) => <span className={shared.cellRef}>{d.code}</span> },
     { key: 'name', header: 'Department', sortValue: (d) => d.name, render: (d) => <span className={shared.cellMain}>{d.name}</span> },
-    { key: 'costCentre', header: 'Cost centre', sortValue: (d) => d.costCentre ?? '', render: (d) => d.costCentre ?? '—' },
+    { key: 'costCentre', header: 'Cost centre', sortValue: (d) => d.costCentre ?? '', render: (d) => d.costCentre ?? '-' },
     { key: 'employeeCount', header: 'Employees', align: 'right', sortValue: (d) => d.employeeCount, render: (d) => d.employeeCount },
   ];
 
@@ -434,7 +434,7 @@ function LeaveTab({ canWrite }: { canWrite: boolean }) {
             <Button size="sm" variant="danger" onClick={() => setDecision({ id: l.id, to: 'rejected' })}>Reject</Button>
           </div>
         ) : (
-          <span className={shared.cellSub}>—</span>
+          <span className={shared.cellSub}>-</span>
         ),
     },
   ];

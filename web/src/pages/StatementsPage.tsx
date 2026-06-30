@@ -144,7 +144,7 @@ export function StatementsPage() {
     if (!contractId) { toast.error('Pick a contract first'); return; }
     try {
       const res = await generate.mutateAsync({ contractId });
-      toast.success(`Statement ${res.reference} generated — ${res.eventCount} event(s)`);
+      toast.success(`Statement ${res.reference} generated - ${res.eventCount} event(s)`);
       setSelectedId(res.id);
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
@@ -178,7 +178,7 @@ export function StatementsPage() {
             <Select value={contractId} onChange={(e) => setContractId(e.target.value)} aria-label="Filter by contract">
               <option value="">All</option>
               {treaties.map((t) => (
-                <option key={t.id} value={t.id}>{t.reference ? `${t.reference} — ${t.name}` : t.name}</option>
+                <option key={t.id} value={t.id}>{t.reference ? `${t.reference} - ${t.name}` : t.name}</option>
               ))}
             </Select>
           </div>
@@ -267,7 +267,7 @@ function StatementDrawer({ id, canWrite, statusColors, onClose }: {
   const eventCols: Column<StatementEvent>[] = [
     { key: 'booked', header: 'Booked', sortValue: (e) => e.booked_at ?? '', render: (e) => formatDate(e.booked_at) },
     { key: 'type', header: 'Type', render: (e) => <Badge color="indigo">{titleCase(e.event_type)}</Badge> },
-    { key: 'narrative', header: 'Narrative', render: (e) => e.narrative ?? '—' },
+    { key: 'narrative', header: 'Narrative', render: (e) => e.narrative ?? '-' },
     { key: 'dir', header: 'Dr/Cr', align: 'center', render: (e) => <Badge color={e.direction === 'DR' ? 'blue' : 'teal'}>{e.direction}</Badge> },
     { key: 'amount', header: 'Amount', align: 'right', sortValue: (e) => e.amount_minor, render: (e) => <span className={shared.money}>{formatMoney(e.amount_minor, e.currency || data?.currency)}</span> },
   ];

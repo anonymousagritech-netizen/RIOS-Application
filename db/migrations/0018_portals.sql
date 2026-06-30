@@ -1,8 +1,8 @@
 -- =============================================================================
--- RIOS — Migration 0018: External portals (brief §9.15)
+-- RIOS - Migration 0018: External portals (brief §9.15)
 -- Portals are thin, permission-scoped *projections* of the core APIs for an
 -- external counterparty (broker, cedent, retrocessionaire, coverholder, client)
--- — never a parallel data store. A portal_grant binds an app_user to one party
+-- - never a parallel data store. A portal_grant binds an app_user to one party
 -- and one portal type; portal endpoints filter every read to that party.
 -- =============================================================================
 

@@ -41,6 +41,40 @@
 .checkActive { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
 .check input { accent-color: var(--primary); }
 
+/* Quick actions (dashboard) */
+.quickActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-3);
+}
+.quickAction {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+}
+.quickAction:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.quickIcon {
+  display: grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.quickLabel { flex: 1; font-weight: var(--weight-semibold); color: var(--text); font-size: var(--text-base); }
+.quickArrow { color: var(--text-faint); }
+
 @media (max-width: 900px) {
   .cols, .grid2, .grid3 { grid-template-columns: 1fr; }
 }

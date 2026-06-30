@@ -9,7 +9,7 @@
 -- FORCE makes RLS apply even to the table owner. Locally this is harmless
 -- because the owner role (`rios`) is a SUPERUSER, and superusers bypass RLS
 -- regardless of FORCE. On Neon the owner (`neondb_owner`) is a *non-superuser*
--- owner, so FORCE actually subjects the owner connection to RLS — which breaks
+-- owner, so FORCE actually subjects the owner connection to RLS - which breaks
 -- the two flows that legitimately run on the owner connection and rely on
 -- bypassing RLS:
 --   * login (reads app_user / role / role_permission before any tenant

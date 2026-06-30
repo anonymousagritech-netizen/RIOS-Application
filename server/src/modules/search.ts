@@ -1,9 +1,9 @@
 /**
- * Global search & indexing (brief §11.3 — search everywhere). A single
+ * Global search & indexing (brief §11.3 - search everywhere). A single
  * tenant-scoped query surface across the core entities. Each entity type is only
  * searched when the caller holds its read permission (admin:manage sees all), so
  * results never leak past RBAC. Runs inside runAs, so RLS scopes every row to the
- * tenant. This is a live ILIKE search over the source tables — honest about being
+ * tenant. This is a live ILIKE search over the source tables - honest about being
  * a query, not a separate inverted index (a real deployment would add one, §11.3).
  */
 

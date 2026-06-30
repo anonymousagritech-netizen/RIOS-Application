@@ -1,6 +1,6 @@
 /**
  * Claims module (brief §7.7, §28.4).
- * Registration, reserve movements (immutable history), and payment — each
+ * Registration, reserve movements (immutable history), and payment - each
  * movement keeps the claim's denormalised figures consistent and writes audit.
  */
 

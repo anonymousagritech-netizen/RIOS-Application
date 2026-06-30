@@ -1,6 +1,6 @@
 -- =============================================================================
--- RIOS — Migration 0011: AR / AP / Cash / Bank (financial accounting breadth)
--- Brief §9.8 — sub-ledgers feeding the GL, reconcilable to technical accounting
+-- RIOS - Migration 0011: AR / AP / Cash / Bank (financial accounting breadth)
+-- Brief §9.8 - sub-ledgers feeding the GL, reconcilable to technical accounting
 -- =============================================================================
 
 -- Accounts receivable / payable invoices derived from statements of account.

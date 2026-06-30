@@ -163,11 +163,11 @@ function HealthDetail() {
         <div className={styles.totals}>
           <div className={styles.total}>
             <span className={styles.totalLabel}>Last activity</span>
-            <span className={styles.totalValue}>{isLoading ? '—' : formatDateTime(lastActivity)}</span>
+            <span className={styles.totalValue}>{isLoading ? '-' : formatDateTime(lastActivity)}</span>
           </div>
           <div className={styles.total}>
             <span className={styles.totalLabel}>Event backlog</span>
-            <span className={styles.totalValue}>{isLoading ? '—' : formatNumber(data?.pendingEvents)}</span>
+            <span className={styles.totalValue}>{isLoading ? '-' : formatNumber(data?.pendingEvents)}</span>
           </div>
         </div>
         {!isLoading && (
@@ -241,7 +241,7 @@ function EventsTab() {
   const columns: Column<OutboxEvent>[] = [
     { key: 'topic', header: 'Topic', sortValue: (e) => e.topic, render: (e) => <span className={shared.cellMain}>{e.topic}</span> },
     { key: 'created', header: 'Created', sortValue: (e) => e.createdAt ?? '', render: (e) => <span className={shared.cellSub}>{formatDateTime(e.createdAt)}</span> },
-    { key: 'published', header: 'Published', sortValue: (e) => e.publishedAt ?? '', render: (e) => <span className={shared.cellSub}>{e.publishedAt ? formatDateTime(e.publishedAt) : '—'}</span> },
+    { key: 'published', header: 'Published', sortValue: (e) => e.publishedAt ?? '', render: (e) => <span className={shared.cellSub}>{e.publishedAt ? formatDateTime(e.publishedAt) : '-'}</span> },
     {
       key: 'status', header: 'Status',
       render: (e) => (
@@ -257,7 +257,7 @@ function EventsTab() {
   return (
     <>
       <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
-        <CardHeader title="Event delivery" subtitle="Transactional outbox — publication status and retry attempts." />
+        <CardHeader title="Event delivery" subtitle="Transactional outbox - publication status and retry attempts." />
         <div className={shared.spacer} />
         <div className={shared.filter}>
           <span className={shared.filterLabel}>Status</span>
@@ -288,7 +288,7 @@ function SlaTab({ canWrite }: { canWrite: boolean }) {
     { key: 'service', header: 'Service', sortValue: (s) => s.service, render: (s) => <span className={shared.cellMain}>{s.service}</span> },
     { key: 'metric', header: 'Metric', sortValue: (s) => s.metric, render: (s) => s.metric },
     { key: 'target', header: 'Target', align: 'right', sortValue: (s) => s.targetValue, render: (s) => <span className={shared.money}>{formatNumber(s.targetValue)}</span> },
-    { key: 'unit', header: 'Unit', render: (s) => s.unit ?? <span className={shared.cellSub}>—</span> },
+    { key: 'unit', header: 'Unit', render: (s) => s.unit ?? <span className={shared.cellSub}>-</span> },
   ];
 
   return (

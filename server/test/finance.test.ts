@@ -1,5 +1,5 @@
 /**
- * Finance module test (brief §9.8) — GL / AR / AP / cash.
+ * Finance module test (brief §9.8) - GL / AR / AP / cash.
  *
  * Proves the trial balance self-balances after posting a contract's technical
  * accounting to the GL, and that recording cash against an AR invoice marks it

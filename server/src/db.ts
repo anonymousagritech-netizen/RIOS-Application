@@ -5,7 +5,7 @@
  * tenant-scoped operation runs inside a transaction that sets `app.tenant_id`
  * and `app.user_id` as LOCAL settings, so the RLS policies (db migration 0008)
  * restrict all rows to the active tenant. This is the data-layer half of the
- * zero-trust posture in brief §14.2 / §14.5 — isolation is enforced by the
+ * zero-trust posture in brief §14.2 / §14.5 - isolation is enforced by the
  * database, not merely by application WHERE clauses.
  */
 

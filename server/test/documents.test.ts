@@ -55,7 +55,7 @@ describe('documents: template engine + generation', () => {
         key,
         name: 'Cover Slip',
         docType: 'slip',
-        body: 'Slip for {{contract.name}} — {{contract.currency}}',
+        body: 'Slip for {{contract.name}} - {{contract.currency}}',
       },
     });
     expect(tmpl.statusCode).toBe(201);
@@ -71,12 +71,12 @@ describe('documents: template engine + generation', () => {
       },
     });
     expect(gen.statusCode).toBe(201);
-    expect(gen.json().content).toBe('Slip for Test Cover — USD');
+    expect(gen.json().content).toBe('Slip for Test Cover - USD');
 
     const docId = gen.json().id as string;
     const fetched = await app.inject({ method: 'GET', url: `/api/documents/${docId}`, headers: auth });
     expect(fetched.statusCode).toBe(200);
-    expect(fetched.json().content).toBe('Slip for Test Cover — USD');
+    expect(fetched.json().content).toBe('Slip for Test Cover - USD');
     expect(fetched.json().title).toBe('Generated Slip');
   });
 

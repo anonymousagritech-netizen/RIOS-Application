@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0017: MFA & federated identity (SSO / OIDC)
+-- RIOS - Migration 0017: MFA & federated identity (SSO / OIDC)
 -- Brief §14.1 (MFA enforced by policy; SSO via OAuth2/OIDC, SAML, Azure AD, LDAP)
 -- =============================================================================
 

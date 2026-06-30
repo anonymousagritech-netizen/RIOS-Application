@@ -3,7 +3,7 @@
  *
  * Assets and software licenses are tracked per tenant; licenses surface computed
  * seat availability and an expiry warning. The entitlement engine toggles a
- * feature per tenant WITHOUT a deploy (§9.1, §10.3) — the upsert is the proof.
+ * feature per tenant WITHOUT a deploy (§9.1, §10.3) - the upsert is the proof.
  */
 
 import type { FastifyInstance } from 'fastify';

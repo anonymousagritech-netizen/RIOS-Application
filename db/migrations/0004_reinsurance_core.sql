@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0004: Reinsurance core (programme, contract, layer, participation, terms)
+-- RIOS - Migration 0004: Reinsurance core (programme, contract, layer, participation, terms)
 -- Brief §7.2–§7.5, §9.6, §28 (illustrative core model), §29 (module functional notes)
 -- =============================================================================
 

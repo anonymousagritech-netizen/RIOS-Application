@@ -50,9 +50,9 @@ export function MessagingPage() {
   const cols: Column<Message>[] = [
     { key: 'channel', header: 'Channel', render: (m) => <Badge color="slate">{titleCase(m.channel)}</Badge> },
     { key: 'to', header: 'To', render: (m) => <span className={shared.cellMain}>{m.to}</span> },
-    { key: 'subject', header: 'Subject', render: (m) => <span className={shared.cellSub}>{m.subject ?? '—'}</span> },
+    { key: 'subject', header: 'Subject', render: (m) => <span className={shared.cellSub}>{m.subject ?? '-'}</span> },
     { key: 'status', header: 'Status', render: (m) => <Badge color={STATUS[m.status] ?? 'slate'}>{titleCase(m.status)}</Badge> },
-    { key: 'sent', header: 'Sent', render: (m) => m.sentAt ? formatDateTime(m.sentAt) : '—' },
+    { key: 'sent', header: 'Sent', render: (m) => m.sentAt ? formatDateTime(m.sentAt) : '-' },
   ];
 
   return (

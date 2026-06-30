@@ -3,7 +3,7 @@
  *
  * A workflow is a state machine described entirely as metadata (a config
  * document of `kind: 'workflow'`): a set of named states and the transitions
- * between them. This module is the *pure* interpreter — it validates a
+ * between them. This module is the *pure* interpreter - it validates a
  * definition, answers "what transitions are legal from here", and computes the
  * next state for an event. It performs no I/O: the server loads the definition
  * from `config_document`, drives `workflow_instance` rows through it, and
@@ -66,8 +66,8 @@ export function validateWorkflow(def: WorkflowDefinition): ValidationIssue[] {
     if (!states.has(t.from)) issues.push({ code: 'bad_from', message: `Transition ${i}: "${t.from}" is not a defined state.` });
     if (!states.has(t.to)) issues.push({ code: 'bad_to', message: `Transition ${i}: "${t.to}" is not a defined state.` });
   }
-  // An orphaned state — not the initial state, with neither an incoming nor an
-  // outgoing transition — is unreachable and unusable. (A terminal state such as
+  // An orphaned state - not the initial state, with neither an incoming nor an
+  // outgoing transition - is unreachable and unusable. (A terminal state such as
   // ACTIVE legitimately has no *outgoing* transition, so we require *both* to be
   // absent before flagging.)
   const hasOut = new Set((def.transitions ?? []).map((t) => t.from));

@@ -101,8 +101,8 @@ function TemplatesTab({ canWrite }: { canWrite: boolean }) {
   const columns: Column<DocTemplate>[] = [
     { key: 'key', header: 'Key', sortValue: (t) => t.key, render: (t) => <span className={shared.cellRef}>{t.key}</span> },
     { key: 'name', header: 'Name', sortValue: (t) => t.name, render: (t) => <span className={shared.cellMain}>{t.name}</span> },
-    { key: 'docType', header: 'Type', sortValue: (t) => t.doc_type ?? '', render: (t) => titleCase(t.doc_type) || '—' },
-    { key: 'version', header: 'Version', align: 'right', sortValue: (t) => t.version ?? 0, render: (t) => t.version ?? '—' },
+    { key: 'docType', header: 'Type', sortValue: (t) => t.doc_type ?? '', render: (t) => titleCase(t.doc_type) || '-' },
+    { key: 'version', header: 'Version', align: 'right', sortValue: (t) => t.version ?? 0, render: (t) => t.version ?? '-' },
   ];
 
   return (
@@ -192,7 +192,7 @@ function NewTemplateModal({ open, onClose }: { open: boolean; onClose: () => voi
             {DOC_TYPES.map((d) => <option key={d} value={d}>{titleCase(d)}</option>)}
           </Select>
         </FormField>
-        <FormField label="Body" required hint="Use {{ dotted.path }} placeholders — e.g. {{ contract.reference }} — resolved from the generation context.">
+        <FormField label="Body" required hint="Use {{ dotted.path }} placeholders - e.g. {{ contract.reference }} - resolved from the generation context.">
           <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -269,7 +269,7 @@ function GenerateTab({ canWrite }: { canWrite: boolean }) {
               {tpls.map((t) => <option key={t.id} value={t.key}>{t.name} ({t.key})</option>)}
             </Select>
           </FormField>
-          <TextField label="Title" value={title} onChange={setTitle} required placeholder="e.g. Cover note — NAP QS 2026" />
+          <TextField label="Title" value={title} onChange={setTitle} required placeholder="e.g. Cover note - NAP QS 2026" />
           <FormField label="Context (JSON)" hint="Object whose keys back the {{ dotted.path }} placeholders.">
             <Textarea
               value={context}
@@ -322,7 +322,7 @@ function DocumentsTab() {
 
   const columns: Column<DocSummary>[] = [
     { key: 'title', header: 'Title', sortValue: (d) => d.title, render: (d) => <span className={shared.cellMain}>{d.title}</span> },
-    { key: 'docType', header: 'Type', sortValue: (d) => d.doc_type ?? '', render: (d) => titleCase(d.doc_type) || '—' },
+    { key: 'docType', header: 'Type', sortValue: (d) => d.doc_type ?? '', render: (d) => titleCase(d.doc_type) || '-' },
     { key: 'status', header: 'Status', sortValue: (d) => d.status, render: (d) => <StatusPill status={d.status} /> },
     { key: 'created', header: 'Created', align: 'right', sortValue: (d) => d.created_at, render: (d) => formatDate(d.created_at) },
   ];

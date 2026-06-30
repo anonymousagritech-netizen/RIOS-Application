@@ -52,7 +52,7 @@ function Connectors() {
     { key: 'key', header: 'Key', render: (c) => <span className={shared.cellRef}>{c.key}</span> },
     { key: 'name', header: 'Connector', render: (c) => <span className={shared.cellMain}>{c.name}</span> },
     { key: 'kind', header: 'Kind', render: (c) => <Badge color="violet">{c.kind.toUpperCase()}</Badge> },
-    { key: 'status', header: 'Last test', render: (c) => c.lastStatus ? <Badge color={c.lastStatus === 'ok' ? 'green' : 'red'}>{c.lastStatus}</Badge> : '—' },
+    { key: 'status', header: 'Last test', render: (c) => c.lastStatus ? <Badge color={c.lastStatus === 'ok' ? 'green' : 'red'}>{c.lastStatus}</Badge> : '-' },
     { key: 'enabled', header: 'Enabled', render: (c) => <Badge color={c.enabled ? 'green' : 'gray'}>{c.enabled ? 'On' : 'Off'}</Badge> },
     { key: 'act', header: '', align: 'right', render: (c) => <Button variant="ghost" onClick={() => test.mutate(c.id)} loading={test.isPending}>Test</Button> },
   ];
@@ -73,9 +73,9 @@ function EventBus() {
   if (q.isLoading) return <PageLoader label="Loading events…" />;
   const cols: Column<Event>[] = [
     { key: 'type', header: 'Event', render: (e) => <span className={shared.cellMain}>{e.eventType}</span> },
-    { key: 'agg', header: 'Aggregate', render: (e) => e.aggregateType ?? '—' },
+    { key: 'agg', header: 'Aggregate', render: (e) => e.aggregateType ?? '-' },
     { key: 'status', header: 'Status', render: (e) => <Badge color={e.status === 'published' ? 'green' : 'amber'}>{titleCase(e.status)}</Badge> },
-    { key: 'pub', header: 'Published', render: (e) => e.publishedAt ? formatDateTime(e.publishedAt) : '—' },
+    { key: 'pub', header: 'Published', render: (e) => e.publishedAt ? formatDateTime(e.publishedAt) : '-' },
   ];
   return (
     <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
@@ -123,7 +123,7 @@ function ApiKeys() {
       {canManage && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
           <Button variant="primary" onClick={() => issue.mutate()} loading={issue.isPending}>Issue API key</Button>
-          {newKey && <span className={shared.cellSub} style={{ fontFamily: 'var(--font-mono)' }}>Copy now — shown once: {newKey}</span>}
+          {newKey && <span className={shared.cellSub} style={{ fontFamily: 'var(--font-mono)' }}>Copy now - shown once: {newKey}</span>}
         </div>
       )}
       <Table columns={cols} rows={q.data?.keys} rowKey={(k) => k.id} empty={<EmptyState title="No keys" message="No API keys issued." />} />

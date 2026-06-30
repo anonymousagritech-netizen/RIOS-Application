@@ -21,7 +21,7 @@ const COLOR_VAR: Record<string, string> = {
   rose: 'var(--c-rose)', gray: 'var(--c-gray)',
 };
 
-/** Pure CSS horizontal bar chart — no charting dependency. */
+/** Pure CSS horizontal bar chart - no charting dependency. */
 export function BarChart({ data, metaColors, emptyLabel = 'No data yet' }: BarChartProps) {
   const max = Math.max(1, ...data.map((d) => d.value));
   if (!data.length) {

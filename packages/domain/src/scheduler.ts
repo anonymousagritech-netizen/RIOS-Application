@@ -1,7 +1,7 @@
 /**
- * Scheduler / job orchestration (brief §3 — scheduler). Pure scheduling maths:
+ * Scheduler / job orchestration (brief §3 - scheduler). Pure scheduling maths:
  * given a job's interval and its last run, compute the next run and decide what
- * is due. Interval-based (every N minutes) rather than full cron — deterministic
+ * is due. Interval-based (every N minutes) rather than full cron - deterministic
  * and clock-free, so the server passes `now` in. The server persists jobs/runs
  * and triggers execution; this module only decides *when*.
  */

@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0019: Treasury, investments & tax/levies (brief §9, §13)
+-- RIOS - Migration 0019: Treasury, investments & tax/levies (brief §9, §13)
 -- The asset side (an investment portfolio backing reserves) and the configurable
 -- premium-tax / levy stack. Valuations & levy maths live in @rios/domain; these
 -- tables are the persisted state. Money is integer minor units.

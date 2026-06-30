@@ -98,7 +98,7 @@ function Eval() {
   });
   return (
     <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-      <p className={shared.cellSub}>Run a curated suite of prompts through the assistant and check each response contains the expected signal — a regression check on the intent engine.</p>
+      <p className={shared.cellSub}>Run a curated suite of prompts through the assistant and check each response contains the expected signal - a regression check on the intent engine.</p>
       <div><Button variant="primary" onClick={() => run.mutate()} loading={run.isPending}>Run evaluation</Button></div>
       {result && (
         <>

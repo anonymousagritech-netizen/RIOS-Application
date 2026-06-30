@@ -240,7 +240,7 @@ export async function regulatoryModule(app: FastifyInstance): Promise<void> {
       return { error: 'Invalid solvency run', details: parsed.error.flatten() };
     }
     const b = parsed.data;
-    // Solvency II domain functions take plain major-unit numbers — pass straight through.
+    // Solvency II domain functions take plain major-unit numbers - pass straight through.
     const scrResult = solvencyCapitalRequirement({
       moduleScrs: b.modules.map((m) => m.scr),
       correlation: b.correlation,

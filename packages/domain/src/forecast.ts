@@ -1,5 +1,5 @@
 /**
- * Forecast services (brief §13 — pivot/cube & forecast). Pure time-series
+ * Forecast services (brief §13 - pivot/cube & forecast). Pure time-series
  * helpers used to project a metric forward: trailing moving average, ordinary
  * least-squares linear trend (+ projection), and simple exponential smoothing.
  * Deterministic and unit-tested. Inputs are plain numbers (callers pass minor

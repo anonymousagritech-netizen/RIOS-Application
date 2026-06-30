@@ -352,7 +352,7 @@ function AddEntryModal({ accumulation, onClose }: { accumulation: Accumulation |
     <Modal
       open={!!accumulation}
       onClose={close}
-      title={accumulation ? `Add entry — ${titleCase(accumulation.peril)} / ${accumulation.zone}` : 'Add entry'}
+      title={accumulation ? `Add entry - ${titleCase(accumulation.peril)} / ${accumulation.zone}` : 'Add entry'}
       description="Record gross and net exposure (major units). Net drives utilisation against capacity."
       size="lg"
       footer={
@@ -385,8 +385,8 @@ function AddEntryModal({ accumulation, onClose }: { accumulation: Accumulation |
       ) : entries.length ? (
         <Table
           columns={[
-            { key: 'risk', header: 'Risk', render: (en: AccumulationEntry) => en.risk_id ?? '—' },
-            { key: 'contract', header: 'Contract', render: (en: AccumulationEntry) => en.contract_id ?? '—' },
+            { key: 'risk', header: 'Risk', render: (en: AccumulationEntry) => en.risk_id ?? '-' },
+            { key: 'contract', header: 'Contract', render: (en: AccumulationEntry) => en.contract_id ?? '-' },
             { key: 'gross', header: 'Gross', align: 'right', render: (en: AccumulationEntry) => <span className={shared.money}>{formatMoney(en.gross_exposure_minor, en.currency || currency)}</span> },
             { key: 'net', header: 'Net', align: 'right', render: (en: AccumulationEntry) => <span className={shared.money}>{formatMoney(en.net_exposure_minor, en.currency || currency)}</span> },
           ]}

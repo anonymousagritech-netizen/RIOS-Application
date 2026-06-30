@@ -50,6 +50,7 @@ import { fieldSecurityModule } from './modules/fieldSecurity.js';
 import { schedulerModule } from './modules/scheduler.js';
 import { delegationModule } from './modules/delegation.js';
 import { performanceModule } from './modules/performance.js';
+import { attendanceModule } from './modules/attendance.js';
 import { productsModule } from './modules/products.js';
 import { platformModule } from './modules/platform.js';
 import { costModule } from './modules/cost.js';
@@ -214,6 +215,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(schedulerModule);
   await app.register(delegationModule);
   await app.register(performanceModule);
+  await app.register(attendanceModule);
   await app.register(productsModule);
   await app.register(platformModule);
   await app.register(costModule);

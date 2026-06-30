@@ -113,27 +113,27 @@ export function PortalPage() {
     { key: 'reference', header: 'Reference', render: (r) => <span className={shared.cellRef}>{r.reference}</span> },
     { key: 'name', header: 'Contract', render: (r) => <span className={shared.cellMain}>{r.name}</span> },
     { key: 'kind', header: 'Kind', render: (r) => titleCase(r.contractKind) },
-    { key: 'lob', header: 'Line of business', render: (r) => titleCase(r.lineOfBusiness) || '—' },
-    { key: 'period', header: 'Period', render: (r) => r.periodStart ? `${formatDate(r.periodStart)} – ${formatDate(r.periodEnd)}` : '—' },
+    { key: 'lob', header: 'Line of business', render: (r) => titleCase(r.lineOfBusiness) || '-' },
+    { key: 'period', header: 'Period', render: (r) => r.periodStart ? `${formatDate(r.periodStart)} – ${formatDate(r.periodEnd)}` : '-' },
     { key: 'status', header: 'Status', render: (r) => <StatusPill status={r.status} metaColors={contractColors} /> },
   ];
   const statementCols: Column<Statement>[] = [
-    { key: 'reference', header: 'Reference', render: (r) => <span className={shared.cellRef}>{r.reference ?? '—'}</span> },
-    { key: 'contract', header: 'Contract', render: (r) => <span className={shared.cellSub}>{r.contractName ?? r.contractReference ?? '—'}</span> },
-    { key: 'period', header: 'Period', render: (r) => r.periodEnd ? formatDate(r.periodEnd) : '—' },
+    { key: 'reference', header: 'Reference', render: (r) => <span className={shared.cellRef}>{r.reference ?? '-'}</span> },
+    { key: 'contract', header: 'Contract', render: (r) => <span className={shared.cellSub}>{r.contractName ?? r.contractReference ?? '-'}</span> },
+    { key: 'period', header: 'Period', render: (r) => r.periodEnd ? formatDate(r.periodEnd) : '-' },
     { key: 'balance', header: 'Balance', align: 'right', sortValue: (r) => r.balanceMinor, render: (r) => formatMoney(r.balanceMinor, r.currency) },
     { key: 'status', header: 'Status', render: (r) => <StatusPill status={r.status} metaColors={statementColors} /> },
   ];
   const claimCols: Column<Claim>[] = [
-    { key: 'reference', header: 'Reference', render: (r) => <span className={shared.cellRef}>{r.reference ?? '—'}</span> },
-    { key: 'contract', header: 'Contract', render: (r) => <span className={shared.cellSub}>{r.contractName ?? r.contractReference ?? '—'}</span> },
+    { key: 'reference', header: 'Reference', render: (r) => <span className={shared.cellRef}>{r.reference ?? '-'}</span> },
+    { key: 'contract', header: 'Contract', render: (r) => <span className={shared.cellSub}>{r.contractName ?? r.contractReference ?? '-'}</span> },
     { key: 'notified', header: 'Notified', render: (r) => formatDate(r.notifiedDate) },
     { key: 'gross', header: 'Gross', align: 'right', sortValue: (r) => r.grossLossMinor, render: (r) => formatMoney(r.grossLossMinor, r.currency) },
     { key: 'outstanding', header: 'Outstanding', align: 'right', sortValue: (r) => r.outstandingMinor, render: (r) => formatMoney(r.outstandingMinor, r.currency) },
     { key: 'status', header: 'Status', render: (r) => <StatusPill status={r.status} metaColors={claimColors} /> },
   ];
 
-  // A non-admin with no grant at all: the API returns 403 — explain it.
+  // A non-admin with no grant at all: the API returns 403 - explain it.
   const noAccess = !isAdmin && grants.isSuccess && grants.data.grants.length === 0;
 
   return (

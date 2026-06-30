@@ -2,7 +2,7 @@
   "name": "rios-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "RIOS — Reinsurance Intelligent Operating System. A metadata-driven, multi-tenant reinsurance ERP platform.",
+  "description": "RIOS - Reinsurance Intelligent Operating System. A metadata-driven, multi-tenant reinsurance ERP platform.",
   "license": "UNLICENSED",
   "workspaces": [
     "packages/shared",

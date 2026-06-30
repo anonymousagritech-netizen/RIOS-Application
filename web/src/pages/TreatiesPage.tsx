@@ -58,7 +58,7 @@ export function TreatiesPage() {
         </span>
       ),
     },
-    { key: 'lineOfBusiness', header: 'LOB', sortValue: (r) => r.lineOfBusiness ?? '', render: (r) => titleCase(r.lineOfBusiness) || '—' },
+    { key: 'lineOfBusiness', header: 'LOB', sortValue: (r) => r.lineOfBusiness ?? '', render: (r) => titleCase(r.lineOfBusiness) || '-' },
     { key: 'currency', header: 'CCY', sortValue: (r) => r.currency, render: (r) => r.currency },
     { key: 'period', header: 'Inception', sortValue: (r) => r.periodStart ?? '', render: (r) => formatDate(r.periodStart) },
     {

@@ -243,7 +243,7 @@ function GmmCard({ group, canRun }: { group: Ifrs17Group; canRun: boolean }) {
 
   return (
     <Card>
-      <CardHeader title="Measure GMM" subtitle="General Measurement Model — present values in major units." />
+      <CardHeader title="Measure GMM" subtitle="General Measurement Model - present values in major units." />
       {canRun ? (
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <div className={shared.grid3} style={{ display: 'grid' }}>
@@ -434,7 +434,7 @@ function ReturnsTab({ canRun }: { canRun: boolean }) {
 
   const columns: Column<ReturnListItem>[] = [
     { key: 'kind', header: 'Kind', sortValue: (r) => r.kind, render: (r) => <span className={shared.cellMain}>{RETURN_KINDS.find((k) => k.value === r.kind)?.label ?? titleCase(r.kind)}</span> },
-    { key: 'period', header: 'Period', render: (r) => r.period ?? <span className={shared.cellSub}>—</span> },
+    { key: 'period', header: 'Period', render: (r) => r.period ?? <span className={shared.cellSub}>-</span> },
     { key: 'status', header: 'Status', render: (r) => <StatusPill status={r.status} metaColors={RETURN_STATUS_COLORS} /> },
     { key: 'created', header: 'Prepared', sortValue: (r) => r.createdAt ?? '', render: (r) => formatDateTime(r.createdAt) },
     {
@@ -526,8 +526,8 @@ function ReturnModal({ id, canRun, onApprove, approving, onClose }: {
           <DefinitionList
             items={[
               { term: 'Kind', value: RETURN_KINDS.find((k) => k.value === data.kind)?.label ?? titleCase(data.kind) },
-              { term: 'Period', value: data.period ?? '—' },
-              { term: 'Reference', value: data.reference ?? '—' },
+              { term: 'Period', value: data.period ?? '-' },
+              { term: 'Reference', value: data.reference ?? '-' },
               { term: 'Status', value: <StatusPill status={data.status} metaColors={RETURN_STATUS_COLORS} /> },
               { term: 'Prepared', value: formatDateTime(data.createdAt) },
             ]}

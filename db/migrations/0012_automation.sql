@@ -1,6 +1,6 @@
 -- =============================================================================
--- RIOS — Migration 0012: Workflow, Rules, Approval & Notification engines
--- Brief §9.3, §10.3 — metadata-driven process & automation (definitions live in
+-- RIOS - Migration 0012: Workflow, Rules, Approval & Notification engines
+-- Brief §9.3, §10.3 - metadata-driven process & automation (definitions live in
 -- config_document; this migration holds the runtime instance/state tables)
 -- =============================================================================
 

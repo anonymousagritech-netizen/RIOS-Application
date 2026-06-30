@@ -1,5 +1,5 @@
 /**
- * Field-level security — value masking (brief §14 — RLS/FLS). Pure helpers that
+ * Field-level security - value masking (brief §14 - RLS/FLS). Pure helpers that
  * redact a field's value when the viewer lacks the permission its classification
  * requires. Complements row-level security (which hides whole rows) by hiding
  * sensitive *columns* (PII, bank details, identifiers) within a visible row. No

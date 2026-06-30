@@ -147,7 +147,7 @@ function BordereauDetailCard({ id, canWrite, onClear }: { id: string; canWrite: 
   const doProcess = async () => {
     try {
       const res = await process.mutateAsync();
-      toast.success(`Bordereau processed — ${titleCase(res.status)}`);
+      toast.success(`Bordereau processed - ${titleCase(res.status)}`);
       setConfirm(false);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Processing failed');
@@ -183,7 +183,7 @@ function BordereauDetailCard({ id, canWrite, onClear }: { id: string; canWrite: 
       header: 'Mapped fields',
       render: (l) => {
         const entries = Object.entries(l.mapped ?? {}).filter(([k]) => k !== 'amount');
-        if (!entries.length) return <span className={shared.cellSub}>—</span>;
+        if (!entries.length) return <span className={shared.cellSub}>-</span>;
         return <span className={shared.cellSub}>{entries.map(([k, v]) => `${k}: ${String(v)}`).join(' · ')}</span>;
       },
     },
@@ -192,7 +192,7 @@ function BordereauDetailCard({ id, canWrite, onClear }: { id: string; canWrite: 
       header: 'Errors',
       render: (l) => l.errors?.length
         ? <span style={{ color: 'var(--danger)', fontSize: 'var(--text-xs)' }}>{l.errors.join('; ')}</span>
-        : <span className={shared.cellSub}>—</span>,
+        : <span className={shared.cellSub}>-</span>,
     },
   ];
 
@@ -325,9 +325,9 @@ function UploadModal({ open, onClose, onUploaded }: {
       });
       setResult(res);
       if (res.errorCount > 0) {
-        toast.error(`${res.errorCount} row(s) rejected — see line errors`);
+        toast.error(`${res.errorCount} row(s) rejected - see line errors`);
       } else {
-        toast.success(`Bordereau ${titleCase(res.status)} — ${res.rowCount} row(s)`);
+        toast.success(`Bordereau ${titleCase(res.status)} - ${res.rowCount} row(s)`);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not upload the bordereau.');
@@ -381,7 +381,7 @@ function UploadModal({ open, onClose, onUploaded }: {
               <Select value={contractId} onChange={(e) => setContractId(e.target.value)}>
                 <option value="">Unassigned</option>
                 {treaties.map((t) => (
-                  <option key={t.id} value={t.id}>{t.reference ? `${t.reference} — ${t.name}` : t.name}</option>
+                  <option key={t.id} value={t.id}>{t.reference ? `${t.reference} - ${t.name}` : t.name}</option>
                 ))}
               </Select>
             </FormField>

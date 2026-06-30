@@ -1,10 +1,10 @@
 /**
  * Analytics & data warehouse (brief §13). A small star-schema query surface:
  * the caller picks a fact source plus dimensions and measures (both restricted
- * to a server-side whitelist — no arbitrary SQL), the module pulls the facts and
+ * to a server-side whitelist - no arbitrary SQL), the module pulls the facts and
  * the pure `pivot` engine in @rios/domain aggregates them. A separate
  * catastrophe surface summarises real per-event losses and computes the standard
- * cat metrics (AAL / EP curve / PML) from an analyst-supplied Event Loss Table —
+ * cat metrics (AAL / EP curve / PML) from an analyst-supplied Event Loss Table -
  * rates are explicit assumptions, never invented from the data.
  */
 
@@ -86,7 +86,7 @@ const SOURCES: Record<string, {
 
 /**
  * Validate a pivot request against the source whitelist and run it. Returns the
- * result or a typed error — shared by the ad-hoc pivot and saved reports.
+ * result or a typed error - shared by the ad-hoc pivot and saved reports.
  */
 async function executePivot(
   db: Db, source: string, dimensions: string[], measures: Measure[],

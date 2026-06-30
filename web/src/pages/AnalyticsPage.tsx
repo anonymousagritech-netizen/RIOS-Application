@@ -3,7 +3,7 @@
  * a Pivot builder (pick a fact source, dimensions and measures; the server
  * aggregates with the @rios/domain pivot) and a Catastrophe console (real
  * per-event loss summary; assign an annual rate per event to compute AAL, the
- * EP curve and a PML profile — rates are explicit assumptions, never invented).
+ * EP curve and a PML profile - rates are explicit assumptions, never invented).
  */
 
 import { useMemo, useState } from 'react';
@@ -31,7 +31,7 @@ export function AnalyticsPage() {
   const [tab, setTab] = useState('pivot');
   return (
     <>
-      <PageHeader title="Analytics" description="Pivot the data warehouse and model catastrophe loss — built on pure, reconcilable engines." />
+      <PageHeader title="Analytics" description="Pivot the data warehouse and model catastrophe loss - built on pure, reconcilable engines." />
       <Card>
         <Tabs
           tabs={[{ id: 'pivot', label: 'Data warehouse' }, { id: 'reports', label: 'Reports' }, { id: 'dashboards', label: 'Dashboards' }, { id: 'cat', label: 'Catastrophe' }, { id: 'forecast', label: 'Forecast' }]}
@@ -85,7 +85,7 @@ function PivotBuilder() {
   if (sources.isLoading) return <PageLoader label="Loading sources…" />;
 
   const cols: Column<PivotCell>[] = [
-    { key: 'dim', header: dims.find((d) => d.key === activeDim)?.label ?? 'Group', render: (c) => <span className={shared.cellMain}>{String(c.key[activeDim] ?? '—')}</span> },
+    { key: 'dim', header: dims.find((d) => d.key === activeDim)?.label ?? 'Group', render: (c) => <span className={shared.cellMain}>{String(c.key[activeDim] ?? '-')}</span> },
     { key: 'total', header: 'Total', align: 'right', sortValue: (c) => c.values.total ?? 0, render: (c) => formatMoney(c.values.total) },
     { key: 'count', header: 'Facts', align: 'right', render: (c) => formatNumber(c.count) },
   ];
@@ -167,7 +167,7 @@ function CatConsole() {
   const eventCols: Column<CatEvent>[] = [
     { key: 'code', header: 'Event', render: (e) => <span className={shared.cellRef}>{e.eventCode}</span> },
     { key: 'name', header: 'Name', render: (e) => <span className={shared.cellMain}>{e.name}</span> },
-    { key: 'peril', header: 'Peril', render: (e) => e.peril ?? '—' },
+    { key: 'peril', header: 'Peril', render: (e) => e.peril ?? '-' },
     { key: 'claims', header: 'Claims', align: 'right', render: (e) => formatNumber(e.claimCount) },
     { key: 'gross', header: 'Gross loss', align: 'right', sortValue: (e) => e.grossLossMinor, render: (e) => formatMoney(e.grossLossMinor) },
     {
@@ -186,7 +186,7 @@ function CatConsole() {
   return (
     <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
       <p className={shared.cellSub}>
-        Per-event losses are aggregated from real claims. Assign each event an annual occurrence rate (λ — e.g. 0.04 for a 1-in-25-year event)
+        Per-event losses are aggregated from real claims. Assign each event an annual occurrence rate (λ - e.g. 0.04 for a 1-in-25-year event)
         to compute the Average Annual Loss, exceedance-probability curve and PML profile. Rates are your modelling assumptions.
       </p>
       <Table columns={eventCols} rows={events.data?.events} rowKey={(e) => e.id}
@@ -211,7 +211,7 @@ function CatConsole() {
                 columns={[
                   { key: 'loss', header: 'Loss level', align: 'right', render: (p: EpPoint) => formatMoney(p.lossMinor) },
                   { key: 'prob', header: 'P(exceed / yr)', align: 'right', render: (p: EpPoint) => formatPercent(p.probability) },
-                  { key: 'rp', header: 'Return period', align: 'right', render: (p: EpPoint) => Number.isFinite(p.returnPeriod) ? `1-in-${Math.round(p.returnPeriod)}` : '—' },
+                  { key: 'rp', header: 'Return period', align: 'right', render: (p: EpPoint) => Number.isFinite(p.returnPeriod) ? `1-in-${Math.round(p.returnPeriod)}` : '-' },
                 ]}
                 rows={metrics.exceedanceCurve}
                 rowKey={(p) => String(p.lossMinor)}
@@ -337,13 +337,13 @@ function ReportsConsole() {
   return (
     <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
       <Card>
-        <CardHeader title="Saved reports" subtitle="Named definitions over the fact sources — run on demand." />
+        <CardHeader title="Saved reports" subtitle="Named definitions over the fact sources - run on demand." />
         <div style={{ padding: 'var(--space-4)' }}>
           <Table
             columns={[
               { key: 'name', header: 'Report', render: (r: SavedReport) => <span className={shared.cellMain}>{r.name}</span> },
               { key: 'source', header: 'Source', render: (r: SavedReport) => r.body.source },
-              { key: 'dims', header: 'Grouped by', render: (r: SavedReport) => (r.body.dimensions ?? []).join(', ') || '—' },
+              { key: 'dims', header: 'Grouped by', render: (r: SavedReport) => (r.body.dimensions ?? []).join(', ') || '-' },
               { key: 'act', header: '', align: 'right', render: (r: SavedReport) => <Button variant="primary" onClick={() => run.mutate(r.key)} loading={run.isPending}>Run</Button> },
             ]}
             rows={reports.data?.reports}
@@ -463,7 +463,7 @@ function DashboardsConsole() {
           <CardHeader title={rendered.name} />
           <div className={shared.kpiGrid} style={{ padding: 'var(--space-4)' }}>
             {rendered.widgets.map((w) => (
-              <KpiCard key={w.title} label={w.title} value={w.error ? '—' : formatMoney(w.total)} hint={w.error ?? `${w.groups} groups · ${w.factCount} facts`} icon="▦" />
+              <KpiCard key={w.title} label={w.title} value={w.error ? '-' : formatMoney(w.total)} hint={w.error ?? `${w.groups} groups · ${w.factCount} facts`} icon="▦" />
             ))}
           </div>
         </Card>

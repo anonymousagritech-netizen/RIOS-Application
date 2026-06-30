@@ -2,7 +2,7 @@
  * Mobile portal (brief §9.11). A condensed home payload tuned for a small screen
  * (headline counts + a short recent-activity list) and a PWA web-app manifest.
  * The same auth/RLS apply; this is a projection, not a parallel store. The native
- * shell is out of scope — the responsive web client consumes these endpoints.
+ * shell is out of scope - the responsive web client consumes these endpoints.
  */
 
 import type { FastifyInstance } from 'fastify';
@@ -36,7 +36,7 @@ export async function mobileModule(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // PWA manifest (public — the browser fetches it without a bearer token).
+  // PWA manifest (public - the browser fetches it without a bearer token).
   app.get('/api/mobile/manifest', async (_req, reply) => {
     reply.header('content-type', 'application/manifest+json');
     return {

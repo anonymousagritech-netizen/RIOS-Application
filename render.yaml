@@ -12,7 +12,7 @@ services:
     # NODE_ENV=production would otherwise skip them and the start command fails.
     buildCommand: npm ci --include=dev
     # Migrations run before every deploy; the demo seed is a one-time manual step
-    # (run `npm run db:seed` once from the Render Shell) — not re-run on deploy.
+    # (run `npm run db:seed` once from the Render Shell) - not re-run on deploy.
     preDeployCommand: npm run db:migrate
     startCommand: npm run start --workspace server
     healthCheckPath: /health

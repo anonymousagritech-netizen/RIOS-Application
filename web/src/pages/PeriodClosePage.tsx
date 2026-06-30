@@ -177,7 +177,7 @@ function PeriodsTab({ canPost }: { canPost: boolean }) {
             )}
           </div>
         ) : (
-          <span className={shared.cellSub}>—</span>
+          <span className={shared.cellSub}>-</span>
         ),
     },
   ];

@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0005: Technical & financial accounting
+-- RIOS - Migration 0005: Technical & financial accounting
 -- Brief §7.6 (reconcilable chain), §9.8, §28.1 (Financial Event, Statement, Posting)
 -- =============================================================================
 -- The reconcilable chain: Financial Event (technical) -> Statement of Account
@@ -35,7 +35,7 @@ create table financial_event (
 create index on financial_event (tenant_id, contract_id);
 create index on financial_event (tenant_id, event_type);
 create index on financial_event (tenant_id, statement_id);
--- partition-ready: large tenants partition by (tenant_id, booked_at range) — §16.2
+-- partition-ready: large tenants partition by (tenant_id, booked_at range) - §16.2
 
 -- Statement of account: periodic netting between two parties (§28.1, §28.5).
 create table statement_of_account (

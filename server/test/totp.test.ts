@@ -1,7 +1,7 @@
 /**
  * TOTP (RFC 6238) conformance tests. Uses the RFC 6238 Appendix B test vectors
  * (SHA-1, 8 digits, seed "12345678901234567890") to prove correctness, plus
- * round-trip, window, and base32 checks. Pure — no DB, no network.
+ * round-trip, window, and base32 checks. Pure - no DB, no network.
  */
 
 import { describe, it, expect } from 'vitest';

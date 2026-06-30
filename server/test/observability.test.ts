@@ -64,7 +64,7 @@ describe('observability', () => {
     // Hit a parameterised route; the label should be the pattern, not the id.
     await app.inject({ method: 'GET', url: '/api/treaties/00000000-0000-0000-0000-000000000000' });
     const res = await app.inject({ method: 'GET', url: '/metrics' });
-    // Either the matched pattern /api/treaties/:id or sanitised — never the raw uuid.
+    // Either the matched pattern /api/treaties/:id or sanitised - never the raw uuid.
     expect(res.body).not.toContain('00000000-0000-0000-0000-000000000000');
   });
 });

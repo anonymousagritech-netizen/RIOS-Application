@@ -3,7 +3,7 @@
  *
  * Facultative business is a single-risk cession captured on one screen: a
  * FACULTATIVE contract, its underlying risk, and the commercial terms are
- * created in a single transaction, and — when a premium is supplied — the ceded
+ * created in a single transaction, and - when a premium is supplied - the ceded
  * deposit premium is booked straight away as a Financial Event (§7.6), starting
  * the reconcilable accounting chain. Money is computed by @rios/domain so the
  * numbers match the ones the unit tests prove correct.

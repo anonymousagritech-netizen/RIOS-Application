@@ -1,9 +1,9 @@
 /**
- * Treasury & investments (brief §13 — asset side). Pure valuation helpers for an
+ * Treasury & investments (brief §13 - asset side). Pure valuation helpers for an
  * investment portfolio backing the reinsurer's reserves: accrued interest on
  * fixed-income holdings, unrealised P&L (market vs book), and a portfolio roll-up
  * with a book-value-weighted running yield. Money is integer minor units; rates
- * are fractions (0.045 = 4.5%). No I/O — unit-tested so valuations reconcile.
+ * are fractions (0.045 = 4.5%). No I/O - unit-tested so valuations reconcile.
  */
 
 export type InstrumentType = 'BOND' | 'BILL' | 'EQUITY' | 'CASH' | 'FUND';

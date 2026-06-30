@@ -1,8 +1,8 @@
 /**
- * Analytics: a pure pivot/cube aggregation engine (brief §13 — analytics &
+ * Analytics: a pure pivot/cube aggregation engine (brief §13 - analytics &
  * data warehouse). The server pulls fact rows (financial events, claims,
  * exposure) and this engine groups and aggregates them by chosen dimensions
- * and measures. No I/O — deterministic and unit-testable, so a pivot total can
+ * and measures. No I/O - deterministic and unit-testable, so a pivot total can
  * be reconciled against the underlying facts.
  */
 

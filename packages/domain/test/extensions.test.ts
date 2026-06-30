@@ -33,7 +33,7 @@ describe('fx', () => {
 
 const layer: Layer = { attachment: fromMajor(5_000_000, 'USD'), limit: fromMajor(5_000_000, 'USD'), reinstatements: 1 };
 
-describe('pricing — burning cost', () => {
+describe('pricing - burning cost', () => {
   it('rates a layer from experience with loading and ROL', () => {
     const r = burningCost(
       {
@@ -65,7 +65,7 @@ describe('pricing — burning cost', () => {
   });
 });
 
-describe('pricing — exposure rating & authority', () => {
+describe('pricing - exposure rating & authority', () => {
   it('produces a non-negative expected loss from an exposure curve', () => {
     const r = exposureRate(
       [{ bandLimit: 20_000_000, premium: fromMajor(10_000_000, 'USD'), lossRatio: 0.6 }],

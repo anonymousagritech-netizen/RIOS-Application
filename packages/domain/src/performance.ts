@@ -1,8 +1,8 @@
 /**
- * Performance management (brief §14 — performance management). Pure scoring for
+ * Performance management (brief §14 - performance management). Pure scoring for
  * employee review cycles: a weighted overall rating from per-goal scores and the
  * rating band it falls in. Scores are on a 1–5 scale; weights are arbitrary
- * positive numbers (normalised internally). No I/O — the server persists reviews
+ * positive numbers (normalised internally). No I/O - the server persists reviews
  * and asks this module for the roll-up.
  */
 

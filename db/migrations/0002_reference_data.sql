@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0002: Reference data / code lists (the metadata-driven core)
+-- RIOS - Migration 0002: Reference data / code lists (the metadata-driven core)
 -- Brief §4.1, §10 (configurability mandate), §10.3 (reference-data service)
 -- =============================================================================
 -- THE most load-bearing constraint in the brief: anything a customer could
@@ -68,7 +68,7 @@ create table exchange_rate (
 create index on exchange_rate (tenant_id, from_ccy, to_ccy, rate_date desc);
 
 -- ---------------------------------------------------------------------------
--- Numbering schemes (§10.2 — configurable reference/numbering)
+-- Numbering schemes (§10.2 - configurable reference/numbering)
 -- ---------------------------------------------------------------------------
 create table numbering_scheme (
   id          uuid primary key default gen_random_uuid(),

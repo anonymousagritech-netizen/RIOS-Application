@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0020: Risk & capital management + RDS (brief §13)
+-- RIOS - Migration 0020: Risk & capital management + RDS (brief §13)
 -- The capital position (own funds vs SCR/MCR) and a library of Realistic
 -- Disaster Scenarios with prescribed gross losses and assumed recoveries. The
 -- metrics (solvency ratio, net loss, post-event ratio, VaR/TVaR) are computed

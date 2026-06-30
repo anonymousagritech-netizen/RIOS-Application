@@ -83,7 +83,7 @@ export async function completeMfaLogin(mfaToken: string, code: string): Promise<
   try {
     payload = jwt.verify(mfaToken, config.jwtSecret) as typeof payload;
   } catch {
-    throw new AuthError('MFA challenge expired — please sign in again');
+    throw new AuthError('MFA challenge expired - please sign in again');
   }
   if (payload.purpose !== 'mfa') throw new AuthError('Invalid MFA challenge');
   const cred = await ownerQuery<{ secret: string }>(

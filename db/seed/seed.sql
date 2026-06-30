@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Seed data: a demonstrable tenant with the vertical slice populated
+-- RIOS - Seed data: a demonstrable tenant with the vertical slice populated
 -- Brief §24.1 (realistic test data spanning treaty, fac, retro, accounting, claims)
 -- =============================================================================
 -- Idempotent-ish: safe to run on a freshly migrated database. Uses a fixed tenant
@@ -298,7 +298,7 @@ values (:'tenant_id'::uuid, 'rule', 'treaty.bind.guards', 1, 'published', jsonb_
 on conflict (tenant_id, kind, key, version) do nothing;
 
 -- ---------------------------------------------------------------------------
--- Parties (one entity can hold several roles — §7 implication)
+-- Parties (one entity can hold several roles - §7 implication)
 -- ---------------------------------------------------------------------------
 insert into party (tenant_id, reference, legal_name, short_name, kind, country, identifiers) values
   (:'tenant_id'::uuid,'PTY-0001','Atlantic Mutual Insurance Company','Atlantic Mutual','organisation','US','{"naic":"12345"}'),
@@ -542,7 +542,7 @@ on conflict (tenant_id, event_code) do nothing;
 insert into claim (tenant_id, reference, contract_id, cat_event_id, description, loss_date,
                    currency, gross_loss_minor, outstanding_minor, paid_minor, status)
 select :'tenant_id'::uuid, 'CLM-2026-000001', c.id, ce.id,
-       'Windstorm property damage — coastal portfolio', date '2026-03-14',
+       'Windstorm property damage - coastal portfolio', date '2026-03-14',
        'USD', 750000000, 500000000, 250000000, 'RESERVED'
 from contract c
   join cat_event ce on ce.tenant_id=:'tenant_id'::uuid and ce.event_code='WS-2026-ATLANTIC'
@@ -552,7 +552,7 @@ on conflict do nothing;
 insert into claim (tenant_id, reference, contract_id, cat_event_id, description, loss_date,
                    currency, gross_loss_minor, outstanding_minor, paid_minor, status)
 select :'tenant_id'::uuid, 'CLM-2026-000002', c.id, ce.id,
-       'Windstorm — secondary surge losses', date '2026-03-15',
+       'Windstorm - secondary surge losses', date '2026-03-15',
        'USD', 320000000, 320000000, 0, 'NOTIFIED'
 from contract c
   join cat_event ce on ce.tenant_id=:'tenant_id'::uuid and ce.event_code='WS-2026-ATLANTIC'

@@ -49,7 +49,7 @@ const exposureSchema = z.object({
 });
 
 export async function pricingModule(app: FastifyInstance): Promise<void> {
-  // Burning-cost (experience) rating — persists a reproducible run.
+  // Burning-cost (experience) rating - persists a reproducible run.
   app.post('/api/pricing/burning-cost', { preHandler: requirePermission('pricing:write') }, async (req, reply) => {
     const ctx = authContext(req);
     const parsed = burningCostSchema.safeParse(req.body);

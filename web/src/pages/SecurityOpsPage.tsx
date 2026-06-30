@@ -56,7 +56,7 @@ function Soc() {
       <Table
         columns={[
           { key: 'ts', header: 'When', render: (e: SocEvent) => formatDateTime(e.occurredAt) },
-          { key: 'actor', header: 'Actor', render: (e: SocEvent) => e.actor ?? '—' },
+          { key: 'actor', header: 'Actor', render: (e: SocEvent) => e.actor ?? '-' },
           { key: 'action', header: 'Action', render: (e: SocEvent) => <Badge color="slate">{e.action}</Badge> },
           { key: 'entity', header: 'Entity', render: (e: SocEvent) => <span className={shared.cellRef}>{e.entityType}</span> },
         ]}
@@ -136,8 +136,8 @@ function Backup() {
         columns={[
           { key: 'kind', header: 'Kind', render: (r: BackupRun) => <Badge color="slate">{titleCase(r.kind)}</Badge> },
           { key: 'status', header: 'Status', render: (r: BackupRun) => <Badge color={r.status === 'completed' ? 'green' : r.status === 'failed' ? 'red' : 'amber'}>{titleCase(r.status)}</Badge> },
-          { key: 'loc', header: 'Location', render: (r: BackupRun) => <span className={shared.cellRef}>{r.location ?? '—'}</span> },
-          { key: 'size', header: 'Size', align: 'right', render: (r: BackupRun) => r.sizeBytes ? `${(r.sizeBytes / 1048576).toFixed(0)} MB` : '—' },
+          { key: 'loc', header: 'Location', render: (r: BackupRun) => <span className={shared.cellRef}>{r.location ?? '-'}</span> },
+          { key: 'size', header: 'Size', align: 'right', render: (r: BackupRun) => r.sizeBytes ? `${(r.sizeBytes / 1048576).toFixed(0)} MB` : '-' },
           { key: 'when', header: 'Started', render: (r: BackupRun) => formatDateTime(r.startedAt) },
         ]}
         rows={q.data?.runs}
@@ -193,7 +193,7 @@ function Saml() {
         <Table
           columns={[
             { key: 'name', header: 'Provider', render: (p: SamlProvider) => <span className={shared.cellMain}>{p.name}</span> },
-            { key: 'issuer', header: 'Issuer', render: (p: SamlProvider) => <span className={shared.cellRef}>{p.issuer ?? '—'}</span> },
+            { key: 'issuer', header: 'Issuer', render: (p: SamlProvider) => <span className={shared.cellRef}>{p.issuer ?? '-'}</span> },
             { key: 'enabled', header: 'Status', render: (p: SamlProvider) => <Badge color={p.enabled ? 'green' : 'gray'}>{p.enabled ? 'Enabled' : 'Disabled'}</Badge> },
           ]}
           rows={providers.data?.providers}

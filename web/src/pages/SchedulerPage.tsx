@@ -61,8 +61,8 @@ export function SchedulerPage() {
     { key: 'name', header: 'Job', render: (j) => <span className={shared.cellMain}>{j.name}</span> },
     { key: 'type', header: 'Type', render: (j) => <span className={shared.cellRef}>{j.jobType}</span> },
     { key: 'interval', header: 'Interval', render: (j) => interval(j.intervalMinutes) },
-    { key: 'last', header: 'Last run', render: (j) => j.lastRunAt ? formatDateTime(j.lastRunAt) : '—' },
-    { key: 'next', header: 'Next run', render: (j) => j.enabled ? (j.nextRunAt ? formatDateTime(j.nextRunAt) : '—') : '—' },
+    { key: 'last', header: 'Last run', render: (j) => j.lastRunAt ? formatDateTime(j.lastRunAt) : '-' },
+    { key: 'next', header: 'Next run', render: (j) => j.enabled ? (j.nextRunAt ? formatDateTime(j.nextRunAt) : '-') : '-' },
     { key: 'state', header: 'State', render: (j) => j.enabled ? <Badge color={j.due ? 'amber' : 'green'}>{j.due ? 'Due' : 'Scheduled'}</Badge> : <Badge color="gray">Disabled</Badge> },
     {
       key: 'act', header: '', align: 'right',
@@ -95,9 +95,9 @@ export function SchedulerPage() {
               <Table
                 columns={[
                   { key: 'started', header: 'Started', render: (r: Run) => formatDateTime(r.startedAt) },
-                  { key: 'finished', header: 'Finished', render: (r: Run) => r.finishedAt ? formatDateTime(r.finishedAt) : '—' },
+                  { key: 'finished', header: 'Finished', render: (r: Run) => r.finishedAt ? formatDateTime(r.finishedAt) : '-' },
                   { key: 'status', header: 'Status', render: (r: Run) => <Badge color={r.status === 'success' ? 'green' : r.status === 'failed' ? 'red' : 'amber'}>{r.status}</Badge> },
-                  { key: 'detail', header: 'Detail', render: (r: Run) => <span className={shared.cellSub}>{r.detail ?? '—'}</span> },
+                  { key: 'detail', header: 'Detail', render: (r: Run) => <span className={shared.cellSub}>{r.detail ?? '-'}</span> },
                 ]}
                 rows={runs.data?.runs}
                 rowKey={(r) => r.id}

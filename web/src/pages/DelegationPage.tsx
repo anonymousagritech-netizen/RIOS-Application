@@ -56,7 +56,7 @@ export function DelegationPage() {
     { key: 'from', header: 'From', render: (d) => <span className={shared.cellMain}>{d.delegatorName}</span> },
     { key: 'to', header: 'To', render: (d) => d.delegateName },
     { key: 'scope', header: 'Scope', render: (d) => d.scopePermission ? <Badge color="violet">{d.scopePermission}</Badge> : <Badge color="slate">All approvals</Badge> },
-    { key: 'window', header: 'Window', render: (d) => d.startsAt || d.endsAt ? `${d.startsAt ? formatDate(d.startsAt) : '—'} → ${d.endsAt ? formatDate(d.endsAt) : '—'}` : 'Open-ended' },
+    { key: 'window', header: 'Window', render: (d) => d.startsAt || d.endsAt ? `${d.startsAt ? formatDate(d.startsAt) : '-'} → ${d.endsAt ? formatDate(d.endsAt) : '-'}` : 'Open-ended' },
     { key: 'status', header: 'Status', render: (d) => <Badge color={d.active ? 'green' : 'gray'}>{d.active ? 'Active' : 'Revoked'}</Badge> },
     {
       key: 'act', header: '', align: 'right',
@@ -68,7 +68,7 @@ export function DelegationPage() {
 
   return (
     <>
-      <PageHeader title="Approval delegation" description="Delegate your approval authority while away — scoped and time-bound, decided by a pure resolver." />
+      <PageHeader title="Approval delegation" description="Delegate your approval authority while away - scoped and time-bound, decided by a pure resolver." />
 
       {actingFor.length > 0 && (
         <Card>

@@ -1,5 +1,5 @@
 /**
- * Non-proportional (excess of loss) calculations — brief §7.2.
+ * Non-proportional (excess of loss) calculations - brief §7.2.
  *
  * Layer recovery against attachment/limit, multi-layer programmes, rate-on-line,
  * minimum & deposit premium, and reinstatement premium (pro-rata as to time
@@ -219,7 +219,7 @@ export interface ReinstatementResult {
 }
 
 /**
- * Reinstatement premium — pro-rata as to amount (the fraction of the limit
+ * Reinstatement premium - pro-rata as to amount (the fraction of the limit
  * reinstated) and optionally pro-rata as to time (the unexpired period).
  *
  *   RP = annualPremium × (amountReinstated / limit) × rate × timeFraction

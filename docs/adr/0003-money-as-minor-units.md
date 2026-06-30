@@ -1,4 +1,4 @@
-# ADR 0003 — Money as integer minor units
+# ADR 0003 - Money as integer minor units
 
 **Status:** Accepted · **Date:** 2026 · **Deciders:** Reinsurance Domain Expert, Database Architect, CTO
 **Brief refs:** §16.1, §20 (data integrity), §4.4
@@ -19,13 +19,13 @@ ISO-4217 currency code:
 interface Money { readonly amount: number; readonly currency: string; }
 ```
 
-- All arithmetic is integer arithmetic. Same-currency only — cross-currency operations throw and must pass
+- All arithmetic is integer arithmetic. Same-currency only - cross-currency operations throw and must pass
   through FX explicitly.
 - The number of minor units per currency is data (2 for USD/EUR/GBP, 0 for JPY, 3 for BHD…), configurable
   per tenant in the platform.
 - Rates and percentages are applied through **one** explicitly-rounded helper (`multiply`/`percentOf`) with
   a selectable rounding mode (`half-up`, `half-even`, `down`, `up`), so every result is reproducible.
-- A **penny-perfect `allocate`** guarantees split amounts sum back exactly to the original — essential for
+- A **penny-perfect `allocate`** guarantees split amounts sum back exactly to the original - essential for
   reconciliation.
 - On the wire and in the DB, money is stored as `*_minor` integer columns + a currency column.
 

@@ -168,7 +168,7 @@ export function checkAuthority(c: AuthorityCheck): AuthorityResult {
  * A simple first-loss-scale (exposure) curve usable with exposureRate():
  * G(x) = x^(1/alpha) on [0,1]. alpha=1 is linear; alpha>1 is concave (severity
  * concentrated in lower layers, so upper layers attract proportionally less
- * expected loss). Illustrative — a production build would calibrate MBBEFD /
+ * expected loss). Illustrative - a production build would calibrate MBBEFD /
  * Riebesell curves per line of business.
  */
 export function paretoCurve(alpha: number): (x: number) => number {

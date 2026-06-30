@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0030: WebAuthn credentials & API marketplace (brief §14.1, §26)
+-- RIOS - Migration 0030: WebAuthn credentials & API marketplace (brief §14.1, §26)
 -- WebAuthn (passkey) credential storage to complete the auth surface, and an
 -- app/API marketplace catalog + per-tenant install state. AI Automation Studio
 -- and the Assistant evaluation suite reuse config_document / the assistant, so

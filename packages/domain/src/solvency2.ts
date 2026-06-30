@@ -1,9 +1,9 @@
 /**
- * Solvency II — SCR standard-formula skeleton (brief §18.2, Pillar 1).
+ * Solvency II - SCR standard-formula skeleton (brief §18.2, Pillar 1).
  *
  * Implements the non-life underwriting-risk sub-module (premium & reserve risk)
  * and the variance-covariance aggregation used to combine risk modules into the
- * Basic SCR, plus MCR corridor logic. This is a transparent, testable skeleton —
+ * Basic SCR, plus MCR corridor logic. This is a transparent, testable skeleton -
  * the full standard formula (all sub-modules, the official correlation matrices,
  * catastrophe scenarios, and the loss-absorbing capacity adjustments) is
  * designed-for, not delivered (see docs/open-questions.md).

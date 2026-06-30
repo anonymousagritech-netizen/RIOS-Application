@@ -3,7 +3,7 @@
  * are written to event_outbox (in the same transaction as the change that raised
  * them, in a full implementation), and a relay marks them published. The outbox
  * + relay are real and tested; the production sink (Kafka) is provider-configured
- * — the in-process relay here just flips status. integration:read / write.
+ * - the in-process relay here just flips status. integration:read / write.
  */
 
 import type { FastifyInstance } from 'fastify';

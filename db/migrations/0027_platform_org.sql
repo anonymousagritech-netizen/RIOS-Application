@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0027: Platform & org administration (brief §9.1, §13)
+-- RIOS - Migration 0027: Platform & org administration (brief §9.1, §13)
 -- Multi-company (legal entities within a tenant), branch/office management,
 -- feature & license flags, and cost/capacity records. All tenant-isolated.
 -- =============================================================================

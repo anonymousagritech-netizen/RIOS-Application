@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0023: Scheduler / job orchestration (brief §3)
+-- RIOS - Migration 0023: Scheduler / job orchestration (brief §3)
 -- Interval-scheduled jobs and their run history. Next-run / due decisions are
 -- computed by @rios/domain (scheduler); these tables hold the schedule and the
 -- audit of executions. A real deployment drives these from a worker; here a

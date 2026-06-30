@@ -1,12 +1,12 @@
 /**
- * Integration module (brief §17 — webhooks + data import/export).
+ * Integration module (brief §17 - webhooks + data import/export).
  *
  * Webhook emission is outbox-style: emitting an event enqueues a pending
  * `webhook_delivery` per matching active subscription; an out-of-band worker
  * delivers them. This module never calls external URLs itself (§9.3).
  *
  * Export/import is constrained to an explicit entity → table/column allowlist so
- * no user-supplied identifier is ever interpolated into SQL — only fixed,
+ * no user-supplied identifier is ever interpolated into SQL - only fixed,
  * code-defined column lists reach the query text.
  */
 
@@ -188,7 +188,7 @@ export async function integrationModule(app: FastifyInstance): Promise<void> {
       }
       const format = req.query.format === 'csv' ? 'csv' : 'json';
       return runAs(ctx, async (db) => {
-        // Columns come solely from the code-defined allowlist — never user input.
+        // Columns come solely from the code-defined allowlist - never user input.
         const cols = def.columns.join(', ');
         const { rows } = await db.query(
           `select ${cols} from ${def.table} limit 5000`,

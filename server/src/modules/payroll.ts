@@ -1,5 +1,5 @@
 /**
- * Payroll module (brief §9.14 — HR payroll runs).
+ * Payroll module (brief §9.14 - HR payroll runs).
  *
  * A payroll run sweeps every active employee with a base salary and computes a
  * gross-to-net payslip via @rios/domain `runPayslip` (progressive income tax,

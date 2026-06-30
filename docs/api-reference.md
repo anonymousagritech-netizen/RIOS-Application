@@ -1,4 +1,4 @@
-# RIOS — API Reference
+# RIOS - API Reference
 
 **Phase:** 6 / 10 (contracts → implemented) · **Version:** 1.0
 **Roles consulted:** Enterprise Solution Architect, Security Architect, Technical Writer, QA Lead
@@ -9,10 +9,10 @@
 This is the authoritative reference for every HTTP endpoint exposed by `@rios/server`
 (`server/src/app.ts` + `server/src/modules/*`). It documents the auth/bearer scheme, the RBAC permission
 model, the tenant-context enforcement, the error model, and every route (method, path, permission,
-request, response, errors). DTO shapes are mirrored in `packages/shared/src/index.ts` — the hand-maintained
+request, response, errors). DTO shapes are mirrored in `packages/shared/src/index.ts` - the hand-maintained
 TypeScript contract that stands in for the full OpenAPI document (brief §6).
 
-Out of scope: portal/gateway/webhook surfaces (§17) and the report/dashboard APIs — designed-for, not built.
+Out of scope: portal/gateway/webhook surfaces (§17) and the report/dashboard APIs - designed-for, not built.
 
 ---
 
@@ -25,7 +25,7 @@ Out of scope: portal/gateway/webhook surfaces (§17) and the report/dashboard AP
   [domain-calculations.md](./domain-calculations.md) §1 and [ADR 0003](./adr/0003-money-as-minor-units.md).
 - **Validation:** application-level **Zod** (not Fastify JSON-schema). Failures return `400 { error, details }`
   where `details` is Zod's `flatten()`.
-- **Permissions** are read from the JWT, not re-queried per request — so role changes take effect on next
+- **Permissions** are read from the JWT, not re-queried per request - so role changes take effect on next
   login (within the 12h token lifetime).
 
 ## Auth & bearer scheme
@@ -36,7 +36,7 @@ requires `status = 'active'`, and (if `tenantCode` is supplied) matches the tena
 payload**, so the token carries `id, email, displayName, tenantId, roles[], permissions[]` (plus `iat`/`exp`).
 
 Each subsequent request: the `authenticate` middleware requires `Authorization: Bearer <token>`, verifies it,
-and attaches the decoded `AuthUser` as `req.auth`. There is **no server-side session/revocation store** — the
+and attaches the decoded `AuthUser` as `req.auth`. There is **no server-side session/revocation store** - the
 token is self-contained until expiry.
 
 ## RBAC permission model
@@ -85,7 +85,7 @@ field in the body (a per-request id is set in logs). Status codes:
 | `GET` | `/api/auth/me` | auth only | `{ user: AuthUser }` |
 | `GET` | `/api/dashboard/summary` | auth only | KPIs (see below) |
 
-**`POST /api/auth/login`** — body `{ email, password, tenantCode? }` → `{ token, user: AuthUser }`.
+**`POST /api/auth/login`** - body `{ email, password, tenantCode? }` → `{ token, user: AuthUser }`.
 Errors: `400 { error:'Invalid login', details }`, `401 { error:'Invalid credentials' }`.
 
 **`GET /api/dashboard/summary`** →
@@ -104,21 +104,21 @@ premium-type financial events.
 
 | Method | Path | Permission | Request | Response |
 |---|---|---|---|---|
-| `GET` | `/api/config/code-lists` | `config:read` | — | `{ lists: Record<key, CodeValueDTO[]> }` |
-| `GET` | `/api/config/code-lists/:key` | `config:read` | — | `{ key, values: CodeValueDTO[] }` |
+| `GET` | `/api/config/code-lists` | `config:read` | - | `{ lists: Record<key, CodeValueDTO[]> }` |
+| `GET` | `/api/config/code-lists/:key` | `config:read` | - | `{ key, values: CodeValueDTO[] }` |
 | `POST` | `/api/config/code-lists/:key/values` | `config:write` | `{ code, label, meta? }` | inserted `{ code, label, meta }` |
-| `GET` | `/api/config/currencies` | `config:read` | — | `{ currencies: [{ code, name, minorUnits, symbol }] }` |
+| `GET` | `/api/config/currencies` | `config:read` | - | `{ currencies: [{ code, name, minorUnits, symbol }] }` |
 
 Only active, in-effect code values are returned. `POST …/values`: missing `code`/`label` → `400`; unknown
 list key → `404 { error:'Unknown code list: <key>' }`; `sort_order` is auto-assigned (max+1). This is the API
-that adds a status/dropdown value **without a deployment** (§10) — see [configuration-guide.md](./configuration-guide.md).
+that adds a status/dropdown value **without a deployment** (§10) - see [configuration-guide.md](./configuration-guide.md).
 
 ### Parties (`party:*`)
 
 | Method | Path | Permission | Request | Response |
 |---|---|---|---|---|
 | `GET` | `/api/parties` | `party:read` | query `q?`, `role?` | `{ parties: PartyDTO[] }` |
-| `GET` | `/api/parties/:id` | `party:read` | — | party + `identifiers` + `roles[]`; `404` if missing |
+| `GET` | `/api/parties/:id` | `party:read` | - | party + `identifiers` + `roles[]`; `404` if missing |
 | `POST` | `/api/parties` | `party:write` | `createPartySchema` | `201 { id, reference }` |
 
 `createPartySchema`: `{ legalName (min1), shortName?, kind: organisation|individual|syndicate|pool|captive
@@ -131,7 +131,7 @@ that adds a status/dropdown value **without a deployment** (§10) — see [confi
 | Method | Path | Permission | Request | Response |
 |---|---|---|---|---|
 | `GET` | `/api/treaties` | `treaty:read` | query `status?`, `kind?` | `{ treaties: [...] }` |
-| `GET` | `/api/treaties/:id` | `treaty:read` | — | `ContractDTO` + `layers[]`, `participations[]`, `terms`; `404` if missing |
+| `GET` | `/api/treaties/:id` | `treaty:read` | - | `ContractDTO` + `layers[]`, `participations[]`, `terms`; `404` if missing |
 | `POST` | `/api/treaties` | `treaty:write` | `createContractSchema` | `201 { id, reference, status:'DRAFT' }` |
 | `POST` | `/api/treaties/:id/transition` | `treaty:bind` | `{ to }` | `{ id, status, financialEvents[] }` |
 
@@ -184,16 +184,16 @@ Deposit derivation (latest `term_set`): if `terms.depositPremium` is a number, u
 
 | Method | Path | Permission | Request | Response |
 |---|---|---|---|---|
-| `GET` | `/api/treaties/:id/financial-events` | `accounting:read` | — | `{ events: FinancialEventDTO[] }` |
-| `GET` | `/api/treaties/:id/statement` | `accounting:read` | — | statement (see below) |
-| `POST` | `/api/treaties/:id/post` | `accounting:post` | — | posting result |
+| `GET` | `/api/treaties/:id/financial-events` | `accounting:read` | - | `{ events: FinancialEventDTO[] }` |
+| `GET` | `/api/treaties/:id/statement` | `accounting:read` | - | statement (see below) |
+| `POST` | `/api/treaties/:id/post` | `accounting:post` | - | posting result |
 
 **`GET …/statement`** → `{ contractId, currency, balanceMinor, eventCount, lines:[{type,count,totalMinor}],
 posted: boolean, reconciled: boolean|null, controlMovementMinor }`. `reconciled` is **`null`** when nothing
 has been posted yet. Built by `buildStatement` + `reconcile` from `@rios/domain`.
 
 **`POST …/post`** → posts unposted events to the GL as balanced journal legs (control account `1100`), then
-re-verifies: `{ journalId, posted, reconciled, statementBalanceMinor, controlMovementMinor }`. Idempotent —
+re-verifies: `{ journalId, posted, reconciled, statementBalanceMinor, controlMovementMinor }`. Idempotent -
 if all events are already posted, returns `{ posted: 0, message:'All events already posted' }`. Audits
 `post`/`journal`. See [domain-calculations.md](./domain-calculations.md) §4 for the reconciliation contract.
 
@@ -205,7 +205,7 @@ Posting rules: premium types → DR `1100` / CR `4000`; commissions/tax → DR `
 | Method | Path | Permission | Request | Response |
 |---|---|---|---|---|
 | `GET` | `/api/claims` | `claims:read` | query `status?`, `contractId?` | `{ claims: ClaimDTO[] }` |
-| `GET` | `/api/claims/:id` | `claims:read` | — | claim + `movements[]`; `404` if missing |
+| `GET` | `/api/claims/:id` | `claims:read` | - | claim + `movements[]`; `404` if missing |
 | `POST` | `/api/claims` | `claims:write` | `createClaimSchema` | `201 { id, reference, status:'NOTIFIED' }` |
 | `POST` | `/api/claims/:id/reserve-movement` | `claims:write` | `reserveSchema` | `{ outstandingMinor, paidMinor, status }` |
 
@@ -231,7 +231,7 @@ stateDiagram-v2
     REOPENED --> RESERVED
     SETTLED --> CLOSED
 ```
-States are reference data (`claim_status` code list), not a DB enum — extensible per §10. The implemented
+States are reference data (`claim_status` code list), not a DB enum - extensible per §10. The implemented
 reserve-movement endpoint sets a subset (RESERVED / PART_PAID / CLOSED); the full machine is configuration-driven.
 
 ### Assistant (auth only; see [ADR 0005](./adr/0005-assistant-guardrails.md))
@@ -243,11 +243,11 @@ reserve-movement endpoint sets a subset (RESERVED / PART_PAID / CLOSED); the ful
 
 `POST /api/assistant` runs a **deterministic intent engine** grounded in tenant data (counts, open claims,
 exposure by zone, statement navigation, create-treaty/party proposals). Mutating intents return an
-`AssistantAction` with `requiresConfirmation: true` and a `preview` — **nothing is written**.
+`AssistantAction` with `requiresConfirmation: true` and a `preview` - **nothing is written**.
 
 `POST /api/assistant/confirm` executes a prepared action **after re-checking the permission server-side**
 (e.g. `create_treaty` requires `treaty:write`). Under-permissioned → **403**; unknown kind → `400`. Audits
-with `context:{ assistant:true }`. The assistant uses only the caller's permissions — no backdoor — and works
+with `context:{ assistant:true }`. The assistant uses only the caller's permissions - no backdoor - and works
 fully with AI disabled.
 
 ---

@@ -27,7 +27,7 @@ export function PartyDetailPage() {
         title={party.legalName}
         description={
           <span>
-            <span className={shared.cellRef}>{party.reference ?? '—'}</span> · {titleCase(party.kind)}
+            <span className={shared.cellRef}>{party.reference ?? '-'}</span> · {titleCase(party.kind)}
             {party.country ? ` · ${party.country}` : ''}
           </span>
         }
@@ -40,9 +40,9 @@ export function PartyDetailPage() {
           <DefinitionList
             items={[
               { term: 'Legal name', value: party.legalName },
-              { term: 'Short name', value: party.shortName ?? '—' },
+              { term: 'Short name', value: party.shortName ?? '-' },
               { term: 'Kind', value: titleCase(party.kind) },
-              { term: 'Country', value: party.country ?? '—' },
+              { term: 'Country', value: party.country ?? '-' },
               { term: 'Status', value: <Badge color={party.status === 'ACTIVE' ? 'green' : 'slate'}>{titleCase(party.status)}</Badge> },
             ]}
           />
@@ -54,7 +54,7 @@ export function PartyDetailPage() {
               <DefinitionList
                 items={identifiers.map((idn) => ({
                   term: titleCase(String(idn.scheme ?? 'Identifier')),
-                  value: <span className={shared.cellRef}>{String(idn.value ?? '—')}</span>,
+                  value: <span className={shared.cellRef}>{String(idn.value ?? '-')}</span>,
                 }))}
               />
             )}

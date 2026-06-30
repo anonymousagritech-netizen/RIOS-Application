@@ -1,5 +1,5 @@
 /**
- * Procurement module (brief §9.14 — vendors, requisitions, purchase orders).
+ * Procurement module (brief §9.14 - vendors, requisitions, purchase orders).
  * A requisition is raised, submitted, then turned into a purchase order whose
  * lines compute money via @rios/domain. Orders move through a validated
  * lifecycle (draft → issued → received → closed, plus cancellation).

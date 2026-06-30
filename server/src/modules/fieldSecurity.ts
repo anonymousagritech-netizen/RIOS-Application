@@ -1,10 +1,10 @@
 /**
- * Field-level security (brief §14 — RLS/FLS). Manages column-masking policies and
+ * Field-level security (brief §14 - RLS/FLS). Manages column-masking policies and
  * enforces them: the `/api/fls/parties/:id` read returns a party with sensitive
  * fields masked per the caller's permissions (a working demonstration that the
  * pure @rios/domain applyMasking engine is wired to a real read, not just a
  * config screen). Policies are viewable to any authenticated user; authoring
- * needs fls:write. Masking decisions never trust the client — they use the
+ * needs fls:write. Masking decisions never trust the client - they use the
  * server-verified JWT permissions.
  */
 
@@ -74,7 +74,7 @@ export async function fieldSecurityModule(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // A party read with field-level security applied — masking enforced server-side
+  // A party read with field-level security applied - masking enforced server-side
   // from the caller's verified permissions.
   app.get<{ Params: { id: string } }>(
     '/api/fls/parties/:id',

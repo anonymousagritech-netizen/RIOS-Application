@@ -205,7 +205,7 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
 
   const columns: Column<PurchaseOrder>[] = [
     { key: 'reference', header: 'Reference', sortValue: (o) => o.reference, render: (o) => <span className={shared.cellRef}>{o.reference}</span> },
-    { key: 'vendor', header: 'Vendor', sortValue: (o) => o.vendorName ?? '', render: (o) => <span className={shared.cellMain}>{o.vendorName ?? '—'}</span> },
+    { key: 'vendor', header: 'Vendor', sortValue: (o) => o.vendorName ?? '', render: (o) => <span className={shared.cellMain}>{o.vendorName ?? '-'}</span> },
     { key: 'total', header: 'Total', align: 'right', sortValue: (o) => o.totalMinor, render: (o) => <span className={shared.money}>{formatMoney(o.totalMinor, o.currency)}</span> },
     { key: 'status', header: 'Status', sortValue: (o) => o.status, render: (o) => <StatusPill status={o.status} /> },
     {
@@ -214,7 +214,7 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
       align: 'right',
       render: (o) => {
         const next = PO_TRANSITIONS[o.status] ?? [];
-        if (!canWrite || next.length === 0) return <span className={shared.cellSub}>—</span>;
+        if (!canWrite || next.length === 0) return <span className={shared.cellSub}>-</span>;
         return (
           <div className={shared.toolbar} style={{ justifyContent: 'flex-end' }}>
             {next.map((to) => (
@@ -303,7 +303,7 @@ function OrderLines({ id }: { id: string }) {
   return (
     <>
       <CardHeader
-        title={`Lines — ${data?.reference ?? ''}`}
+        title={`Lines - ${data?.reference ?? ''}`}
         subtitle={data ? `${data.vendorName ?? 'Vendor'} · ${formatMoney(data.totalMinor, data.currency)} · ${titleCase(data.status)}` : undefined}
       />
       <Table
@@ -388,7 +388,7 @@ function NewOrderModal({ open, onClose }: { open: boolean; onClose: () => void }
           <FormField label="Vendor" required>
             <Select value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
               <option value="">Select a vendor…</option>
-              {vendors.map((v) => <option key={v.id} value={v.id}>{v.code} — {v.name}</option>)}
+              {vendors.map((v) => <option key={v.id} value={v.id}>{v.code} - {v.name}</option>)}
             </Select>
           </FormField>
           <FormField label="Currency" required>
@@ -480,7 +480,7 @@ function RequisitionsTab({ canWrite }: { canWrite: boolean }) {
         canWrite && r.status === 'draft' ? (
           <Button size="sm" variant="secondary" loading={submitReq.isPending} onClick={() => runSubmit(r.id)}>Submit</Button>
         ) : (
-          <span className={shared.cellSub}>—</span>
+          <span className={shared.cellSub}>-</span>
         ),
     },
   ];
@@ -583,8 +583,8 @@ function VendorsTab({ canWrite }: { canWrite: boolean }) {
   const columns: Column<Vendor>[] = [
     { key: 'code', header: 'Code', sortValue: (v) => v.code, render: (v) => <span className={shared.cellRef}>{v.code}</span> },
     { key: 'name', header: 'Vendor', sortValue: (v) => v.name, render: (v) => <span className={shared.cellMain}>{v.name}</span> },
-    { key: 'category', header: 'Category', sortValue: (v) => v.category ?? '', render: (v) => v.category ?? '—' },
-    { key: 'email', header: 'Email', sortValue: (v) => v.email ?? '', render: (v) => v.email ?? '—' },
+    { key: 'category', header: 'Category', sortValue: (v) => v.category ?? '', render: (v) => v.category ?? '-' },
+    { key: 'email', header: 'Email', sortValue: (v) => v.email ?? '', render: (v) => v.email ?? '-' },
     { key: 'status', header: 'Status', align: 'right', sortValue: (v) => v.status, render: (v) => <StatusPill status={v.status} /> },
   ];
 

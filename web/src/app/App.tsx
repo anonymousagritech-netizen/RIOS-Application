@@ -27,6 +27,7 @@ import { ReportsPage } from '../pages/ReportsPage';
 import { CrmPage } from '../pages/CrmPage';
 import { IntegrationPage } from '../pages/IntegrationPage';
 import { HrmsPage } from '../pages/HrmsPage';
+import { AttendancePage } from '../pages/AttendancePage';
 import { ProcurementPage } from '../pages/ProcurementPage';
 import { AssetsPage } from '../pages/AssetsPage';
 import { OperationsPage } from '../pages/OperationsPage';
@@ -104,6 +105,7 @@ export function App() {
         <Route path="/crm" element={<CrmPage />} />
         <Route path="/integration" element={<IntegrationPage />} />
         <Route path="/hr" element={<HrmsPage />} />
+        <Route path="/attendance" element={<AttendancePage />} />
         <Route path="/procurement" element={<ProcurementPage />} />
         <Route path="/assets" element={<AssetsPage />} />
         <Route path="/operations" element={<OperationsPage />} />

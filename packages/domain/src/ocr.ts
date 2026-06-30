@@ -1,5 +1,5 @@
 /**
- * Document intelligence (brief §9.4 — OCR & document intelligence). Pure field
+ * Document intelligence (brief §9.4 - OCR & document intelligence). Pure field
  * extraction from already-textual content: given labelled regex specs, pull
  * structured fields out of a document's text. Image/PDF OCR (pixels → text) is an
  * external engine; this module is the deterministic extraction layer over the

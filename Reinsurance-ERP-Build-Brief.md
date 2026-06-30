@@ -31,9 +31,9 @@ The brief is deliberately exhaustive. It is not expected that everything is buil
 
 ### 1.1 Mission
 
-Build the most comprehensive, configurable, metadata-driven, AI-assisted reinsurance platform on the market — a commercial multi-tenant SaaS product fit to be sold to cedents, reinsurers, retrocessionaires, brokers, MGAs, captives, pools, and Lloyd's market participants worldwide.
+Build the most comprehensive, configurable, metadata-driven, AI-assisted reinsurance platform on the market - a commercial multi-tenant SaaS product fit to be sold to cedents, reinsurers, retrocessionaires, brokers, MGAs, captives, pools, and Lloyd's market participants worldwide.
 
-### 1.2 What this is — and is not
+### 1.2 What this is - and is not
 
 | This **is** | This is **not** |
 |---|---|
@@ -42,11 +42,11 @@ Build the most comprehensive, configurable, metadata-driven, AI-assisted reinsur
 | A platform engineered for a multi-year roadmap | A throwaway MVP |
 | Original work informed by the market | A clone of any existing vendor |
 
-The quality bar is set by the leading enterprise insurance and ERP vendors — the likes of **Guidewire, Duck Creek, Sapiens, FIS/Prophet, SAP, Oracle Insurance, DXC, Majesco, Fadata, and SAS** — not as products to imitate, but as the standard of polish, depth, configurability, and operational rigour the result must meet or exceed.
+The quality bar is set by the leading enterprise insurance and ERP vendors - the likes of **Guidewire, Duck Creek, Sapiens, FIS/Prophet, SAP, Oracle Insurance, DXC, Majesco, Fadata, and SAS** - not as products to imitate, but as the standard of polish, depth, configurability, and operational rigour the result must meet or exceed.
 
 ### 1.3 Vision statement
 
-A reinsurance professional should be able to run the full lifecycle of treaty, facultative, and retrocession business — placement to accounting to claims to regulatory reporting — inside one coherent, fast, beautiful workspace, where almost every behaviour is configured rather than coded, and where an embedded assistant can be asked, in plain language or by voice, to build a report, draft a contract, surface an exposure, or walk a workflow.
+A reinsurance professional should be able to run the full lifecycle of treaty, facultative, and retrocession business - placement to accounting to claims to regulatory reporting - inside one coherent, fast, beautiful workspace, where almost every behaviour is configured rather than coded, and where an embedded assistant can be asked, in plain language or by voice, to build a report, draft a contract, surface an exposure, or walk a workflow.
 
 ### 1.4 Success criteria
 
@@ -56,7 +56,7 @@ The build is successful when the following are demonstrably true. These are the 
 - **Configurability.** A trained business administrator can change statuses, dropdowns, validation rules, workflows, forms, document templates, reports, dashboards, roles, and permissions **without a code deployment**. (See §10.)
 - **Commercial readiness.** Multi-tenancy, licensing, metering, audit, security, and operability are real, not stubbed.
 - **Regulatory credibility.** IFRS 17, Solvency II, and Llo'd's/market-relevant reporting are designed in, not bolted on. (See §18.)
-- **Experience quality.** The interface reads as a premium enterprise SaaS product — not a template, not an admin skin, not a stock dashboard. (See §11.)
+- **Experience quality.** The interface reads as a premium enterprise SaaS product - not a template, not an admin skin, not a stock dashboard. (See §11.)
 - **Trust.** Security, privacy, data lineage, and auditability withstand the scrutiny of an enterprise procurement and a regulator. (See §14, §18.)
 - **Operability.** The system can be deployed, observed, scaled, backed up, and recovered by an operations team using documented, automated procedures. (See §15, §21 phases 14.)
 
@@ -131,7 +131,7 @@ The platform is multi-tenant from the first schema. Tenant isolation, row-level 
 
 ### 4.3 Auditable and reversible
 
-Every state change is attributable (who, what, when, before/after) and, where the domain permits, reversible (undo for supported actions; soft delete with history). **Every destructive operation requires explicit confirmation** — in the UI and in the assistant — and is recorded immutably.
+Every state change is attributable (who, what, when, before/after) and, where the domain permits, reversible (undo for supported actions; soft delete with history). **Every destructive operation requires explicit confirmation** - in the UI and in the assistant - and is recorded immutably.
 
 ### 4.4 Correct before clever
 
@@ -150,7 +150,7 @@ The product is informed by the market and copies none of it. No vendor's UI is r
 If it cannot be deployed, observed, scaled, backed up, and recovered with documented automation, it is not done.
 ---
 
-## 5. Market & competitive context — study, do not copy
+## 5. Market & competitive context - study, do not copy
 
 ### 5.1 Purpose of the study
 
@@ -162,7 +162,7 @@ Before designing anything, develop a grounded understanding of how the reinsuran
 
 Across major reinsurers, brokers, and the Lloyd's market, develop a working command of: business processes; information architecture; user workflow; navigation models; module relationships; the **claims lifecycle**; the **treaty lifecycle**; the **facultative lifecycle**; the **retrocession lifecycle**; the **accounting workflow** (technical and financial); the **regulatory workflow**; the **reporting workflow**; the **underwriting and pricing workflow**; dashboard and KPI concepts; and end-to-end data flow.
 
-Reference points for *practice* (not design) include the global and regional reinsurers, brokers, and markets the industry recognises — large composite reinsurers, specialty and Bermuda/London carriers, Lloyd's syndicates and managing agents, and the major reinsurance brokers — spanning proportional, non-proportional, facultative, specialty, life & health, and retrocession business. The point is to absorb the *common operating model*, not any one firm's product.
+Reference points for *practice* (not design) include the global and regional reinsurers, brokers, and markets the industry recognises - large composite reinsurers, specialty and Bermuda/London carriers, Lloyd's syndicates and managing agents, and the major reinsurance brokers - spanning proportional, non-proportional, facultative, specialty, life & health, and retrocession business. The point is to absorb the *common operating model*, not any one firm's product.
 
 ### 5.3 What to understand from enterprise software vendors
 
@@ -183,7 +183,7 @@ The product positions as an **AI-first, fully configurable, multi-line reinsuran
 - **Reinsurance brokers / intermediaries** placing risk and administering accounts.
 - **MGAs, coverholders, and delegated-authority operations** under binding authorities.
 - **Pools, captives, and specialty vehicles** with bespoke structures.
-- **Lloyd's market participants** — syndicates, managing agents, and service companies.
+- **Lloyd's market participants** - syndicates, managing agents, and service companies.
 
 ### 6.2 Personas (representative, not exhaustive)
 
@@ -234,20 +234,20 @@ This section fixes the domain semantics every module must respect. It is intenti
 
 **Non-proportional (excess of loss, XL/XoL):** reinsurer pays losses above an attachment up to a limit.
 - **Per-risk XL**, **per-occurrence / catastrophe XL (CAT XL)**, **aggregate XL / stop-loss**, **clash covers**, **working layers**.
-- Key terms: **attachment point (priority/retention)**, **limit**, **layer band**, **reinstatements** (count, premium basis — pro-rata as to time and/or amount, free reinstatements), **rate on line (ROL)**, **minimum & deposit premium (MDP)**, **adjustment premium**, **annual aggregate deductible (AAD)**, **franchise/excess**, **swing/burning-cost rating**, **exposure rating**, **indexation/stability clauses**, **hours clauses**, **occurrence definitions**.
+- Key terms: **attachment point (priority/retention)**, **limit**, **layer band**, **reinstatements** (count, premium basis - pro-rata as to time and/or amount, free reinstatements), **rate on line (ROL)**, **minimum & deposit premium (MDP)**, **adjustment premium**, **annual aggregate deductible (AAD)**, **franchise/excess**, **swing/burning-cost rating**, **exposure rating**, **indexation/stability clauses**, **hours clauses**, **occurrence definitions**.
 
 ### 7.3 Treaty lifecycle (placement to run-off)
 
-1. **Submission / renewal** — cedent or broker presents the risk; prior-year experience and exposure assembled.
-2. **Pricing & structuring** — burning-cost, exposure, and pricing models; structure layers, retentions, commissions.
-3. **Quote & slip** — terms quoted; a **slip / market reform contract (MRC)** prepared.
-4. **Placement** — slip marketed; (re)insurers write **lines**; **order** placed; **signing down** if over-subscribed; **written vs signed lines** reconciled.
-5. **Binding & contract issuance** — firm order; contract/wording issued; references and unique market identifiers assigned.
-6. **Premium booking** — deposit/minimum premium, **estimated premium income (EPI)**, instalments, adjustment premium schedule.
-7. **Bordereaux & accounting** — premium bordereaux processed; **statements of account / accounts current** produced periodically; settlements.
-8. **Claims & loss bordereaux** — losses advised and aggregated; reserves; **reinstatement premiums** triggered; recoveries.
-9. **Adjustments** — premium adjustments, profit-commission calculations, sliding-scale true-ups, portfolio movements.
-10. **Renewal / run-off / commutation** — renew, let lapse into run-off, or **commute** (settle outstanding liabilities for a lump sum).
+1. **Submission / renewal** - cedent or broker presents the risk; prior-year experience and exposure assembled.
+2. **Pricing & structuring** - burning-cost, exposure, and pricing models; structure layers, retentions, commissions.
+3. **Quote & slip** - terms quoted; a **slip / market reform contract (MRC)** prepared.
+4. **Placement** - slip marketed; (re)insurers write **lines**; **order** placed; **signing down** if over-subscribed; **written vs signed lines** reconciled.
+5. **Binding & contract issuance** - firm order; contract/wording issued; references and unique market identifiers assigned.
+6. **Premium booking** - deposit/minimum premium, **estimated premium income (EPI)**, instalments, adjustment premium schedule.
+7. **Bordereaux & accounting** - premium bordereaux processed; **statements of account / accounts current** produced periodically; settlements.
+8. **Claims & loss bordereaux** - losses advised and aggregated; reserves; **reinstatement premiums** triggered; recoveries.
+9. **Adjustments** - premium adjustments, profit-commission calculations, sliding-scale true-ups, portfolio movements.
+10. **Renewal / run-off / commutation** - renew, let lapse into run-off, or **commute** (settle outstanding liabilities for a lump sum).
 
 ### 7.4 Facultative reinsurance
 
@@ -255,7 +255,7 @@ Cover for a **single risk** (rather than a class). Can be **facultative proporti
 
 ### 7.5 Retrocession
 
-A reinsurer protects its own assumed book by ceding to retrocessionaires (proportional, XL, or whole-account / **whole-account stop-loss**, including **ILW** — industry-loss warranties — where modelled). The platform treats retrocession as first-class: the same firm appears as reinsurer (inwards) and cedent (outwards), and net positions are computed across both.
+A reinsurer protects its own assumed book by ceding to retrocessionaires (proportional, XL, or whole-account / **whole-account stop-loss**, including **ILW** - industry-loss warranties - where modelled). The platform treats retrocession as first-class: the same firm appears as reinsurer (inwards) and cedent (outwards), and net positions are computed across both.
 
 ### 7.6 Technical vs financial accounting
 
@@ -266,29 +266,29 @@ A reinsurer protects its own assumed book by ceding to retrocessionaires (propor
 ### 7.7 Claims & recoveries lifecycle
 
 1. **Notification / loss advice** (and **CAT event** registration with an event code).
-2. **Reserving** — case/outstanding reserve; movement history; IBNR at portfolio level.
+2. **Reserving** - case/outstanding reserve; movement history; IBNR at portfolio level.
 3. **Cash call / cash loss** where contract terms permit.
-4. **Payment** — paid losses recorded; allocation across layers/participations.
-5. **Reinstatement** — where applicable, reinstatement premium computed and billed.
-6. **Recoveries** — outwards/retro recoveries computed and collected; **salvage & subrogation**; **inuring** reinsurance applied in correct order.
-7. **Aggregation** — losses rolled to event, programme, and portfolio for exposure and reporting.
+4. **Payment** - paid losses recorded; allocation across layers/participations.
+5. **Reinstatement** - where applicable, reinstatement premium computed and billed.
+6. **Recoveries** - outwards/retro recoveries computed and collected; **salvage & subrogation**; **inuring** reinsurance applied in correct order.
+7. **Aggregation** - losses rolled to event, programme, and portfolio for exposure and reporting.
 
 ### 7.8 Underwriting, pricing & exposure
 
-- **Pricing** — burning-cost / experience rating, exposure rating, and pricing models; capacity and authority checks.
-- **Aggregate & exposure management** — zonal aggregates, **PML / MFL**, capacity limits, peril/zone accumulation.
-- **Catastrophe analytics** — integration with cat models (e.g. Verisk, Moody's RMS) where licensed; **Realistic Disaster Scenarios (RDS)**; event-response footprints.
+- **Pricing** - burning-cost / experience rating, exposure rating, and pricing models; capacity and authority checks.
+- **Aggregate & exposure management** - zonal aggregates, **PML / MFL**, capacity limits, peril/zone accumulation.
+- **Catastrophe analytics** - integration with cat models (e.g. Verisk, Moody's RMS) where licensed; **Realistic Disaster Scenarios (RDS)**; event-response footprints.
 
 ### 7.9 Regulatory & reporting workflow
 
-- **IFRS 17** — measurement models (**GMM/BBA**, **PAA**, **VFA**), **CSM**, risk adjustment, fulfilment cash flows, onerous-contract handling, disclosure.
-- **Solvency II** — Pillar 1 (SCR/MCR, technical provisions), Pillar 2 (ORSA, governance), Pillar 3 (QRTs/disclosure).
-- **Local statutory & market** — US Schedule F, Lloyd's/market returns, local GAAP, tax and levy regimes.
-- **Market messaging & standards** — **ACORD**, **EBOT/ECOT**, bordereaux templates, bureau/market processing.
+- **IFRS 17** - measurement models (**GMM/BBA**, **PAA**, **VFA**), **CSM**, risk adjustment, fulfilment cash flows, onerous-contract handling, disclosure.
+- **Solvency II** - Pillar 1 (SCR/MCR, technical provisions), Pillar 2 (ORSA, governance), Pillar 3 (QRTs/disclosure).
+- **Local statutory & market** - US Schedule F, Lloyd's/market returns, local GAAP, tax and levy regimes.
+- **Market messaging & standards** - **ACORD**, **EBOT/ECOT**, bordereaux templates, bureau/market processing.
 
 ### 7.10 Data standards & interchange
 
-The platform speaks the industry's languages: **ACORD** messages, **EBOT/ECOT** back-office/claims transactions, standard **bordereaux** layouts (premium and loss), and common file interchange (Excel/CSV) with validation and mapping. Interchange is configurable, mapped, and validated — never assumed.
+The platform speaks the industry's languages: **ACORD** messages, **EBOT/ECOT** back-office/claims transactions, standard **bordereaux** layouts (premium and loss), and common file interchange (Excel/CSV) with validation and mapping. Interchange is configurable, mapped, and validated - never assumed.
 
 > **Design implication.** Because the same legal entity can be cedent, reinsurer, and retrocessionaire simultaneously, the data model is **party- and role-centric**, not "customer vs vendor". Positions are computed **gross, ceded, and net** at risk, layer, contract, programme, and portfolio grain.
 ---
@@ -297,7 +297,7 @@ The platform speaks the industry's languages: **ACORD** messages, **EBOT/ECOT** 
 
 ### 8.1 In scope (v1 platform)
 
-The full reinsurance operating lifecycle (treaty, facultative, retrocession) from placement through technical and financial accounting, claims and recoveries, exposure and pricing support, and regulatory and management reporting — delivered on a multi-tenant, configurable, secure, observable SaaS platform with an embedded assistant.
+The full reinsurance operating lifecycle (treaty, facultative, retrocession) from placement through technical and financial accounting, claims and recoveries, exposure and pricing support, and regulatory and management reporting - delivered on a multi-tenant, configurable, secure, observable SaaS platform with an embedded assistant.
 
 ### 8.2 Explicitly future / phased (not v1, but designed-for)
 
@@ -309,7 +309,7 @@ Underlying primary policy administration (the platform integrates with, but does
 
 ---
 
-## 9. Functional architecture — module domains & catalog
+## 9. Functional architecture - module domains & catalog
 
 Rather than a flat list, modules are organised into **functional domains** with clear ownership and dependencies. This is the map that module boundaries, microservices (§15), and navigation (§11) follow. Every module is metadata-driven (§10), secured (§14), audited (§14), and reportable (§13).
 
@@ -326,7 +326,7 @@ System Administration • Configuration Center • Multi-Tenant Management • M
 Identity Management • User Management • Role Management • Permission Engine (RBAC + ABAC) • Authentication & SSO (OAuth2/OpenID Connect, SAML, Azure AD, LDAP) • MFA • Security Center • Row-Level & Field-Level Security • Audit & Immutable Logs • Data Retention & Legal Hold ★ • Secrets & Key Management ★ *(encryption keys must be managed, rotated, and audited).*
 
 ### 9.3 Process & Automation domain
-*How work moves and rules are enforced — all configurable.*
+*How work moves and rules are enforced - all configurable.*
 
 Workflow Designer • Workflow Monitor • Business Rules Engine • Approval & Delegation Engine ★ *(approvals and out-of-office delegation are first-class, not embedded per-module)* • Notification Engine • Email Engine • SMS Engine • Scheduler / Job Orchestration • Event Bus / Outbox ★ *(reliable internal event delivery underpins CQRS/event-sourcing in §15).*
 
@@ -385,12 +385,12 @@ Procurement • HRMS • Payroll • Performance Management • Product Lifecycl
 
 - **Reinsurance Core** depends on **Platform/Admin** (reference data, currencies, org) and emits events to **Accounting** and **Claims**.
 - **Accounting** is the single source of financial truth; **Regulatory** reads from Accounting + Reinsurance Core + Reserving, never re-derives independently.
-- **Portals** are thin, scoped projections of core modules with their own permission boundary — never a parallel data store.
+- **Portals** are thin, scoped projections of core modules with their own permission boundary - never a parallel data store.
 - **Assistant** orchestrates other modules through the same APIs and permissions a human would use; it has **no privileged backdoor**.
 - **Every** module publishes to **Audit** and is reachable from **Global Search**.
 ---
 
-# PART C — CROSS-CUTTING REQUIREMENTS
+# PART C - CROSS-CUTTING REQUIREMENTS
 
 These standards apply to **every** module. A module is not complete until it satisfies all of them.
 
@@ -400,7 +400,7 @@ These standards apply to **every** module. A module is not complete until it sat
 
 ### 10.1 Principle
 
-Anything a customer could reasonably want to change is **configuration, stored in the database and served at runtime** — never a literal in source, never a value that requires a deployment to alter. This is the single most load-bearing constraint in the brief (§4.1).
+Anything a customer could reasonably want to change is **configuration, stored in the database and served at runtime** - never a literal in source, never a value that requires a deployment to alter. This is the single most load-bearing constraint in the brief (§4.1).
 
 ### 10.2 What must be configurable (non-exhaustive)
 
@@ -428,18 +428,18 @@ Enums hard-coded in source for business values; status strings compared as liter
 
 ### 11.1 Design intent
 
-The interface must read as a **premium enterprise SaaS product** — modern, minimal, corporate, fast, highly interactive. It must **not** look like Bootstrap, a generic admin template, a stock dashboard kit, or an open-source skin. The feeling is *executive software*: confident typography, generous and disciplined spacing, restrained colour, purposeful motion, and density that respects power users without overwhelming newcomers.
+The interface must read as a **premium enterprise SaaS product** - modern, minimal, corporate, fast, highly interactive. It must **not** look like Bootstrap, a generic admin template, a stock dashboard kit, or an open-source skin. The feeling is *executive software*: confident typography, generous and disciplined spacing, restrained colour, purposeful motion, and density that respects power users without overwhelming newcomers.
 
 ### 11.2 Foundations (design tokens)
 
-A real, tokenised design system — not ad-hoc CSS. Tokens govern colour (semantic, not raw), typography scale, spacing scale, radii, elevation/shadow, motion (durations/easings), and iconography. A **theme engine** drives **light and dark modes** and tenant theming from tokens; nothing is colour-hard-coded. **RTL** is supported at the token/layout level, not patched per screen.
+A real, tokenised design system - not ad-hoc CSS. Tokens govern colour (semantic, not raw), typography scale, spacing scale, radii, elevation/shadow, motion (durations/easings), and iconography. A **theme engine** drives **light and dark modes** and tenant theming from tokens; nothing is colour-hard-coded. **RTL** is supported at the token/layout level, not patched per screen.
 
 ### 11.3 Information architecture & navigation
 
-- **Workspace concept** — users work within a contextual workspace; multi-monitor friendly; state is preserved across sessions.
-- **Pinned / favourable navigation** — pin modules, records, and views; recent activity always reachable.
-- **Global search** spanning records, modules, configuration, and help — fast, typo-tolerant, permission-aware.
-- **Command palette** (keyboard-first) — navigate and trigger actions by name; the same intents the assistant understands.
+- **Workspace concept** - users work within a contextual workspace; multi-monitor friendly; state is preserved across sessions.
+- **Pinned / favourable navigation** - pin modules, records, and views; recent activity always reachable.
+- **Global search** spanning records, modules, configuration, and help - fast, typo-tolerant, permission-aware.
+- **Command palette** (keyboard-first) - navigate and trigger actions by name; the same intents the assistant understands.
 - **Breadcrumbs** on every page; deep-linkable URLs for every record and view.
 
 ### 11.4 Per-page baseline
@@ -464,7 +464,7 @@ Layouts adapt from large multi-monitor desktops down to tablets; the **Mobile Po
 
 ### 12.1 Intent
 
-A world-class embedded assistant that users can **type to or speak to in natural language**, capable of understanding intent and acting across modules — within the same permissions and audit trail as any human user (§9.5).
+A world-class embedded assistant that users can **type to or speak to in natural language**, capable of understanding intent and acting across modules - within the same permissions and audit trail as any human user (§9.5).
 
 ### 12.2 Capabilities
 
@@ -472,11 +472,11 @@ Understand requests such as: *"Create a treaty," "Show overdue claims," "Generat
 
 ### 12.3 Generation features
 
-AI-assisted generation of reports, dashboards, charts, forms, workflows, document drafts, and data exports — always producing **editable, reviewable artifacts** in the platform's own configuration formats (so a generated report is a normal, governed report, not a black box).
+AI-assisted generation of reports, dashboards, charts, forms, workflows, document drafts, and data exports - always producing **editable, reviewable artifacts** in the platform's own configuration formats (so a generated report is a normal, governed report, not a black box).
 
 ### 12.4 Safety, confirmation & guardrails (hard requirements)
 
-- **Every destructive or financially material action requires explicit confirmation** before execution — *"Delete client," "Commute contract," "Post journal," "Cancel treaty"* must surface a clear confirmation showing exactly what will change, and is recorded immutably (§4.3).
+- **Every destructive or financially material action requires explicit confirmation** before execution - *"Delete client," "Commute contract," "Post journal," "Cancel treaty"* must surface a clear confirmation showing exactly what will change, and is recorded immutably (§4.3).
 - The assistant **operates strictly within the requesting user's permissions** (§9.15). No privileged backdoor.
 - **Grounding & honesty.** The assistant grounds answers in tenant data and configuration; it does not fabricate figures. When uncertain, it says so and offers to show its working or the underlying records.
 - **No silent financial mutation.** The assistant may *prepare* postings, statements, and adjustments; a human (or a configured auto-approval rule) commits them through the normal workflow.
@@ -484,7 +484,7 @@ AI-assisted generation of reports, dashboards, charts, forms, workflows, documen
 
 ### 12.5 Automation Studio
 
-A surface to compose automations from triggers (events, schedules, conditions), actions (across modules), and approvals — reusing the same workflow, rules, and notification engines (§9.3). Automations are versioned, testable, and auditable like any configuration.
+A surface to compose automations from triggers (events, schedules, conditions), actions (across modules), and approvals - reusing the same workflow, rules, and notification engines (§9.3). Automations are versioned, testable, and auditable like any configuration.
 
 ### 12.6 Boundaries
 
@@ -503,7 +503,7 @@ Pivot and **cube** analysis; **drill-down** and **drill-through**; trend, foreca
 
 ### 13.3 AI assistance
 
-AI generation of reports, charts, and dashboards (§12.3) that land as ordinary, editable report/dashboard definitions — never opaque output.
+AI generation of reports, charts, and dashboards (§12.3) that land as ordinary, editable report/dashboard definitions - never opaque output.
 
 ### 13.4 Distribution & scheduling
 
@@ -526,7 +526,7 @@ Security is foundational (§4.2), designed from Phase 4, and owned by the Securi
 ### 14.1 Identity & access
 
 - **Authentication:** SSO via OAuth2 / OpenID Connect and SAML; Azure AD / Entra ID and LDAP integration; **MFA** enforced by policy.
-- **Authorization:** **RBAC + ABAC** through the Permission Engine — coarse roles refined by attribute-based policies (tenant, org unit, line of business, data classification, time, location).
+- **Authorization:** **RBAC + ABAC** through the Permission Engine - coarse roles refined by attribute-based policies (tenant, org unit, line of business, data classification, time, location).
 - **Least privilege & segregation of duties:** enforced, with four-eyes/maker-checker where the tenant configures it.
 
 ### 14.2 Data protection
@@ -556,7 +556,7 @@ Strong logical isolation by default with the option of stronger physical isolati
 
 ### 15.1 Architectural style
 
-**Clean architecture** with **Domain-Driven Design**: clear bounded contexts aligned to the functional domains (§9), with explicit ubiquitous language drawn from §7. **CQRS** where read/write asymmetry warrants it; **event sourcing** where an immutable history of state transitions adds real value (e.g. accounting postings, claim/reserve movements, contract state). Not every module needs CQRS/event sourcing — apply them where they earn their keep, and say where they do not.
+**Clean architecture** with **Domain-Driven Design**: clear bounded contexts aligned to the functional domains (§9), with explicit ubiquitous language drawn from §7. **CQRS** where read/write asymmetry warrants it; **event sourcing** where an immutable history of state transitions adds real value (e.g. accounting postings, claim/reserve movements, contract state). Not every module needs CQRS/event sourcing - apply them where they earn their keep, and say where they do not.
 
 ### 15.2 Services & integration
 
@@ -585,7 +585,7 @@ Structured logging, metrics, and distributed tracing across all services; SLOs a
 
 ### 15.7 Architecture decision records
 
-Every significant decision (style, tech choice, isolation model, event vs sync, build vs buy) is captured as an **ADR** with context, options, decision, and consequences — part of Phase 5 output and maintained thereafter.
+Every significant decision (style, tech choice, isolation model, event vs sync, build vs buy) is captured as an **ADR** with context, options, decision, and consequences - part of Phase 5 output and maintained thereafter.
 
 ---
 
@@ -624,14 +624,14 @@ Consistent naming conventions; documented in the data dictionary; no orphan colu
 
 ### 17.1 Principles
 
-The platform is a good citizen in a carrier's ecosystem: it integrates rather than isolates. All integration is typed, versioned, mapped, validated, secured, and observable — never an unguarded import.
+The platform is a good citizen in a carrier's ecosystem: it integrates rather than isolates. All integration is typed, versioned, mapped, validated, secured, and observable - never an unguarded import.
 
 ### 17.2 Inbound/outbound surfaces
 
 - **API Gateway** exposing well-documented, versioned REST APIs (with consideration of GraphQL for read-heavy portal scenarios), authenticated and rate-limited.
 - **Webhooks / event subscriptions** for outbound notification of domain events (§9.12).
 - **Integration Hub** for orchestrated, mapped flows to/from external systems (policy admin, GL/ERP, banking, market bureaus, cat models, document services).
-- **Data Import/Export** with mapping, validation, error reporting, and reprocessing — covering Excel/CSV and structured feeds.
+- **Data Import/Export** with mapping, validation, error reporting, and reprocessing - covering Excel/CSV and structured feeds.
 
 ### 17.3 Industry standards & connectors
 
@@ -649,7 +649,7 @@ Compliance is designed in (§4.5, §7.9) and owned by the Compliance & Regulator
 
 ### 18.1 IFRS 17
 
-Support the measurement models — **General Measurement Model (GMM/BBA)**, **Premium Allocation Approach (PAA)**, and **Variable Fee Approach (VFA)** — including fulfilment cash flows, **risk adjustment**, **contractual service margin (CSM)** roll-forward, onerous-contract identification and loss components, and the associated disclosures. Reinsurance-held vs reinsurance-issued treatment is handled explicitly.
+Support the measurement models - **General Measurement Model (GMM/BBA)**, **Premium Allocation Approach (PAA)**, and **Variable Fee Approach (VFA)** - including fulfilment cash flows, **risk adjustment**, **contractual service margin (CSM)** roll-forward, onerous-contract identification and loss components, and the associated disclosures. Reinsurance-held vs reinsurance-issued treatment is handled explicitly.
 
 ### 18.2 Solvency II
 
@@ -671,7 +671,7 @@ Data classification, retention, residency, lineage, and consent/erasure handling
 
 ## 19. Localization, internationalization & accessibility
 
-- **Multi-language** UI with externalised, translatable strings (no hard-coded labels — §10); per-user and per-tenant language; pluralisation and locale-aware formatting.
+- **Multi-language** UI with externalised, translatable strings (no hard-coded labels - §10); per-user and per-tenant language; pluralisation and locale-aware formatting.
 - **RTL-ready** layouts driven by the design system (§11.2).
 - **Multi-currency** throughout, with exchange-rate management, original vs settlement currency, and correct rounding (§16.1).
 - **Locale-aware** dates, numbers, and time zones; configurable fiscal calendars and period definitions.
@@ -691,7 +691,7 @@ These are testable targets. Exact thresholds are confirmed in Phase 2/3 with the
 | **Resilience / DR** | Defined **RTO/RPO**; tested backup, restore, and failover; graceful degradation (incl. AI-optional, §12.6). |
 | **Security** | Per §14; passes SAST/DAST, dependency, and penetration testing before release. |
 | **Auditability** | 100% of material actions audited and reconcilable (§14.3). |
-| **Configurability** | Core configuration changes require no code deployment (§10) — verified by acceptance tests. |
+| **Configurability** | Core configuration changes require no code deployment (§10) - verified by acceptance tests. |
 | **Accessibility** | WCAG 2.2 AA verified (§11.6). |
 | **Internationalisation** | No hard-coded user-facing strings; locale/currency/RTL correctness verified. |
 | **Observability** | Logs, metrics, traces, SLOs for every service (§15.6). |
@@ -702,87 +702,87 @@ These are testable targets. Exact thresholds are confirmed in Phase 2/3 with the
 | **Compliance** | Regulatory outputs reproducible and defensible (§18.4). |
 ---
 
-# PART D — DELIVERY
+# PART D - DELIVERY
 
 ---
 
 ## 21. Delivery methodology & phase gates
 
-Work proceeds through fifteen phases. **No phase is skipped or silently simplified** (§3.1). Each phase below states its **objective**, **deliverables**, and **exit gate** — the conditions that must be true before the next phase begins. Every phase deliverable also carries the standard **Open Questions / Assumptions / Gaps** note (§3.3) and respects the cross-cutting standards in Part C.
+Work proceeds through fifteen phases. **No phase is skipped or silently simplified** (§3.1). Each phase below states its **objective**, **deliverables**, and **exit gate** - the conditions that must be true before the next phase begins. Every phase deliverable also carries the standard **Open Questions / Assumptions / Gaps** note (§3.3) and respects the cross-cutting standards in Part C.
 
-> **Sequencing note.** The phases are ordered by dependency, but real delivery iterates: later phases surface gaps that send small, recorded changes back to earlier artifacts. The gate discipline governs *readiness to proceed*, not a prohibition on revisiting. Within phases 10–14, build vertically — deliver a thin but complete slice through a core domain (e.g. treaty placement → accounting → claim) before widening — so integration risk is found early.
+> **Sequencing note.** The phases are ordered by dependency, but real delivery iterates: later phases surface gaps that send small, recorded changes back to earlier artifacts. The gate discipline governs *readiness to proceed*, not a prohibition on revisiting. Within phases 10–14, build vertically - deliver a thin but complete slice through a core domain (e.g. treaty placement → accounting → claim) before widening - so integration risk is found early.
 
-### Phase 1 — Business Analysis
+### Phase 1 - Business Analysis
 **Objective.** Establish a shared, correct understanding of the reinsurance business the platform serves (grounded in §5–§7) and the goals, personas, and jobs it must satisfy.
 **Deliverables.** Market/process study summary (study-not-copy, §5); persona and JTBD catalogue (§6); end-to-end process maps for treaty, facultative, retrocession, accounting, claims, and regulatory lifecycles; pain-points and opportunity register; success criteria refined with the Product Owner (§1.4); glossary seeded (§25).
 **Exit gate.** Domain Expert and Product Owner sign off that the process maps and personas are correct and complete enough to specify against; major ambiguities are listed as resolved decisions or explicit open questions.
 
-### Phase 2 — Complete Functional Specification
-**Objective.** Specify *what* the system does, in full, per module and per lifecycle — unambiguous enough to design and test against.
+### Phase 2 - Complete Functional Specification
+**Objective.** Specify *what* the system does, in full, per module and per lifecycle - unambiguous enough to design and test against.
 **Deliverables.** Functional spec per module (§9) covering capabilities, states/transitions, business rules, validations, roles/permissions touched, configurability points (§10), and acceptance criteria; cross-cutting specs for AI (§12), reporting (§13), security behaviours (§14), compliance outputs (§18), i18n (§19); confirmed non-functional targets (§20); traceability matrix (requirement → module → lifecycle).
 **Exit gate.** Specs are reviewed by Domain Expert, Architect, Security, Compliance, and QA; acceptance criteria exist for every capability; no core flow has an unspecified step.
 
-### Phase 3 — Module Architecture
+### Phase 3 - Module Architecture
 **Objective.** Define bounded contexts, module boundaries, ownership, and dependencies (§9, §15.1).
 **Deliverables.** Bounded-context map and ubiquitous-language definitions; module dependency graph and integration contracts at the boundary; decisions on where CQRS/event-sourcing apply (§15.1) with rationale; cross-cutting concern placement (auth, audit, search, config); initial ADRs (§15.7).
 **Exit gate.** CTO/Architect sign-off that boundaries are coherent, dependencies are acyclic where required, and every module from §9 has a home and an owner.
 
-### Phase 4 — Database Design
+### Phase 4 - Database Design
 **Objective.** Produce the complete production data design (§16).
 **Deliverables.** ER diagrams and data dictionary per bounded context; party/role-centric core model (§7 implication); audit/history and soft-delete patterns; indexing and partitioning strategy; multi-tenant isolation model at the data layer; money/FX and effective-dating patterns; migration strategy and tooling.
 **Exit gate.** Database Architect, Security (RLS/FLS), and Domain Expert (semantics correct) sign off; the model demonstrably supports the Phase 2 specs and the NFRs in §20.
 
-### Phase 5 — Microservice / Service Design
+### Phase 5 - Microservice / Service Design
 **Objective.** Design the service topology and platform substrate (§15).
 **Deliverables.** Service decomposition aligned to bounded contexts; API Gateway and inter-service communication design (sync contracts, async events, outbox); technology choices per service with ADRs; multi-tenancy, scaling, resilience, and DR design; observability design (§15.6); security architecture (zero-trust, secrets, keys).
 **Exit gate.** CTO/Cloud/DevOps/Security sign-off that the topology meets the NFRs, isolation, and operability requirements; ADRs recorded.
 
-### Phase 6 — REST APIs
+### Phase 6 - REST APIs
 **Objective.** Define the contracts before implementing them.
 **Deliverables.** Versioned API specifications (OpenAPI) for every service and the gateway; resource models, error model, pagination/filtering conventions, idempotency, rate-limit and auth scheme; webhook/event contracts (§17.2); examples and a contract-test suite.
 **Exit gate.** Contracts reviewed by consumers (frontend, portals, integrations) and QA; backward-compatibility and versioning policy agreed; contract tests in place.
 
-### Phase 7 — Frontend Design System
+### Phase 7 - Frontend Design System
 **Objective.** Build the tokenised design language and theming engine (§11.2).
 **Deliverables.** Design tokens (colour/typography/spacing/radii/elevation/motion); light/dark and tenant theming; RTL foundations; accessibility primitives; documented usage; the visual identity that makes the product read as premium (§11.1).
 **Exit gate.** UI/UX Director sign-off; accessibility primitives verified; tokens cover all needs of the wireframes to come.
 
-### Phase 8 — UI Wireframes
+### Phase 8 - UI Wireframes
 **Objective.** Define information architecture and key screens (§11.3–§11.5).
 **Deliverables.** Navigation/workspace model, command palette and global search interaction, per-page baseline applied (§11.4); wireframes for the primary flows of each core domain; empty/loading/error/confirmation states; responsive behaviour; saved-views and filter patterns.
 **Exit gate.** UX Director and Product Owner sign off that flows match the Phase 2 specs and personas; destructive-action confirmations and undo patterns are present.
 
-### Phase 9 — Component Library
+### Phase 9 - Component Library
 **Objective.** Implement reusable, accessible components on the design system (§11).
 **Deliverables.** Production component library (forms, tables/grids with sort/filter/group/virtualise, charts, dialogs, navigation, command palette, skeletons, empty states); the **metadata-driven form/screen renderer** (§10.3); component documentation and a living catalog; accessibility and theming verified per component.
 **Exit gate.** Components meet accessibility, theming, and interaction standards; the form renderer can express the Phase 8 screens from metadata.
 
-### Phase 10 — Backend Development
+### Phase 10 - Backend Development
 **Objective.** Implement services to contract, vertical slice first (§21 sequencing note).
 **Deliverables.** Implemented services per Phase 5/6; domain logic correct per §7; configuration, rules, and workflow engines functioning (§10, §9.3); security enforced (RLS/FLS, RBAC/ABAC, audit) (§14); events and outbox working; reconcilable accounting chain (§7.6). Built test-first where practical with unit/integration coverage.
 **Exit gate.** A complete vertical slice (e.g. place → bind → account → claim → recover for a treaty) works end to end with correct numbers, security, and audit; integration tests green.
 
-### Phase 11 — Frontend Development
+### Phase 11 - Frontend Development
 **Objective.** Build the application UI on the component library, wired to the APIs.
 **Deliverables.** Module UIs implementing Phase 8 flows; per-page baseline (§11.4) present; saved views, advanced search, export, filters; dark/light, i18n, RTL, accessibility throughout; optimistic UI with robust error handling; report/dashboard designers (§13).
 **Exit gate.** The vertical slice is fully usable through the UI to the standard of §11; accessibility and i18n verified on delivered screens.
 
-### Phase 12 — AI Integration
+### Phase 12 - AI Integration
 **Objective.** Deliver the assistant and automation layer (§12) within permissions and guardrails.
 **Deliverables.** Chat and voice assistant; intent handling across delivered modules; generation of reports/dashboards/documents/forms as editable artifacts; **confirmation on every destructive/material action** (§12.4); Automation Studio (§12.5); guardrails and evaluation suite (§9.5); graceful degradation when AI is unavailable (§12.6).
 **Exit gate.** Assistant operates strictly within user permissions and audit; destructive-action confirmation verified by tests; evaluation suite passes; core platform proven fully usable with AI disabled.
 
-### Phase 13 — Testing
+### Phase 13 - Testing
 **Objective.** Prove quality across functional and non-functional dimensions.
-**Deliverables.** Test strategy and automated suites — unit, integration, contract, end-to-end, regression; performance/load tests against §20 budgets; security testing (SAST/DAST, dependency, penetration); accessibility testing (WCAG 2.2 AA); reconciliation/financial-correctness tests; tenant-isolation tests; AI evaluation; coverage and quality reporting.
+**Deliverables.** Test strategy and automated suites - unit, integration, contract, end-to-end, regression; performance/load tests against §20 budgets; security testing (SAST/DAST, dependency, penetration); accessibility testing (WCAG 2.2 AA); reconciliation/financial-correctness tests; tenant-isolation tests; AI evaluation; coverage and quality reporting.
 **Exit gate.** All suites green at agreed thresholds; NFR targets met; no known critical or high-severity defects in core flows; QA Lead sign-off.
 
-### Phase 14 — Deployment
+### Phase 14 - Deployment
 **Objective.** Make the platform operable in production (§15.5–§15.6, §9.13).
 **Deliverables.** IaC for all environments; CI/CD pipelines with quality gates (tests, security scans); blue-green/canary release strategy; observability (logs/metrics/traces, dashboards, alerts, SLOs); backup, DR, and restore drills executed; runbooks and on-call; tenant onboarding/offboarding procedures.
 **Exit gate.** A clean deploy to a production-equivalent environment from IaC; restore and failover drills pass; observability and alerting live; DevOps/Cloud/Security sign-off.
 
-### Phase 15 — Documentation
+### Phase 15 - Documentation
 **Objective.** Ship the knowledge that makes the product sellable and supportable.
 **Deliverables.** Architecture and data documentation (incl. ADRs); API reference and developer portal content (§17.4); administrator/configuration guide (how to use §10 surfaces); operator/runbook documentation; end-user help and in-app guidance; compliance/audit documentation (§18.4); release notes; security and DR documentation.
 **Exit gate.** Technical Writer sign-off; every shipped capability has admin, operator, and user documentation; compliance evidence is assembled and reproducible.
@@ -816,13 +816,13 @@ Each deliverable is produced in a consistent, reviewable shape so the work compo
 
 **Standard structure for any deliverable:**
 
-1. **Header** — phase, module/domain, version, the standing roles consulted.
-2. **Purpose & scope** — what this artifact covers and what it deliberately does not.
-3. **Body** — the actual specification/design/implementation, structured for the artifact type (e.g. ER diagrams + data dictionary for Phase 4; OpenAPI + examples for Phase 6).
-4. **Traceability** — links back to the Phase 1/2 requirements and the §7 lifecycle(s) served, and forward to dependent artifacts.
-5. **Cross-cutting compliance note** — how it satisfies the relevant items of Part C (config, security, audit, accessibility, i18n, NFR).
-6. **Acceptance criteria / exit-gate checklist** — explicit, testable.
-7. **Open Questions / Assumptions / Gaps** — named, never silent.
+1. **Header** - phase, module/domain, version, the standing roles consulted.
+2. **Purpose & scope** - what this artifact covers and what it deliberately does not.
+3. **Body** - the actual specification/design/implementation, structured for the artifact type (e.g. ER diagrams + data dictionary for Phase 4; OpenAPI + examples for Phase 6).
+4. **Traceability** - links back to the Phase 1/2 requirements and the §7 lifecycle(s) served, and forward to dependent artifacts.
+5. **Cross-cutting compliance note** - how it satisfies the relevant items of Part C (config, security, audit, accessibility, i18n, NFR).
+6. **Acceptance criteria / exit-gate checklist** - explicit, testable.
+7. **Open Questions / Assumptions / Gaps** - named, never silent.
 
 **Conventions.** Use diagrams (ER, sequence, context, flow) where they communicate better than prose. Mark anything illustrative vs production-ready explicitly. Keep terminology consistent with the glossary (§25). When proposing an addition beyond this brief, label it as a recommendation with justification (§3.2).
 
@@ -863,7 +863,7 @@ Each deliverable is produced in a consistent, reviewable shape so the work compo
 | "Looks like a template" | Fails premium positioning | Dedicated design system phase (§21 ph.7); UX sign-off in DoD (§22) |
 ---
 
-# PART E — REFERENCE
+# PART E - REFERENCE
 
 ---
 
@@ -881,7 +881,7 @@ Each deliverable is produced in a consistent, reviewable shape so the work compo
 - **Commutation:** settling outstanding liabilities under a contract for an agreed lump sum, closing it.
 - **Coverholder / MGA:** an entity authorised to bind business under delegated authority.
 - **CSM (Contractual Service Margin):** unearned profit recognised over time under IFRS 17.
-- **EBOT / ECOT:** Electronic Back-Office / Claims-Office Transactions — market messaging standards.
+- **EBOT / ECOT:** Electronic Back-Office / Claims-Office Transactions - market messaging standards.
 - **EPI (Estimated Premium Income):** projected premium used to set deposit/minimum premiums and adjust later.
 - **Facultative:** reinsurance of a single, individually assessed risk.
 - **GMM/BBA, PAA, VFA:** IFRS 17 measurement models (general, premium-allocation, variable-fee).
@@ -892,7 +892,7 @@ Each deliverable is produced in a consistent, reviewable shape so the work compo
 - **PML / MFL:** probable / maximum foreseeable loss.
 - **Portfolio transfer (entry/withdrawal):** premium and loss portfolios moved at inception/expiry of proportional treaties.
 - **Quota Share / Surplus:** proportional treaty forms (fixed percentage / retention-based lines).
-- **RDS:** Realistic Disaster Scenario — prescribed exposure stress scenarios.
+- **RDS:** Realistic Disaster Scenario - prescribed exposure stress scenarios.
 - **Reinstatement (premium):** restoring exhausted XL limit after a loss, usually for additional premium (pro-rata as to time/amount).
 - **Retrocession / retrocessionaire:** reinsurance of a reinsurer / the party providing it.
 - **ROL (Rate on Line):** XL premium expressed as a percentage of the layer limit.
@@ -926,33 +926,33 @@ Each deliverable is produced in a consistent, reviewable shape so the work compo
 
 The complete module set, organised by the domains of §9. Each is metadata-driven (§10), secured and audited (§14), searchable (§11.3), and reportable (§13). Items marked **★** are proactively recommended beyond the original list (§9). Items marked **▷** are designed-for but phased later (§8.2).
 
-**1. Platform & Administration** — System Administration; Configuration Center; Multi-Tenant Management; Multi-Company / Organization Management; Branch / Office Management; Feature & License Management; Localization & Translation; Currency Management; Exchange-Rate Management; Master Data Management; Reference-Data / Code-List Management ★.
+**1. Platform & Administration** - System Administration; Configuration Center; Multi-Tenant Management; Multi-Company / Organization Management; Branch / Office Management; Feature & License Management; Localization & Translation; Currency Management; Exchange-Rate Management; Master Data Management; Reference-Data / Code-List Management ★.
 
-**2. Identity, Access & Security** — Identity Management; User Management; Role Management; Permission Engine (RBAC+ABAC); Authentication & SSO (OAuth2/OIDC, SAML, Azure AD, LDAP); MFA; Security Center; Row-/Field-Level Security; Audit & Immutable Logs; Data Retention & Legal Hold ★; Secrets & Key Management ★.
+**2. Identity, Access & Security** - Identity Management; User Management; Role Management; Permission Engine (RBAC+ABAC); Authentication & SSO (OAuth2/OIDC, SAML, Azure AD, LDAP); MFA; Security Center; Row-/Field-Level Security; Audit & Immutable Logs; Data Retention & Legal Hold ★; Secrets & Key Management ★.
 
-**3. Process & Automation** — Workflow Designer; Workflow Monitor; Business Rules Engine; Approval & Delegation Engine ★; Notification Engine; Email Engine; SMS Engine; Scheduler / Job Orchestration; Event Bus / Outbox ★.
+**3. Process & Automation** - Workflow Designer; Workflow Monitor; Business Rules Engine; Approval & Delegation Engine ★; Notification Engine; Email Engine; SMS Engine; Scheduler / Job Orchestration; Event Bus / Outbox ★.
 
-**4. Content & Knowledge** — Document Management; Template Engine ★; OCR & Document Intelligence; Global Search & Indexing ★.
+**4. Content & Knowledge** - Document Management; Template Engine ★; OCR & Document Intelligence; Global Search & Indexing ★.
 
-**5. Intelligence & Assistant** — AI Assistant (chat); Voice Assistant; AI Automation Studio; AI Prediction & Insights; AI Generation (reports/dashboards/documents); Assistant Guardrails & Evaluation ★.
+**5. Intelligence & Assistant** - AI Assistant (chat); Voice Assistant; AI Automation Studio; AI Prediction & Insights; AI Generation (reports/dashboards/documents); Assistant Guardrails & Evaluation ★.
 
-**6. Reinsurance Core** — Risk Management; Treaty Management; Facultative Management; Retrocession Management; Underwriting; Pricing & Rating ★; Placement & Slip Management; Contract / Wording Management; Participation & Signing Management ★; Bordereaux Management ★.
+**6. Reinsurance Core** - Risk Management; Treaty Management; Facultative Management; Retrocession Management; Underwriting; Pricing & Rating ★; Placement & Slip Management; Contract / Wording Management; Participation & Signing Management ★; Bordereaux Management ★.
 
-**7. Claims & Recoveries** — Claims Management; Loss & Event Management ★; Reserving & Reserve Movements ★; Recoveries Management; Reinstatement Processing ★; Salvage & Subrogation ★.
+**7. Claims & Recoveries** - Claims Management; Loss & Event Management ★; Reserving & Reserve Movements ★; Recoveries Management; Reinstatement Processing ★; Salvage & Subrogation ★.
 
-**8. Accounting & Finance** — Technical Accounting; Premium Processing; Statements of Account / Accounts Current ★; Business / Financial Accounting; General Ledger; Accounts Receivable; Accounts Payable; Cash Management; Bank Reconciliation; Treasury; Investment Management; Fixed Assets; Tax & Levy Management ★.
+**8. Accounting & Finance** - Technical Accounting; Premium Processing; Statements of Account / Accounts Current ★; Business / Financial Accounting; General Ledger; Accounts Receivable; Accounts Payable; Cash Management; Bank Reconciliation; Treasury; Investment Management; Fixed Assets; Tax & Levy Management ★.
 
-**9. Risk, Exposure & Analytics** — Exposure & Aggregate Management; Catastrophe Analysis; Realistic Disaster Scenarios ★; Risk & Capital Management ★; BI & Analytics; Executive Dashboard; Data Warehouse / Semantic Layer; Report Designer; Dashboard Designer; Pivot/Cube & Forecast Services ★.
+**9. Risk, Exposure & Analytics** - Exposure & Aggregate Management; Catastrophe Analysis; Realistic Disaster Scenarios ★; Risk & Capital Management ★; BI & Analytics; Executive Dashboard; Data Warehouse / Semantic Layer; Report Designer; Dashboard Designer; Pivot/Cube & Forecast Services ★.
 
-**10. Regulatory & Compliance** — IFRS 17; Solvency II; Regulatory Reporting; Financial Reporting; Compliance Management; Statutory & Market Returns ★.
+**10. Regulatory & Compliance** - IFRS 17; Solvency II; Regulatory Reporting; Financial Reporting; Compliance Management; Statutory & Market Returns ★.
 
-**11. Relationship & Distribution** — CRM; Broker Portal; Cedent Portal; Retrocessionaire / Partner Portal; Client Portal; Coverholder / Delegated-Authority Portal ★; Mobile Portal.
+**11. Relationship & Distribution** - CRM; Broker Portal; Cedent Portal; Retrocessionaire / Partner Portal; Client Portal; Coverholder / Delegated-Authority Portal ★; Mobile Portal.
 
-**12. Integration & Developer** — API Gateway; Integration Hub; Data Import; Data Export; Webhook & Event Subscriptions ★; Connector Framework ★; Developer Portal; API Marketplace ▷.
+**12. Integration & Developer** - API Gateway; Integration Hub; Data Import; Data Export; Webhook & Event Subscriptions ★; Connector Framework ★; Developer Portal; API Marketplace ▷.
 
-**13. Operations, Reliability & Observability** — Monitoring & Observability; Performance Analytics; SOC Dashboard; SIEM Integration; Backup Management; Disaster Recovery; Health & SLA Dashboard ★; Cost & Capacity Management ★.
+**13. Operations, Reliability & Observability** - Monitoring & Observability; Performance Analytics; SOC Dashboard; SIEM Integration; Backup Management; Disaster Recovery; Health & SLA Dashboard ★; Cost & Capacity Management ★.
 
-**14. Corporate / Back-office** — Procurement; HRMS; Payroll; Performance Management; Product Lifecycle Management (insurance-product factory); Asset & License inventory.
+**14. Corporate / Back-office** - Procurement; HRMS; Payroll; Performance Management; Product Lifecycle Management (insurance-product factory); Asset & License inventory.
 
 > This exceeds the original target of "30+ modules," organised so that boundaries, services (§15), and navigation (§11) follow the same map. The starred additions are justified inline in §9; portals, accounting sub-ledgers, and regulatory packs are first-class rather than buried inside other modules.
 
@@ -962,56 +962,56 @@ The complete module set, organised by the domains of §9. Each is metadata-drive
 
 A compact restatement of what "world-class and commercially ready" means here. The build is acceptable when **every** item is demonstrably true.
 
-- [ ] Full treaty, facultative, and retrocession lifecycles supported end to end with correct semantics (§7) — no dead ends.
+- [ ] Full treaty, facultative, and retrocession lifecycles supported end to end with correct semantics (§7) - no dead ends.
 - [ ] Reconcilable chain from technical accounting → sub-ledger → GL → regulatory output (§7.6, §18.4).
 - [ ] Claims → reserves → reinstatements → recoveries → event aggregation flow correctly (§7.7).
-- [ ] Core configuration (statuses, lists, rules, workflows, forms, templates, reports, dashboards, roles, permissions) changeable **without a deployment** (§10) — verified.
+- [ ] Core configuration (statuses, lists, rules, workflows, forms, templates, reports, dashboards, roles, permissions) changeable **without a deployment** (§10) - verified.
 - [ ] Multi-tenant with verified isolation; RBAC+ABAC, RLS/FLS, encryption, immutable audit (§14).
 - [ ] Assistant (chat + voice) acts within permissions, grounds answers in data, and **confirms every destructive/material action** (§12.4).
 - [ ] Reporting/BI: drag-drop builder, pivot/cube, drill-down/through, scheduling, export to Excel/Word/PPT/PDF/CSV/API (§13).
 - [ ] IFRS 17, Solvency II, and configurable statutory/market reporting with reproducible lineage (§18).
 - [ ] Premium experience: design system, light/dark, RTL, WCAG 2.2 AA, command palette, global search, saved views, skeletons, empty states, undo (§11).
-- [ ] Internationalised and multi-currency throughout (§19) — no hard-coded strings or currency logic.
+- [ ] Internationalised and multi-currency throughout (§19) - no hard-coded strings or currency logic.
 - [ ] Clean architecture / DDD; documented service topology; CQRS/event-sourcing where justified; ADRs current (§15).
 - [ ] NFRs met and tested: performance, scalability, availability, DR (RTO/RPO), security, observability (§20).
 - [ ] Operable: IaC, CI/CD with quality gates, observability, tested backup/restore and failover (§21 ph.14).
 - [ ] Complete documentation: architecture, data, API/developer, admin/config, operator, end-user, compliance (§21 ph.15).
-- [ ] Original work — informed by the market, copying no vendor's UI or proprietary design (§4.6, §5).
+- [ ] Original work - informed by the market, copying no vendor's UI or proprietary design (§4.6, §5).
 - [ ] Every deliverable carried its Open Questions / Assumptions / Gaps note; nothing material was silently omitted (§3.3).
 
 ---
 
-## 28. Appendix A — Illustrative core data model & state machines
+## 28. Appendix A - Illustrative core data model & state machines
 
 *Illustrative, not final. The authoritative model is produced in Phase 4 (§21). This sketch fixes the shape so Phase 2/3 reason against something concrete. It is deliberately party/role-centric (§7 design implication) and avoids vendor-specific structures.*
 
 ### 28.1 Core entities (conceptual)
 
-- **Party** — any legal entity (carrier, broker, coverholder, bank, vendor). Holds identity, contacts, financial setup, regulatory identifiers. A Party is not "customer" or "supplier"; its capacity is expressed through **Party Role**.
-- **Party Role** — the capacity a Party holds in a context: *cedent, reinsurer, retrocessionaire, broker, coverholder, claimant payee*. The same Party may hold several roles, even on the same contract.
-- **Programme** — a structured set of covers protecting a book or layer band for a period; groups related contracts.
-- **Contract** — the cover instrument: *treaty, facultative certificate, or retrocession contract*. Carries type (proportional/non-proportional), period, currency, wording reference, market references, and terms.
-- **Layer / Section** — a tranche of a non-proportional contract (attachment, limit, ROL, reinstatements, AAD).
-- **Participation (Signed Line)** — a reinsurer's share of a contract/layer, with written vs signed line and order context (§7.3 step 4).
-- **Term Set** — configurable commercial terms attached to a contract/layer: commissions (ceding/overriding/profit/sliding-scale), brokerage, taxes/levies, deposit/MDP, EPI, instalment schedule, reinstatement basis, indexation, hours clause, occurrence definition.
-- **Risk** — the underlying exposure for facultative and exposure aggregation.
-- **Bordereau** — an ingested premium or loss schedule, mapped and validated, linked to a Contract/Programme.
-- **Financial Event** — an immutable technical-accounting event (premium, commission, tax, cash loss, paid loss, reserve movement, reinstatement premium, portfolio transfer, deposit/interest). Source of the reconcilable chain (§7.6).
-- **Statement of Account** — a periodic netting document over Financial Events between parties, in original and settlement currency.
-- **Ledger Posting** — the GL posting derived from one or more Financial Events (§7.6).
-- **Loss / Claim** — a notified loss, with **Event** aggregation, **Reserve Movements**, payments, reinstatements, and **Recoveries**.
-- **Event (CAT)** — a coded catastrophe/occurrence aggregating losses across contracts and programmes.
+- **Party** - any legal entity (carrier, broker, coverholder, bank, vendor). Holds identity, contacts, financial setup, regulatory identifiers. A Party is not "customer" or "supplier"; its capacity is expressed through **Party Role**.
+- **Party Role** - the capacity a Party holds in a context: *cedent, reinsurer, retrocessionaire, broker, coverholder, claimant payee*. The same Party may hold several roles, even on the same contract.
+- **Programme** - a structured set of covers protecting a book or layer band for a period; groups related contracts.
+- **Contract** - the cover instrument: *treaty, facultative certificate, or retrocession contract*. Carries type (proportional/non-proportional), period, currency, wording reference, market references, and terms.
+- **Layer / Section** - a tranche of a non-proportional contract (attachment, limit, ROL, reinstatements, AAD).
+- **Participation (Signed Line)** - a reinsurer's share of a contract/layer, with written vs signed line and order context (§7.3 step 4).
+- **Term Set** - configurable commercial terms attached to a contract/layer: commissions (ceding/overriding/profit/sliding-scale), brokerage, taxes/levies, deposit/MDP, EPI, instalment schedule, reinstatement basis, indexation, hours clause, occurrence definition.
+- **Risk** - the underlying exposure for facultative and exposure aggregation.
+- **Bordereau** - an ingested premium or loss schedule, mapped and validated, linked to a Contract/Programme.
+- **Financial Event** - an immutable technical-accounting event (premium, commission, tax, cash loss, paid loss, reserve movement, reinstatement premium, portfolio transfer, deposit/interest). Source of the reconcilable chain (§7.6).
+- **Statement of Account** - a periodic netting document over Financial Events between parties, in original and settlement currency.
+- **Ledger Posting** - the GL posting derived from one or more Financial Events (§7.6).
+- **Loss / Claim** - a notified loss, with **Event** aggregation, **Reserve Movements**, payments, reinstatements, and **Recoveries**.
+- **Event (CAT)** - a coded catastrophe/occurrence aggregating losses across contracts and programmes.
 
 ### 28.2 Key relationships (conceptual cardinalities)
 
-- Party (1) — (N) Party Role; Party Role (N) — (1) Contract context.
-- Programme (1) — (N) Contract; Contract (1) — (N) Layer; Layer (1) — (N) Participation.
-- Contract (1) — (1) Term Set *(versioned/effective-dated)*.
-- Contract (1) — (N) Financial Event; Financial Event (N) — (1) Statement of Account; Financial Event (N) — (N) Ledger Posting *(via posting rules)*.
-- Loss (N) — (1) Event; Loss (1) — (N) Reserve Movement; Loss (1) — (N) Recovery.
+- Party (1) - (N) Party Role; Party Role (N) - (1) Contract context.
+- Programme (1) - (N) Contract; Contract (1) - (N) Layer; Layer (1) - (N) Participation.
+- Contract (1) - (1) Term Set *(versioned/effective-dated)*.
+- Contract (1) - (N) Financial Event; Financial Event (N) - (1) Statement of Account; Financial Event (N) - (N) Ledger Posting *(via posting rules)*.
+- Loss (N) - (1) Event; Loss (1) - (N) Reserve Movement; Loss (1) - (N) Recovery.
 - Every entity → (N) Audit Records *(who/what/when/before/after)*; soft-delete + history on all (§16.2).
 
-### 28.3 Treaty contract — illustrative state machine
+### 28.3 Treaty contract - illustrative state machine
 
 `Draft → Quoted → Placing → Bound → Active → (Endorsed*) → Expiring → Run-off → {Renewed | Lapsed | Commuted | Closed}`
 
@@ -1019,7 +1019,7 @@ A compact restatement of what "world-class and commercially ready" means here. T
 - **Endorsed** is a self-loop producing a versioned amendment, not a new contract.
 - State transitions are configurable (§10): which roles may trigger them, what approvals apply, what validations must pass, and what Financial Events/notifications they raise.
 
-### 28.4 Claim — illustrative state machine
+### 28.4 Claim - illustrative state machine
 
 `Notified → Under Review → Reserved → (Cash Call?) → Part-Paid → Settled → {Recovering → Recovered} → Closed`
 
@@ -1027,13 +1027,13 @@ A compact restatement of what "world-class and commercially ready" means here. T
 - **Declined / Withdrawn** terminal states with reason.
 - Each transition may raise reserve movements, reinstatement-premium calculations, recovery tasks, and ledger postings per configured rules.
 
-### 28.5 Statement of account — illustrative state machine
+### 28.5 Statement of account - illustrative state machine
 
 `Open → Prepared → Under Review → Approved → Issued → Settled → Closed` *(with Disputed and Re-issued branches; four-eyes configurable).*
 
 ---
 
-## 29. Appendix B — Core reinsurance module functional notes
+## 29. Appendix B - Core reinsurance module functional notes
 
 *Capability-level notes for the six Reinsurance-Core modules (§9.6), to anchor Phase 2. Each respects the cross-cutting standards of Part C.*
 
@@ -1070,7 +1070,7 @@ A compact restatement of what "world-class and commercially ready" means here. T
 
 ---
 
-## 30. Appendix C — Persona dashboards & illustrative KPIs
+## 30. Appendix C - Persona dashboards & illustrative KPIs
 
 *Default, governed dashboards (§13.5) per persona (§6.2). All drill-down/through; all permission- and tenant-scoped; all configurable.*
 
@@ -1091,6 +1091,6 @@ A compact restatement of what "world-class and commercially ready" means here. T
 
 ### Closing instruction to the delivery organization
 
-Proceed phase by phase from §21. Begin with **Phase 1 — Business Analysis**, producing the deliverables and meeting the exit gate before requesting to advance. Throughout, hold the standard of §1.2, honour the non-negotiables of §4, challenge anything in this brief that is wrong or missing (§3.2), and never trade away correctness, security, compliance, or auditability for speed.
+Proceed phase by phase from §21. Begin with **Phase 1 - Business Analysis**, producing the deliverables and meeting the exit gate before requesting to advance. Throughout, hold the standard of §1.2, honour the non-negotiables of §4, challenge anything in this brief that is wrong or missing (§3.2), and never trade away correctness, security, compliance, or auditability for speed.
 
 *End of brief.*

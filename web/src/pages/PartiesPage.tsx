@@ -29,7 +29,7 @@ export function PartiesPage() {
   const roleOptions = codeLists?.lists?.party_role ?? [];
 
   const columns: Column<PartyListItem>[] = [
-    { key: 'reference', header: 'Reference', sortValue: (p) => p.reference ?? '', render: (p) => <span className={shared.cellRef}>{p.reference ?? '—'}</span> },
+    { key: 'reference', header: 'Reference', sortValue: (p) => p.reference ?? '', render: (p) => <span className={shared.cellRef}>{p.reference ?? '-'}</span> },
     {
       key: 'legalName',
       header: 'Party',
@@ -42,13 +42,13 @@ export function PartiesPage() {
       ),
     },
     { key: 'kind', header: 'Kind', sortValue: (p) => p.kind, render: (p) => titleCase(p.kind) },
-    { key: 'country', header: 'Country', sortValue: (p) => p.country ?? '', render: (p) => p.country ?? '—' },
+    { key: 'country', header: 'Country', sortValue: (p) => p.country ?? '', render: (p) => p.country ?? '-' },
     {
       key: 'roles',
       header: 'Roles',
       render: (p) => (
         <div className={shared.checkGroup}>
-          {p.roles?.length ? p.roles.map((r) => <Badge key={r} color="indigo">{titleCase(r)}</Badge>) : <span className={shared.cellSub}>—</span>}
+          {p.roles?.length ? p.roles.map((r) => <Badge key={r} color="indigo">{titleCase(r)}</Badge>) : <span className={shared.cellSub}>-</span>}
         </div>
       ),
     },

@@ -1,9 +1,9 @@
 # RIOS Documentation
 
-**RIOS — Reinsurance Intelligent Operating System** is a metadata-driven, multi-tenant reinsurance ERP built
+**RIOS - Reinsurance Intelligent Operating System** is a metadata-driven, multi-tenant reinsurance ERP built
 in this monorepo. This is the documentation set for the platform's **foundation / vertical slice**: a
 correct, secure, audited end-to-end path through the reinsurance core (place → bind → account → reconcile →
-claims), with a deterministic, guardrailed assistant. It is a foundation, not a finished commercial product —
+claims), with a deterministic, guardrailed assistant. It is a foundation, not a finished commercial product -
 designed-for capability is named, never silently omitted (brief §3.3).
 
 The build follows the `Reinsurance-ERP-Build-Brief.md` at the repo root (15 phases §21, glossary §25, module
@@ -26,11 +26,11 @@ catalog §26, acceptance checklist §27). Section references like §7.6 point in
 
 ### ADRs
 
-- [0001 — Architecture style: modular monolith, microservices-ready](./adr/0001-architecture-style.md)
-- [0002 — Multi-tenancy via shared schema + RLS](./adr/0002-multitenancy-rls.md)
-- [0003 — Money as integer minor units](./adr/0003-money-as-minor-units.md)
-- [0004 — Metadata-driven configuration](./adr/0004-metadata-driven-config.md)
-- [0005 — Assistant guardrails: deterministic, permission-bound, confirmation-gated](./adr/0005-assistant-guardrails.md)
+- [0001 - Architecture style: modular monolith, microservices-ready](./adr/0001-architecture-style.md)
+- [0002 - Multi-tenancy via shared schema + RLS](./adr/0002-multitenancy-rls.md)
+- [0003 - Money as integer minor units](./adr/0003-money-as-minor-units.md)
+- [0004 - Metadata-driven configuration](./adr/0004-metadata-driven-config.md)
+- [0005 - Assistant guardrails: deterministic, permission-bound, confirmation-gated](./adr/0005-assistant-guardrails.md)
 
 ## Quick start
 

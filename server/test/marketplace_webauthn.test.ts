@@ -66,7 +66,7 @@ describe('API marketplace', () => {
 });
 
 describe('AI Automation Studio', () => {
-  it('runs the seeded flow — passes the rule set and returns its actions', async () => {
+  it('runs the seeded flow - passes the rule set and returns its actions', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };
     const list = await app.inject({ method: 'GET', url: '/api/automation-studio/flows', headers: auth });

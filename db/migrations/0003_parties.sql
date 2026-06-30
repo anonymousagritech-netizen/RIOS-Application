@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0003: Party & role-centric model
+-- RIOS - Migration 0003: Party & role-centric model
 -- Brief §7 design implication, §16.1: a legal entity can simultaneously be
 -- cedent, reinsurer, retrocessionaire, broker, coverholder. Model roles, not
 -- "customer vs vendor".

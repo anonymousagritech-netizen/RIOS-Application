@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0016: Module depth (treaty adjustments, claims, accounting,
+-- RIOS - Migration 0016: Module depth (treaty adjustments, claims, accounting,
 -- payroll) and regulatory completeness (IFRS 17 GMM/VFA, returns)
 -- Brief §7.2, §7.6, §7.7, §9.8, §9.14, §18
 -- =============================================================================

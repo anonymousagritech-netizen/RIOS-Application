@@ -1,8 +1,8 @@
 /**
- * Data retention & legal hold (brief §14 — retention & legal hold). Pure policy
+ * Data retention & legal hold (brief §14 - retention & legal hold). Pure policy
  * logic deciding whether a record may be disposed of: it is eligible only once
  * it has aged past its retention period AND no legal hold covers it. The domain
- * stays clock-free — the server computes the record's age in days and passes it
+ * stays clock-free - the server computes the record's age in days and passes it
  * in. A legal hold always wins, so litigation data is never purged on schedule.
  */
 

@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0025: Performance management (brief §14)
+-- RIOS - Migration 0025: Performance management (brief §14)
 -- Employee review cycles with weighted goals. The overall rating is computed by
 -- @rios/domain (weightedRating/ratingBand); goals are stored as a json array on
 -- the review so a cycle is a single document.

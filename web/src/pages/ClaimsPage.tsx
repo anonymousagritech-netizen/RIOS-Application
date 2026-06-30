@@ -27,7 +27,7 @@ export function ClaimsPage() {
   const statusColors = useStatusColors('claim_status');
 
   const columns: Column<ClaimListItem>[] = [
-    { key: 'reference', header: 'Reference', sortValue: (c) => c.reference ?? '', render: (c) => <span className={shared.cellRef}>{c.reference ?? '—'}</span> },
+    { key: 'reference', header: 'Reference', sortValue: (c) => c.reference ?? '', render: (c) => <span className={shared.cellRef}>{c.reference ?? '-'}</span> },
     {
       key: 'description',
       header: 'Claim',
@@ -149,7 +149,7 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
           }}>
             <option value="">Select a treaty…</option>
             {treatyList.map((t) => (
-              <option key={t.id} value={t.id}>{t.reference} — {t.name}</option>
+              <option key={t.id} value={t.id}>{t.reference} - {t.name}</option>
             ))}
           </Select>
         </FormField>

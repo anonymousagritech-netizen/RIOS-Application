@@ -1,9 +1,9 @@
 -- =============================================================================
--- RIOS — Migration 0028: Messaging & integration (brief §3, §12)
+-- RIOS - Migration 0028: Messaging & integration (brief §3, §12)
 -- Transactional outboxes for outbound messages (email/SMS) and domain events
 -- (the event bus), a connector registry, and developer-portal API keys. The
 -- delivery/relay mechanics are real and tested in-process; the production sinks
--- (SMTP/SMS gateway, Kafka) are provider-configured — see docs/open-questions.md.
+-- (SMTP/SMS gateway, Kafka) are provider-configured - see docs/open-questions.md.
 -- =============================================================================
 
 -- Outbound message outbox (email + SMS share one table by channel).

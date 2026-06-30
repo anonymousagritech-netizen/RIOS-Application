@@ -69,9 +69,9 @@ export function FacultativePage() {
       ),
     },
     { key: 'basis', header: 'Basis', sortValue: (r) => r.basis, render: (r) => titleCase(r.basis) },
-    { key: 'lineOfBusiness', header: 'LOB', sortValue: (r) => r.lineOfBusiness ?? '', render: (r) => titleCase(r.lineOfBusiness) || '—' },
+    { key: 'lineOfBusiness', header: 'LOB', sortValue: (r) => r.lineOfBusiness ?? '', render: (r) => titleCase(r.lineOfBusiness) || '-' },
     { key: 'currency', header: 'CCY', sortValue: (r) => r.currency, render: (r) => r.currency },
-    { key: 'cededShare', header: 'Ceded', align: 'right', sortValue: (r) => r.cededShare ?? 0, render: (r) => (r.cededShare != null ? formatPercent(r.cededShare) : '—') },
+    { key: 'cededShare', header: 'Ceded', align: 'right', sortValue: (r) => r.cededShare ?? 0, render: (r) => (r.cededShare != null ? formatPercent(r.cededShare) : '-') },
     { key: 'status', header: 'Status', align: 'right', sortValue: (r) => r.status, render: (r) => <StatusPill status={r.status} metaColors={statusColors} /> },
   ], [statusColors]);
 

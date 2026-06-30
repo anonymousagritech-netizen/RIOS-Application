@@ -1,105 +1,135 @@
+import {
+  LayoutDashboard, Search, Sparkles, Smartphone,
+  FileText, FileCheck2, ArrowLeftRight, PenLine, Calculator, Boxes, SlidersHorizontal,
+  Users, Contact, FolderOpen,
+  ShieldAlert, Grid2x2, Radar, Undo2,
+  BookOpen, ReceiptText, Wallet, PiggyBank, CalendarCheck,
+  BarChart3, LineChart, ShieldCheck, Scale, FileSpreadsheet, Workflow, GitBranch, Shapes,
+  Clock, UserRound, Banknote, TrendingUp,
+  ShoppingCart, Package,
+  Activity, CalendarClock, Plug, Network, Store, Bot, Mail, PanelsTopLeft, Lock, Shield,
+  Archive, EyeOff, Building2, Flag, Gauge, Settings,
+  type LucideIcon,
+} from 'lucide-react';
+
 export interface NavItem {
   label: string;
   to: string;
-  icon: string;
+  icon: LucideIcon;
   permission?: string;
 }
 export interface NavGroup {
   label: string;
+  icon: LucideIcon;
   items: NavItem[];
 }
 
 export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Overview',
+    icon: LayoutDashboard,
     items: [
-      { label: 'Dashboard', to: '/dashboard', icon: '◧' },
-      { label: 'Search', to: '/search', icon: '⌕' },
-      { label: 'Intelligence', to: '/intelligence', icon: '✶' },
-      { label: 'Mobile', to: '/mobile', icon: '▯' },
+      { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
+      { label: 'Search', to: '/search', icon: Search },
+      { label: 'Intelligence', to: '/intelligence', icon: Sparkles },
+      { label: 'Mobile', to: '/mobile', icon: Smartphone },
     ],
   },
   {
     label: 'Underwriting',
+    icon: FileText,
     items: [
-      { label: 'Treaties', to: '/treaties', icon: '▤', permission: 'treaty:read' },
-      { label: 'Facultative', to: '/facultative', icon: '◆', permission: 'facultative:read' },
-      { label: 'Retrocession', to: '/retrocession', icon: '⇄', permission: 'retro:read' },
-      { label: 'Placement', to: '/placement', icon: '✎', permission: 'placement:read' },
-      { label: 'Pricing', to: '/pricing', icon: '⊿', permission: 'pricing:read' },
-      { label: 'Products', to: '/products', icon: '❖', permission: 'product:read' },
-      { label: 'Adjustments', to: '/adjustments', icon: '⇅', permission: 'treaty:read' },
+      { label: 'Treaties', to: '/treaties', icon: FileText, permission: 'treaty:read' },
+      { label: 'Facultative', to: '/facultative', icon: FileCheck2, permission: 'facultative:read' },
+      { label: 'Retrocession', to: '/retrocession', icon: ArrowLeftRight, permission: 'retro:read' },
+      { label: 'Placement', to: '/placement', icon: PenLine, permission: 'placement:read' },
+      { label: 'Pricing', to: '/pricing', icon: Calculator, permission: 'pricing:read' },
+      { label: 'Products', to: '/products', icon: Boxes, permission: 'product:read' },
+      { label: 'Adjustments', to: '/adjustments', icon: SlidersHorizontal, permission: 'treaty:read' },
     ],
   },
   {
     label: 'Distribution',
+    icon: Users,
     items: [
-      { label: 'Parties', to: '/parties', icon: '◎', permission: 'party:read' },
-      { label: 'CRM', to: '/crm', icon: '☺', permission: 'crm:read' },
-      { label: 'Documents', to: '/documents', icon: '❏', permission: 'documents:read' },
+      { label: 'Parties', to: '/parties', icon: Users, permission: 'party:read' },
+      { label: 'CRM', to: '/crm', icon: Contact, permission: 'crm:read' },
+      { label: 'Documents', to: '/documents', icon: FolderOpen, permission: 'documents:read' },
     ],
   },
   {
     label: 'Operations',
+    icon: ShieldAlert,
     items: [
-      { label: 'Claims', to: '/claims', icon: '◬', permission: 'claims:read' },
-      { label: 'Bordereaux', to: '/bordereaux', icon: '▦', permission: 'bordereaux:read' },
-      { label: 'Exposure', to: '/exposure', icon: '◴', permission: 'exposure:read' },
-      { label: 'Recoveries', to: '/recoveries', icon: '↩', permission: 'claims:read' },
+      { label: 'Claims', to: '/claims', icon: ShieldAlert, permission: 'claims:read' },
+      { label: 'Bordereaux', to: '/bordereaux', icon: Grid2x2, permission: 'bordereaux:read' },
+      { label: 'Exposure', to: '/exposure', icon: Radar, permission: 'exposure:read' },
+      { label: 'Recoveries', to: '/recoveries', icon: Undo2, permission: 'claims:read' },
     ],
   },
   {
     label: 'Finance',
+    icon: Wallet,
     items: [
-      { label: 'Accounting', to: '/accounting', icon: '$', permission: 'accounting:read' },
-      { label: 'Statements', to: '/statements', icon: '▥', permission: 'statement:read' },
-      { label: 'Finance', to: '/finance', icon: '▣', permission: 'finance:read' },
-      { label: 'Treasury', to: '/treasury', icon: '◷', permission: 'treasury:read' },
-      { label: 'Period Close', to: '/period-close', icon: '▦', permission: 'finance:read' },
+      { label: 'Accounting', to: '/accounting', icon: BookOpen, permission: 'accounting:read' },
+      { label: 'Statements', to: '/statements', icon: ReceiptText, permission: 'statement:read' },
+      { label: 'Finance', to: '/finance', icon: Wallet, permission: 'finance:read' },
+      { label: 'Treasury', to: '/treasury', icon: PiggyBank, permission: 'treasury:read' },
+      { label: 'Period Close', to: '/period-close', icon: CalendarCheck, permission: 'finance:read' },
     ],
   },
   {
     label: 'Analytics & Compliance',
+    icon: BarChart3,
     items: [
-      { label: 'Reports', to: '/reports', icon: '▬', permission: 'reporting:read' },
-      { label: 'Analytics', to: '/analytics', icon: '◵', permission: 'reporting:read' },
-      { label: 'Risk & Capital', to: '/risk-capital', icon: '◭', permission: 'risk:read' },
-      { label: 'Regulatory', to: '/regulatory', icon: '§', permission: 'regulatory:read' },
-      { label: 'Returns', to: '/returns', icon: '⊟', permission: 'regulatory:read' },
-      { label: 'Workflow', to: '/workflow', icon: '◉', permission: 'workflow:read' },
-      { label: 'Delegation', to: '/delegation', icon: '⇄' },
-      { label: 'Designer', to: '/designer', icon: '✦', permission: 'config:read' },
+      { label: 'Reports', to: '/reports', icon: BarChart3, permission: 'reporting:read' },
+      { label: 'Analytics', to: '/analytics', icon: LineChart, permission: 'reporting:read' },
+      { label: 'Risk & Capital', to: '/risk-capital', icon: ShieldCheck, permission: 'risk:read' },
+      { label: 'Regulatory', to: '/regulatory', icon: Scale, permission: 'regulatory:read' },
+      { label: 'Returns', to: '/returns', icon: FileSpreadsheet, permission: 'regulatory:read' },
+      { label: 'Workflow', to: '/workflow', icon: Workflow, permission: 'workflow:read' },
+      { label: 'Delegation', to: '/delegation', icon: GitBranch },
+      { label: 'Designer', to: '/designer', icon: Shapes, permission: 'config:read' },
+    ],
+  },
+  {
+    label: 'HRMS',
+    icon: UserRound,
+    items: [
+      { label: 'Attendance', to: '/attendance', icon: Clock, permission: 'hr:read' },
+      { label: 'People', to: '/hr', icon: UserRound, permission: 'hr:read' },
+      { label: 'Payroll', to: '/payroll', icon: Banknote, permission: 'hr:read' },
+      { label: 'Performance', to: '/performance', icon: TrendingUp, permission: 'hr:read' },
     ],
   },
   {
     label: 'Corporate',
+    icon: Building2,
     items: [
-      { label: 'People', to: '/hr', icon: '☻', permission: 'hr:read' },
-      { label: 'Payroll', to: '/payroll', icon: '⊡', permission: 'hr:read' },
-      { label: 'Performance', to: '/performance', icon: '★', permission: 'hr:read' },
-      { label: 'Procurement', to: '/procurement', icon: '⊞', permission: 'procurement:read' },
-      { label: 'Assets', to: '/assets', icon: '▢', permission: 'asset:read' },
+      { label: 'Procurement', to: '/procurement', icon: ShoppingCart, permission: 'procurement:read' },
+      { label: 'Assets', to: '/assets', icon: Package, permission: 'asset:read' },
     ],
   },
   {
     label: 'Platform',
+    icon: Settings,
     items: [
-      { label: 'Operations', to: '/operations', icon: '◍', permission: 'ops:read' },
-      { label: 'Scheduler', to: '/scheduler', icon: '◔', permission: 'ops:read' },
-      { label: 'Integration', to: '/integration', icon: '⇲', permission: 'integration:read' },
-      { label: 'Integration Hub', to: '/integration-hub', icon: '⊕', permission: 'integration:read' },
-      { label: 'Marketplace', to: '/marketplace', icon: '◇', permission: 'integration:read' },
-      { label: 'Automation Studio', to: '/automation-studio', icon: '✣', permission: 'config:read' },
-      { label: 'Messaging', to: '/messaging', icon: '✉', permission: 'integration:read' },
-      { label: 'Portal', to: '/portal', icon: '◈', permission: 'portal:read' },
-      { label: 'Security', to: '/security', icon: '⛨' },
-      { label: 'Security Ops', to: '/security-ops', icon: '⛬', permission: 'ops:read' },
-      { label: 'Retention', to: '/retention', icon: '⧗', permission: 'retention:read' },
-      { label: 'Field Security', to: '/field-security', icon: '◫' },
-      { label: 'Organisation', to: '/organisation', icon: '⌂', permission: 'platform:read' },
-      { label: 'Features', to: '/features', icon: '◰', permission: 'platform:read' },
-      { label: 'Cost & Capacity', to: '/cost', icon: '◴', permission: 'cost:read' },
-      { label: 'Admin', to: '/admin', icon: '⚙', permission: 'admin:manage' },
+      { label: 'Operations', to: '/operations', icon: Activity, permission: 'ops:read' },
+      { label: 'Scheduler', to: '/scheduler', icon: CalendarClock, permission: 'ops:read' },
+      { label: 'Integration', to: '/integration', icon: Plug, permission: 'integration:read' },
+      { label: 'Integration Hub', to: '/integration-hub', icon: Network, permission: 'integration:read' },
+      { label: 'Marketplace', to: '/marketplace', icon: Store, permission: 'integration:read' },
+      { label: 'Automation Studio', to: '/automation-studio', icon: Bot, permission: 'config:read' },
+      { label: 'Messaging', to: '/messaging', icon: Mail, permission: 'integration:read' },
+      { label: 'Portal', to: '/portal', icon: PanelsTopLeft, permission: 'portal:read' },
+      { label: 'Security', to: '/security', icon: Lock },
+      { label: 'Security Ops', to: '/security-ops', icon: Shield, permission: 'ops:read' },
+      { label: 'Retention', to: '/retention', icon: Archive, permission: 'retention:read' },
+      { label: 'Field Security', to: '/field-security', icon: EyeOff },
+      { label: 'Organisation', to: '/organisation', icon: Building2, permission: 'platform:read' },
+      { label: 'Features', to: '/features', icon: Flag, permission: 'platform:read' },
+      { label: 'Cost & Capacity', to: '/cost', icon: Gauge, permission: 'cost:read' },
+      { label: 'Admin', to: '/admin', icon: Settings, permission: 'admin:manage' },
     ],
   },
 ];

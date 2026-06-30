@@ -33,16 +33,16 @@ export function PerformancePage() {
 
   const cols: Column<Review>[] = [
     { key: 'name', header: 'Employee', render: (r) => <span className={shared.cellMain}>{r.employeeName}</span> },
-    { key: 'pos', header: 'Position', render: (r) => <span className={shared.cellSub}>{r.position ?? '—'}</span> },
+    { key: 'pos', header: 'Position', render: (r) => <span className={shared.cellSub}>{r.position ?? '-'}</span> },
     { key: 'period', header: 'Period', render: (r) => r.period },
     { key: 'score', header: 'Overall', align: 'right', render: (r) => <strong>{Number(r.overallScore).toFixed(2)}</strong> },
-    { key: 'band', header: 'Band', render: (r) => r.band ? <Badge color={BAND_COLOR[r.band] ?? 'slate'}>{titleCase(r.band)}</Badge> : '—' },
+    { key: 'band', header: 'Band', render: (r) => r.band ? <Badge color={BAND_COLOR[r.band] ?? 'slate'}>{titleCase(r.band)}</Badge> : '-' },
     { key: 'status', header: 'Status', render: (r) => <Badge color={STATUS_COLOR[r.status] ?? 'slate'}>{titleCase(r.status.replace('_', ' '))}</Badge> },
   ];
 
   return (
     <>
-      <PageHeader title="Performance" description="Review cycles with weighted goal scoring — the overall rating reconciles with its goals." />
+      <PageHeader title="Performance" description="Review cycles with weighted goal scoring - the overall rating reconciles with its goals." />
       <Card>
         <CardHeader title="Reviews" />
         <div style={{ padding: 'var(--space-4)' }}>
@@ -54,14 +54,14 @@ export function PerformancePage() {
       {open && (
         <Card>
           <CardHeader
-            title={`${open.employeeName} — ${open.period}`}
+            title={`${open.employeeName} - ${open.period}`}
             subtitle={open.summary ?? undefined}
             actions={open.band ? <Badge color={BAND_COLOR[open.band] ?? 'slate'}>{titleCase(open.band)} · {Number(open.overallScore).toFixed(2)}</Badge> : undefined}
           />
           <div style={{ padding: 'var(--space-4)' }}>
             <Table
               columns={[
-                { key: 'goal', header: 'Goal', render: (g: Goal) => <span className={shared.cellMain}>{g.title ?? '—'}</span> },
+                { key: 'goal', header: 'Goal', render: (g: Goal) => <span className={shared.cellMain}>{g.title ?? '-'}</span> },
                 { key: 'weight', header: 'Weight', align: 'right', render: (g: Goal) => String(g.weight) },
                 { key: 'score', header: 'Score', align: 'right', render: (g: Goal) => `${g.score} / 5` },
               ]}

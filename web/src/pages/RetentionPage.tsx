@@ -31,7 +31,7 @@ export function RetentionPage() {
   const [tab, setTab] = useState('policies');
   return (
     <>
-      <PageHeader title="Retention & legal hold" description="How long records are kept, and which are frozen under legal hold — a hold always overrides a policy." />
+      <PageHeader title="Retention & legal hold" description="How long records are kept, and which are frozen under legal hold - a hold always overrides a policy." />
       <Card>
         <Tabs tabs={[{ id: 'policies', label: 'Policies' }, { id: 'holds', label: 'Legal holds' }, { id: 'evaluate', label: 'Evaluate' }]} active={tab} onChange={setTab} />
         <div style={{ padding: 'var(--space-5)' }}>
@@ -53,7 +53,7 @@ function Policies() {
     { key: 'retention', header: 'Retention', align: 'right', render: (p) => years(p.retentionDays) },
     { key: 'action', header: 'On expiry', render: (p) => <Badge color={p.action === 'purge' ? 'red' : 'slate'}>{titleCase(p.action)}</Badge> },
     { key: 'active', header: 'Active', render: (p) => <Badge color={p.active ? 'green' : 'gray'}>{p.active ? 'Active' : 'Inactive'}</Badge> },
-    { key: 'note', header: 'Note', render: (p) => <span className={shared.cellSub}>{p.note ?? '—'}</span> },
+    { key: 'note', header: 'Note', render: (p) => <span className={shared.cellSub}>{p.note ?? '-'}</span> },
   ];
   return <Table columns={cols} rows={q.data?.policies} rowKey={(p) => p.id} empty={<EmptyState title="No policies" message="No retention policies defined." />} />;
 }
@@ -82,7 +82,7 @@ function Holds() {
   const cols: Column<Hold>[] = [
     { key: 'name', header: 'Hold', render: (h) => <span className={shared.cellMain}>{h.name}</span> },
     { key: 'scope', header: 'Scope', render: (h) => h.entityType ? titleCase(h.entityType) : 'Global' },
-    { key: 'reason', header: 'Reason', render: (h) => <span className={shared.cellSub}>{h.reason ?? '—'}</span> },
+    { key: 'reason', header: 'Reason', render: (h) => <span className={shared.cellSub}>{h.reason ?? '-'}</span> },
     { key: 'placed', header: 'Placed', render: (h) => formatDate(h.placedAt) },
     { key: 'status', header: 'Status', render: (h) => <Badge color={h.active ? 'red' : 'gray'}>{h.active ? 'Active' : 'Released'}</Badge> },
     {

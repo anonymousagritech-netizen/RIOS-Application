@@ -27,16 +27,16 @@ export function CompaniesPage() {
   const cCols: Column<Company>[] = [
     { key: 'code', header: 'Code', render: (c) => <span className={shared.cellRef}>{c.code}</span> },
     { key: 'name', header: 'Company', render: (c) => <span className={shared.cellMain}>{c.name}</span> },
-    { key: 'parent', header: 'Parent', render: (c) => c.parentName ?? '— (top)' },
-    { key: 'country', header: 'Country', render: (c) => c.country ?? '—' },
-    { key: 'ccy', header: 'Currency', render: (c) => c.baseCurrency ?? '—' },
+    { key: 'parent', header: 'Parent', render: (c) => c.parentName ?? '- (top)' },
+    { key: 'country', header: 'Country', render: (c) => c.country ?? '-' },
+    { key: 'ccy', header: 'Currency', render: (c) => c.baseCurrency ?? '-' },
     { key: 'status', header: 'Status', render: (c) => <Badge color={STATUS[c.status] ?? 'slate'}>{titleCase(c.status)}</Badge> },
   ];
   const oCols: Column<Office>[] = [
     { key: 'code', header: 'Code', render: (o) => <span className={shared.cellRef}>{o.code}</span> },
     { key: 'name', header: 'Office', render: (o) => <span className={shared.cellMain}>{o.name}{o.isHeadOffice && <Badge color="blue">HQ</Badge>}</span> },
-    { key: 'company', header: 'Company', render: (o) => o.companyName ?? '—' },
-    { key: 'city', header: 'City', render: (o) => o.city ?? '—' },
+    { key: 'company', header: 'Company', render: (o) => o.companyName ?? '-' },
+    { key: 'city', header: 'City', render: (o) => o.city ?? '-' },
     { key: 'status', header: 'Status', render: (o) => <Badge color={STATUS[o.status] ?? 'slate'}>{titleCase(o.status)}</Badge> },
   ];
 

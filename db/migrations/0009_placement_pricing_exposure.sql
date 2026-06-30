@@ -1,10 +1,10 @@
 -- =============================================================================
--- RIOS — Migration 0009: Placement & Slip, Pricing & Rating, Exposure
+-- RIOS - Migration 0009: Placement & Slip, Pricing & Rating, Exposure
 -- Brief §7.3 (placement), §7.8 (pricing/exposure), §29.4, §29.5
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- Placement & Slip (§29.4) — market the risk and capture written/signed lines
+-- Placement & Slip (§29.4) - market the risk and capture written/signed lines
 -- ---------------------------------------------------------------------------
 create table slip (
   id            uuid primary key default gen_random_uuid(),
@@ -41,7 +41,7 @@ create table market_line (
 create index on market_line (tenant_id, slip_id);
 
 -- ---------------------------------------------------------------------------
--- Pricing & Rating (§29.5) — reproducible rating runs
+-- Pricing & Rating (§29.5) - reproducible rating runs
 -- ---------------------------------------------------------------------------
 create table rating_run (
   id            uuid primary key default gen_random_uuid(),

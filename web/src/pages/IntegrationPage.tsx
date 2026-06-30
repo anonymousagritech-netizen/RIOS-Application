@@ -130,7 +130,7 @@ function WebhooksTab() {
         <div className={styles.eventTypes}>
           {s.eventTypes?.length
             ? s.eventTypes.map((e) => <Badge key={e} color="indigo">{e}</Badge>)
-            : <span className={shared.cellSub}>—</span>}
+            : <span className={shared.cellSub}>-</span>}
         </div>
       ),
     },

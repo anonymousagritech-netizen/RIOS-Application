@@ -57,7 +57,7 @@ describe('exposure: zonal aggregates vs limits', () => {
     const accId = created.json().id as string;
     expect(created.json().capacityMinor).toBe(100_000); // $1,000
 
-    // Two entries totalling $1,500 gross — above the $1,000 capacity.
+    // Two entries totalling $1,500 gross - above the $1,000 capacity.
     await app.inject({
       method: 'POST',
       url: `/api/exposure/accumulations/${accId}/entries`,
