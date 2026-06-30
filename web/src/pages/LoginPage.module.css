@@ -128,3 +128,14 @@
 @media (max-width: 480px) {
   .demoGrid { grid-template-columns: 1fr; }
 }
+
+.linkBtn {
+  margin-top: var(--space-3);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+  align-self: center;
+}
+.linkBtn:hover { color: var(--text); text-decoration: underline; }

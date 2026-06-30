@@ -14,6 +14,7 @@ import jwt from 'jsonwebtoken';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { config } from './config.js';
 import { ownerQuery } from './db.js';
+import { verifyTotp } from './auth/totp.js';
 import type { AuthUser } from '@rios/shared';
 
 export class AuthError extends Error {
@@ -22,7 +23,7 @@ export class AuthError extends Error {
   }
 }
 
-export async function login(email: string, password: string, tenantCode?: string): Promise<{ token: string; user: AuthUser }> {
+export async function login(email: string, password: string, tenantCode?: string): Promise<LoginResult> {
   const { rows } = await ownerQuery<{
     id: string;
     tenant_id: string;
@@ -41,19 +42,59 @@ export async function login(email: string, password: string, tenantCode?: string
   const row = rows[0];
   if (!row) throw new AuthError('Invalid credentials');
 
-  const { roles, permissions } = await loadAccess(row.id, row.tenant_id);
-  const user: AuthUser = {
-    id: row.id,
-    email: row.email,
-    displayName: row.display_name,
-    tenantId: row.tenant_id,
-    roles,
-    permissions,
-  };
-  const token = jwt.sign(user, config.jwtSecret, { expiresIn: config.jwtExpiresIn } as jwt.SignOptions);
+  // If the user has MFA enabled, password is only the first factor: return a
+  // short-lived challenge instead of an access token (brief §14.1).
+  const mfa = await ownerQuery(
+    `select 1 from mfa_credential where user_id = $1 and type = 'totp' and enabled = true`,
+    [row.id],
+  );
+  if (mfa.rows.length > 0) {
+    const mfaToken = jwt.sign({ sub: row.id, tenantId: row.tenant_id, purpose: 'mfa' }, config.jwtSecret, {
+      expiresIn: '5m',
+    });
+    return { mfaRequired: true, mfaToken, methods: ['totp'] };
+  }
 
+  return buildSession(row.id);
+}
+
+export type LoginResult =
+  | { mfaRequired: true; mfaToken: string; methods: string[] }
+  | { token: string; user: AuthUser };
+
+/** Build an access token + AuthUser for a verified user id (post-password / post-MFA / post-SSO). */
+export async function buildSession(userId: string): Promise<{ token: string; user: AuthUser }> {
+  const { rows } = await ownerQuery<{ id: string; tenant_id: string; email: string; display_name: string }>(
+    `select id, tenant_id, email, display_name from app_user where id = $1 and status = 'active'`,
+    [userId],
+  );
+  const row = rows[0];
+  if (!row) throw new AuthError('User not found or inactive');
+  const { roles, permissions } = await loadAccess(row.id, row.tenant_id);
+  const user: AuthUser = { id: row.id, email: row.email, displayName: row.display_name, tenantId: row.tenant_id, roles, permissions };
+  const token = jwt.sign(user, config.jwtSecret, { expiresIn: config.jwtExpiresIn } as jwt.SignOptions);
   await ownerQuery(`update app_user set last_login_at = now() where id = $1`, [row.id]);
   return { token, user };
+}
+
+/** Complete a two-factor login: verify the MFA challenge token + the TOTP code. */
+export async function completeMfaLogin(mfaToken: string, code: string): Promise<{ token: string; user: AuthUser }> {
+  let payload: { sub: string; tenantId: string; purpose: string };
+  try {
+    payload = jwt.verify(mfaToken, config.jwtSecret) as typeof payload;
+  } catch {
+    throw new AuthError('MFA challenge expired — please sign in again');
+  }
+  if (payload.purpose !== 'mfa') throw new AuthError('Invalid MFA challenge');
+  const cred = await ownerQuery<{ secret: string }>(
+    `select secret from mfa_credential where user_id = $1 and type = 'totp' and enabled = true`,
+    [payload.sub],
+  );
+  if (!cred.rows[0]) throw new AuthError('MFA is not enabled for this account');
+  if (!verifyTotp(cred.rows[0].secret, code, Date.now())) {
+    throw new AuthError('Invalid authentication code', 401);
+  }
+  return buildSession(payload.sub);
 }
 
 async function loadAccess(userId: string, tenantId: string): Promise<{ roles: string[]; permissions: string[] }> {

@@ -74,6 +74,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Operations', to: '/operations', icon: '◍', permission: 'ops:read' },
       { label: 'Integration', to: '/integration', icon: '⇲', permission: 'integration:read' },
+      { label: 'Security', to: '/security', icon: '⛨' },
       { label: 'Admin', to: '/admin', icon: '⚙', permission: 'admin:manage' },
     ],
   },

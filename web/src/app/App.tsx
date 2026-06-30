@@ -35,6 +35,7 @@ import { PeriodClosePage } from '../pages/PeriodClosePage';
 import { TreatyAdjustmentsPage } from '../pages/TreatyAdjustmentsPage';
 import { ClaimsRecoveriesPage } from '../pages/ClaimsRecoveriesPage';
 import { RegulatoryReturnsPage } from '../pages/RegulatoryReturnsPage';
+import { SecurityPage } from '../pages/SecurityPage';
 
 export function App() {
   const { status } = useAuth();
@@ -89,6 +90,7 @@ export function App() {
         <Route path="/adjustments" element={<TreatyAdjustmentsPage />} />
         <Route path="/recoveries" element={<ClaimsRecoveriesPage />} />
         <Route path="/returns" element={<RegulatoryReturnsPage />} />
+        <Route path="/security" element={<SecurityPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

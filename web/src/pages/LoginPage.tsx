@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { Button } from '../components/Button';
@@ -15,23 +15,54 @@ const DEMO_ACCOUNTS = [
 ];
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, completeMfa, applySession } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('admin@demo.rios');
   const [password, setPassword] = useState('demo1234');
   const [tenantCode, setTenantCode] = useState('demo');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+
+  // Adopt an SSO token handed back via the redirect fragment (#sso_token=…).
+  useEffect(() => {
+    const m = window.location.hash.match(/sso_token=([^&]+)/);
+    if (!m) return;
+    window.history.replaceState(null, '', window.location.pathname);
+    applySession(decodeURIComponent(m[1]!))
+      .then(() => navigate('/dashboard', { replace: true }))
+      .catch(() => setError('SSO sign-in could not be completed.'));
+  }, [applySession, navigate]);
 
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setError(null);
     setBusy(true);
     try {
-      await login(email, password, tenantCode);
-      navigate('/dashboard', { replace: true });
+      const outcome = await login(email, password, tenantCode);
+      if (outcome.status === 'mfa') {
+        setMfaToken(outcome.mfaToken);
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to sign in. Check your credentials.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitMfa = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!mfaToken) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await completeMfa(mfaToken, code.trim());
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Invalid authentication code.');
     } finally {
       setBusy(false);
     }
@@ -68,6 +99,22 @@ export function LoginPage() {
       </aside>
 
       <main className={styles.formPanel}>
+        {mfaToken ? (
+          <form className={styles.card} onSubmit={submitMfa}>
+            <h2 className={styles.title}>Two-factor authentication</h2>
+            <p className={styles.subtitle}>Enter the 6-digit code from your authenticator app.</p>
+            <div className={styles.fields}>
+              <TextField label="Authentication code" value={code} onChange={setCode} required />
+            </div>
+            {error && <p className={styles.error} role="alert">{error}</p>}
+            <Button type="submit" variant="primary" size="lg" loading={busy} className={styles.submit}>
+              Verify & sign in
+            </Button>
+            <button type="button" className={styles.linkBtn} onClick={() => { setMfaToken(null); setCode(''); setError(null); }}>
+              ← Back to sign in
+            </button>
+          </form>
+        ) : (
         <form className={styles.card} onSubmit={submit}>
           <h2 className={styles.title}>Sign in</h2>
           <p className={styles.subtitle}>Use a demo account below or enter your credentials.</p>
@@ -102,6 +149,7 @@ export function LoginPage() {
           </div>
           <p className={styles.hint}>All demo passwords are <code>demo1234</code>, tenant <code>demo</code>.</p>
         </form>
+        )}
       </main>
     </div>
   );
