@@ -15,10 +15,10 @@
   height: 100vh;
   overflow: hidden;
   background:
-    radial-gradient(420px 220px at 8% -2%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 70%),
-    radial-gradient(360px 240px at 4% 102%, color-mix(in srgb, var(--accent-violet) 9%, transparent), transparent 70%),
-    var(--sidebar-bg);
-  border-right: 1px solid var(--border);
+    radial-gradient(520px 280px at 6% -4%, color-mix(in srgb, var(--accent-blue) 22%, transparent), transparent 68%),
+    radial-gradient(420px 300px at 2% 104%, color-mix(in srgb, var(--accent-violet) 20%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
+  border-right: 1px solid var(--sidebar-border);
 }
 
 .brand {
@@ -41,8 +41,8 @@
   box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 38%, transparent);
 }
 .brandText { display: flex; flex-direction: column; line-height: 1.15; flex: 1; min-width: 0; }
-.brandText strong { font-size: var(--text-md); letter-spacing: -0.01em; color: var(--text); }
-.brandText span { font-size: var(--text-2xs); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brandText strong { font-family: var(--font-display); font-size: var(--text-md); font-weight: var(--weight-bold); letter-spacing: -0.01em; color: #fff; }
+.brandText span { font-size: var(--text-2xs); color: var(--sidebar-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .collapsed .brand { justify-content: center; padding: 0; }
 
 .nav {
@@ -72,12 +72,12 @@
   font-size: var(--text-2xs);
   font-weight: var(--weight-bold);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
+  letter-spacing: 0.08em;
+  color: var(--sidebar-faint);
   cursor: pointer;
   transition: color var(--motion-fast);
 }
-.caption:hover { color: var(--text-muted); }
+.caption:hover { color: var(--sidebar-text-muted); }
 .navGroup:first-child .caption { margin-top: var(--space-1); }
 .captionChevron { transition: transform var(--motion-base); opacity: 0.7; }
 .captionChevronClosed { transform: rotate(-90deg); }
@@ -96,33 +96,33 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  height: 38px;
+  height: 40px;
   padding: 0 var(--space-3);
   border-radius: var(--radius-md);
-  color: var(--text-muted);
+  color: var(--sidebar-text-muted);
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
   white-space: nowrap;
   transition: background var(--motion-fast), color var(--motion-fast);
 }
-.navLink:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); color: var(--text); }
-.navLink:hover .navIcon { color: var(--primary); }
+.navLink:hover { background: var(--sidebar-hover); color: var(--sidebar-text); }
+.navLink:hover .navIcon { color: var(--sidebar-accent); }
 
 /* Active item: a filled gradient pill (the premium, colourful highlight). */
 .navLinkActive,
 .navLinkActive:hover {
-  background: linear-gradient(135deg, var(--primary), var(--accent-violet));
-  color: var(--primary-fg);
+  background: var(--sidebar-active);
+  color: #fff;
   font-weight: var(--weight-semibold);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 32%, transparent);
+  box-shadow: var(--sidebar-active-shadow);
 }
-.navLinkActive .navIcon { color: var(--primary-fg); }
+.navLinkActive .navIcon { color: #fff; }
 
-.navIcon { display: grid; place-items: center; flex-shrink: 0; width: 18px; height: 18px; color: var(--text-faint); transition: color var(--motion-fast); }
+.navIcon { display: grid; place-items: center; flex-shrink: 0; width: 18px; height: 18px; color: var(--sidebar-faint); transition: color var(--motion-fast); }
 .navLabel { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- Collapsed (icon-only) ---------- */
-.groupRule { display: block; height: 1px; background: var(--border); margin: var(--space-2); }
+.groupRule { display: block; height: 1px; background: var(--sidebar-border); margin: var(--space-2); }
 .collapsed .navGroup:first-child .groupRule { display: none; }
 .collapsed .items { grid-template-rows: 1fr; }
 .collapsed .navLink { justify-content: center; padding: 0; }
@@ -135,7 +135,7 @@
   gap: var(--space-2);
   padding: var(--space-3);
   flex-shrink: 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--sidebar-border);
 }
 .assistantBtn {
   flex: 1;
@@ -143,26 +143,26 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  height: 38px;
+  height: 40px;
   border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  background: color-mix(in srgb, var(--primary) 9%, transparent);
-  color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 36%, transparent);
+  background: color-mix(in srgb, var(--accent-blue) 18%, transparent);
+  color: #fff;
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  transition: background var(--motion-fast);
+  transition: background var(--motion-fast), border-color var(--motion-fast);
 }
-.assistantBtn:hover { background: color-mix(in srgb, var(--primary) 16%, transparent); }
+.assistantBtn:hover { background: color-mix(in srgb, var(--accent-blue) 30%, transparent); border-color: color-mix(in srgb, var(--accent-blue) 60%, transparent); }
 .assistantSpark { flex-shrink: 0; }
 .collapseBtn {
   display: grid; place-items: center;
-  width: 38px; height: 38px;
+  width: 40px; height: 40px;
   flex-shrink: 0;
   border-radius: var(--radius-md);
-  color: var(--text-faint);
+  color: var(--sidebar-faint);
   transition: background var(--motion-fast), color var(--motion-fast);
 }
-.collapseBtn:hover { background: var(--surface-2); color: var(--text); }
+.collapseBtn:hover { background: var(--sidebar-hover); color: var(--sidebar-text); }
 .collapsed .sidebarFooter { flex-direction: column; }
 .collapsed .assistantBtn { flex: none; width: 38px; }
 

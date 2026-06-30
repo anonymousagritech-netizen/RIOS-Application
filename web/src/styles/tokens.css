@@ -1,10 +1,15 @@
-/* RIOS design tokens. Semantic custom properties only - components must never
-   hard-code colours. Light is the default; [data-theme="dark"] overrides. */
+/* RIOS / ReNexis design tokens. Semantic custom properties only - components
+   must never hard-code colours. Light is the default; [data-theme="dark"]
+   overrides. Palette: blue-led enterprise SaaS (primary #2563EB), soft slate
+   backgrounds, a permanently dark-navy sidebar, and a premium (non-black)
+   dark mode. */
 
 :root {
-  /* Typography */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  /* Typography - Plus Jakarta Sans for display/headings, Inter for body/UI. */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
 
@@ -17,6 +22,7 @@
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
   --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
 
   --weight-normal: 400;
   --weight-medium: 500;
@@ -37,120 +43,177 @@
   --space-8: 3rem;
   --space-10: 4rem;
 
-  /* Radii */
-  --radius-sm: 5px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* Radii - premium rounded corners (12-18px on cards/surfaces) */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
   --radius-full: 999px;
 
   /* Motion */
   --motion-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
   --motion-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  --motion-slow: 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-slow: 360ms cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Layout */
-  --nav-width: 264px;
-  --nav-width-collapsed: 72px;
-  --topbar-height: 60px;
+  --nav-width: 268px;
+  --nav-width-collapsed: 76px;
+  --topbar-height: 62px;
   --content-max: 1640px;
 
-  /* ---- Light palette ---- */
-  --bg: #f6f7f9;
+  /* ---- Light palette (soft slate, never plain flat white) ---- */
+  --bg: #f5f7fb;
+  --bg-tint: radial-gradient(1200px 600px at 100% -10%, #eef4ff 0%, transparent 55%),
+             radial-gradient(900px 500px at -10% 0%, #f3f0ff 0%, transparent 50%),
+             var(--bg);
   --surface: #ffffff;
-  --surface-2: #f1f3f6;
-  --surface-3: #e8ebf0;
-  --border: #e3e6ec;
-  --border-strong: #d2d7e0;
-  --text: #1a1f29;
-  --text-muted: #5d6675;
-  --text-faint: #8a93a3;
+  --surface-2: #f3f6fb;
+  --surface-3: #e9eef6;
+  --border: #e6ebf3;
+  --border-strong: #d3dbe8;
+  --text: #0f1b2d;
+  --text-muted: #5b6675;
+  --text-faint: #909aab;
 
-  --sidebar-bg: #ffffff;
-
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
+  /* Brand - blue led */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-active: #1e40af;
   --primary-fg: #ffffff;
-  --primary-soft: #eef0fe;
+  --primary-soft: #eaf1ff;
+  --primary-soft-strong: #d7e5ff;
 
-  /* Accent palette for gradients, charts and highlights */
-  --accent-violet: #7c3aed;
-  --accent-cyan: #0891b2;
-  --accent-orange: #ea580c;
-  --accent-emerald: #059669;
-  --accent-rose: #e11d48;
+  /* Accent palette for gradients, charts and highlights (brief spec) */
+  --accent-blue: #3b82f6;
+  --accent-indigo: #6366f1;
+  --accent-violet: #8b5cf6;
+  --accent-cyan: #06b6d4;
+  --accent-orange: #f59e0b;
+  --accent-emerald: #10b981;
+  --accent-rose: #ef4444;
 
-  --focus-ring: color-mix(in srgb, var(--primary) 45%, transparent);
-  --overlay: rgba(17, 21, 28, 0.42);
+  /* Premium gradients */
+  --grad-primary: linear-gradient(135deg, #2563eb 0%, #6366f1 100%);
+  --grad-violet: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --grad-cyan: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+  --grad-emerald: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+  --grad-sunset: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
 
-  --shadow-sm: 0 1px 2px rgba(16, 22, 36, 0.06);
-  --shadow-md: 0 4px 14px rgba(16, 22, 36, 0.08);
-  --shadow-lg: 0 12px 38px rgba(16, 22, 36, 0.14);
-  --shadow-popover: 0 8px 30px rgba(16, 22, 36, 0.18);
+  --focus-ring: color-mix(in srgb, var(--primary) 38%, transparent);
+  --overlay: rgba(13, 20, 33, 0.45);
+
+  /* Soft, slightly blue-tinted elevation */
+  --shadow-xs: 0 1px 2px rgba(20, 33, 61, 0.05);
+  --shadow-sm: 0 1px 3px rgba(20, 33, 61, 0.06), 0 1px 2px rgba(20, 33, 61, 0.04);
+  --shadow-md: 0 6px 18px rgba(20, 33, 61, 0.08), 0 2px 6px rgba(20, 33, 61, 0.04);
+  --shadow-lg: 0 16px 44px rgba(20, 33, 61, 0.14), 0 4px 12px rgba(20, 33, 61, 0.06);
+  --shadow-popover: 0 10px 34px rgba(20, 33, 61, 0.18);
+  --shadow-primary: 0 6px 18px color-mix(in srgb, var(--primary) 30%, transparent);
+
+  /* ---- Sidebar: permanently dark navy in BOTH themes ---- */
+  --sidebar-bg: #0e1729;
+  --sidebar-bg-2: #0a1120;
+  --sidebar-text: #d6deeb;
+  --sidebar-text-muted: #95a1b8;
+  --sidebar-faint: #66728c;
+  --sidebar-border: rgba(148, 163, 184, 0.14);
+  --sidebar-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-active: linear-gradient(135deg, #2563eb 0%, #6366f1 100%);
+  --sidebar-active-shadow: 0 8px 20px rgba(37, 99, 235, 0.42);
+  --sidebar-accent: #60a5fa;
 
   /* Status / accent tokens (paired fg/bg/border). Names map to code-list meta.color */
-  --c-green: #15803d;        --c-green-bg: #e7f6ec;
-  --c-blue: #1d4ed8;         --c-blue-bg: #e6edfd;
-  --c-amber: #b45309;        --c-amber-bg: #fcf0db;
-  --c-violet: #6d28d9;       --c-violet-bg: #f0e9fd;
-  --c-slate: #475569;        --c-slate-bg: #eceff3;
-  --c-red: #b91c1c;          --c-red-bg: #fde8e8;
-  --c-teal: #0f766e;         --c-teal-bg: #defaf4;
-  --c-indigo: #4338ca;       --c-indigo-bg: #e9e9fc;
-  --c-orange: #c2410c;       --c-orange-bg: #fdeada;
-  --c-rose: #be123c;         --c-rose-bg: #fde7ee;
-  --c-gray: #475569;         --c-gray-bg: #eceff3;
+  --c-green: #047857;        --c-green-bg: #e6f7ef;
+  --c-blue: #2563eb;         --c-blue-bg: #e8f0ff;
+  --c-amber: #b45309;        --c-amber-bg: #fcf2db;
+  --c-violet: #6d28d9;       --c-violet-bg: #f1eafe;
+  --c-slate: #475569;        --c-slate-bg: #eef1f6;
+  --c-red: #b91c1c;          --c-red-bg: #fdeaea;
+  --c-teal: #0f766e;         --c-teal-bg: #ddf7f2;
+  --c-indigo: #4f46e5;       --c-indigo-bg: #ebebfd;
+  --c-orange: #c2410c;       --c-orange-bg: #fdeeda;
+  --c-rose: #be123c;         --c-rose-bg: #fdeaf0;
+  --c-gray: #475569;         --c-gray-bg: #eef1f6;
 
   --success: var(--c-green);
   --danger: var(--c-red);
   --warning: var(--c-amber);
+  --info: var(--accent-cyan);
 }
 
 [data-theme="dark"] {
-  --bg: #0c0e13;
-  --surface: #14171f;
-  --surface-2: #1b1f29;
-  --surface-3: #232834;
-  --border: #262b36;
-  --border-strong: #333a48;
-  --text: #e7eaf0;
-  --text-muted: #9aa3b2;
-  --text-faint: #69727f;
+  /* Premium navy dark mode - not pure black. */
+  --bg: #0a0f1c;
+  --bg-tint: radial-gradient(1200px 600px at 100% -10%, #0f1b33 0%, transparent 55%),
+             radial-gradient(900px 500px at -10% 0%, #141033 0%, transparent 50%),
+             var(--bg);
+  --surface: #121a2c;
+  --surface-2: #18223a;
+  --surface-3: #212d49;
+  --border: #25314e;
+  --border-strong: #344266;
+  --text: #e9eefb;
+  --text-muted: #99a6c0;
+  --text-faint: #6b7896;
 
-  --sidebar-bg: #0e1117;
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-active: #2563eb;
+  --primary-fg: #ffffff;
+  --primary-soft: #16233f;
+  --primary-soft-strong: #1d2f54;
 
-  --primary: #7c74f6;
-  --primary-hover: #8c84ff;
-  --primary-fg: #0c0e13;
-  --primary-soft: #1e1f3a;
-
+  --accent-blue: #60a5fa;
+  --accent-indigo: #818cf8;
   --accent-violet: #a78bfa;
   --accent-cyan: #22d3ee;
-  --accent-orange: #fb923c;
+  --accent-orange: #fbbf24;
   --accent-emerald: #34d399;
-  --accent-rose: #fb7185;
+  --accent-rose: #f87171;
+
+  --grad-primary: linear-gradient(135deg, #3b82f6 0%, #818cf8 100%);
+  --grad-violet: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%);
+  --grad-cyan: linear-gradient(135deg, #22d3ee 0%, #60a5fa 100%);
+  --grad-emerald: linear-gradient(135deg, #34d399 0%, #22d3ee 100%);
+  --grad-sunset: linear-gradient(135deg, #fbbf24 0%, #f87171 100%);
 
   --focus-ring: color-mix(in srgb, var(--primary) 55%, transparent);
-  --overlay: rgba(0, 0, 0, 0.6);
+  --overlay: rgba(0, 0, 0, 0.62);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 14px 42px rgba(0, 0, 0, 0.6);
-  --shadow-popover: 0 8px 30px rgba(0, 0, 0, 0.6);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.46);
+  --shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.6);
+  --shadow-popover: 0 10px 34px rgba(0, 0, 0, 0.6);
+  --shadow-primary: 0 6px 18px rgba(37, 99, 235, 0.4);
 
-  --c-green: #4ade80;        --c-green-bg: #11291b;
-  --c-blue: #7da6ff;         --c-blue-bg: #14213f;
+  /* Sidebar stays navy; nudge a touch darker to separate from the dark canvas. */
+  --sidebar-bg: #0b1322;
+  --sidebar-bg-2: #080e1a;
+  --sidebar-text: #d3dcec;
+  --sidebar-text-muted: #8e9bb4;
+  --sidebar-faint: #5f6b86;
+  --sidebar-border: rgba(148, 163, 184, 0.12);
+  --sidebar-hover: rgba(255, 255, 255, 0.05);
+  --sidebar-active: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  --sidebar-active-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  --sidebar-accent: #60a5fa;
+
+  --c-green: #4ade80;        --c-green-bg: #0f291c;
+  --c-blue: #7da6ff;         --c-blue-bg: #15223f;
   --c-amber: #fbbf52;        --c-amber-bg: #2e2310;
   --c-violet: #b69bff;       --c-violet-bg: #221a3a;
-  --c-slate: #aab4c2;        --c-slate-bg: #20262f;
+  --c-slate: #aab4c2;        --c-slate-bg: #1f2939;
   --c-red: #fb7676;          --c-red-bg: #321617;
   --c-teal: #45d6c2;         --c-teal-bg: #0d2a28;
   --c-indigo: #9b94ff;       --c-indigo-bg: #1b1c3a;
   --c-orange: #fb9a5a;       --c-orange-bg: #2c1c10;
   --c-rose: #f9789e;         --c-rose-bg: #2f1620;
-  --c-gray: #aab4c2;         --c-gray-bg: #20262f;
+  --c-gray: #aab4c2;         --c-gray-bg: #1f2939;
 
   --success: var(--c-green);
   --danger: var(--c-red);
   --warning: var(--c-amber);
+  --info: var(--accent-cyan);
 }

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, CSSProperties } from 'react';
 import styles from './KpiCard.module.css';
 
 interface KpiCardProps {
@@ -11,8 +11,10 @@ interface KpiCardProps {
 }
 
 export function KpiCard({ label, value, hint, icon, loading, accent }: KpiCardProps) {
+  const accentVar = accent ? ({ '--kpi-accent': accent } as CSSProperties) : undefined;
   return (
-    <div className={styles.card}>
+    <div className={styles.card} style={accentVar}>
+      <span className={styles.accentBar} aria-hidden />
       <div className={styles.top}>
         <span className={styles.label}>{label}</span>
         {icon && (

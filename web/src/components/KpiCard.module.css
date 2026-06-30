@@ -4,18 +4,28 @@
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-5);
-  background: var(--surface);
+  background:
+    radial-gradient(130% 150% at 100% 0%, color-mix(in srgb, var(--kpi-accent, var(--primary)) 7%, transparent), transparent 55%),
+    var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  min-height: 118px;
+  min-height: 120px;
   overflow: hidden;
   transition: border-color var(--motion-fast), box-shadow var(--motion-base), transform var(--motion-base);
 }
 .card:hover {
-  border-color: var(--border-strong);
+  border-color: color-mix(in srgb, var(--kpi-accent, var(--primary)) 36%, var(--border));
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+}
+/* Colored top accent bar - the premium KPI-card signature. */
+.accentBar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--kpi-accent, var(--primary)), color-mix(in srgb, var(--kpi-accent, var(--primary)) 30%, transparent));
+  opacity: 0.95;
 }
 
 .top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
