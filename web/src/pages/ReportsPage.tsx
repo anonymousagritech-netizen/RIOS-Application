@@ -10,7 +10,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, TextField } from '../components/Form';
 import { formatDate, formatNumber, titleCase } from '../lib/format';
-import { api, ApiError, getToken } from '../lib/api';
+import { api, ApiError, getToken, API_BASE } from '../lib/api';
 import shared from './shared.module.css';
 
 /* ---------------- Source allowlist ---------------- */
@@ -259,7 +259,7 @@ function SavedDefinitions() {
     setExporting(def.id);
     try {
       const token = getToken();
-      const res = await fetch(`/api/reports/definitions/${def.id}/export?format=csv`, {
+      const res = await fetch(`${API_BASE}/api/reports/definitions/${def.id}/export?format=csv`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!res.ok) throw new ApiError(res.status, res.statusText || 'Export failed');

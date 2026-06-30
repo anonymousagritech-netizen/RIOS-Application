@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError, getToken } from '../lib/api';
+import { api, ApiError, getToken, API_BASE } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -364,7 +364,7 @@ function ExportPanel() {
     setRows(null);
     if (format === 'csv') {
       try {
-        const res = await fetch(`/api/integration/export?entity=${encodeURIComponent(entity)}&format=csv`, {
+        const res = await fetch(`${API_BASE}/api/integration/export?entity=${encodeURIComponent(entity)}&format=csv`, {
           headers: { Accept: 'text/csv', ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
         });
         if (!res.ok) throw new ApiError(res.status, res.statusText);

@@ -38,6 +38,18 @@ export interface ApiOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * Origin of the API. Empty in dev (Vite proxies '/api' → the server). In a
+ * production build set VITE_API_URL to the backend origin (e.g. the Render URL)
+ * so the static SPA on Vercel calls the right host. CORS is enabled server-side.
+ */
+export const API_BASE: string = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
+
+/** Resolve a request path against the API base, defaulting bare names to /api/. */
+export function apiUrl(path: string): string {
+  return API_BASE + (path.startsWith('/') ? path : `/api/${path}`);
+}
+
 export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   const token = getToken();
@@ -49,7 +61,7 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
     body = JSON.stringify(opts.body);
   }
 
-  const res = await fetch(path.startsWith('/') ? path : `/api/${path}`, {
+  const res = await fetch(apiUrl(path), {
     method: opts.method ?? (opts.body !== undefined ? 'POST' : 'GET'),
     headers,
     body,
