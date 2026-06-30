@@ -51,6 +51,8 @@ import { ProductsPage } from '../pages/ProductsPage';
 import { CompaniesPage } from '../pages/CompaniesPage';
 import { FeaturesPage } from '../pages/FeaturesPage';
 import { CostPage } from '../pages/CostPage';
+import { MessagingPage } from '../pages/MessagingPage';
+import { IntegrationHubPage } from '../pages/IntegrationHubPage';
 
 export function App() {
   const { status } = useAuth();
@@ -121,6 +123,8 @@ export function App() {
         <Route path="/organisation" element={<CompaniesPage />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/cost" element={<CostPage />} />
+        <Route path="/messaging" element={<MessagingPage />} />
+        <Route path="/integration-hub" element={<IntegrationHubPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

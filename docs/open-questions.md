@@ -121,6 +121,26 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 
 ---
 
+## 11. Messaging & integration: in-process mechanics, provider-wired sinks (§3, §12)
+
+The messaging, event-bus and connector modules implement the **real, tested
+orchestration mechanics** — a transactional message outbox with status tracking,
+the transactional event-outbox + relay pattern, a typed connector registry with
+config validation and secret redaction, and one-time API-key issuance (only a hash
+and a short prefix are stored; the raw key is never retrievable). What is
+deliberately **not** wired in this foundation, and must be configured per
+deployment, is the external **sink**:
+
+- **Email/SMS delivery** — the dev provider marks queued messages `sent` in-process
+  and logs them; production points the deliver step at a real SMTP relay / SMS gateway.
+- **Event bus sink** — the relay flips `event_outbox` rows to `published` in-process;
+  production publishes to Kafka (or equivalent) before marking them published.
+- **Connector "test connection"** validates config *shape* only; it does not attempt
+  a live SFTP/REST/Kafka handshake from this environment.
+
+These are integration points, not missing logic: the queue, relay, registry and key
+lifecycle are exercised by the server test-suite.
+
 ## Assumptions
 
 - This is a **foundation/vertical-slice**, intended to prove correctness, security, audit, and the

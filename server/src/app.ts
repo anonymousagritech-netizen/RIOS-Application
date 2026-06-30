@@ -53,6 +53,10 @@ import { performanceModule } from './modules/performance.js';
 import { productsModule } from './modules/products.js';
 import { platformModule } from './modules/platform.js';
 import { costModule } from './modules/cost.js';
+import { messagingModule } from './modules/messaging.js';
+import { eventBusModule } from './modules/eventbus.js';
+import { connectorsModule } from './modules/connectors.js';
+import { devPortalModule } from './modules/devportal.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -204,6 +208,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(productsModule);
   await app.register(platformModule);
   await app.register(costModule);
+  await app.register(messagingModule);
+  await app.register(eventBusModule);
+  await app.register(connectorsModule);
+  await app.register(devPortalModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);
