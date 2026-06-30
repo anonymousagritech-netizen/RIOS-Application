@@ -56,3 +56,4 @@ export {
   type Reinstatement, type ReinstatementChargeDetail, type LayerReinstatementCapacityInput,
 } from './xlStructures.js';
 export * from './simulation.js';
+export * from './geofence.js';

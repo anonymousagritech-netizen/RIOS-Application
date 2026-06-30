@@ -2,16 +2,36 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Clock, LogIn, LogOut, Coffee, Play, CalendarDays, Timer, CheckCircle2,
-  CalendarCheck, Cake, Megaphone, Award,
+  CalendarCheck, Cake, Megaphone, Award, MapPin, Download, Building2, Users,
 } from 'lucide-react';
-import { api } from '../lib/api';
+import { api, API_BASE, getToken, ApiError } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
 import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { Badge } from '../components/Badge';
+import { Button } from '../components/Button';
 import { useToast } from '../components/Toast';
 import styles from './AttendancePage.module.css';
+
+/** Best-effort device coordinates; resolves undefined if denied/unavailable. */
+function getCoords(): Promise<{ lat: number; lng: number } | undefined> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve(undefined);
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => resolve(undefined),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30_000 },
+    );
+  });
+}
+
+interface TeamRow {
+  id: string; name: string; email: string; status: string;
+  punchInAt: string | null; punchOutAt: string | null; workedMinutes: number; onBreak: boolean;
+}
+interface TeamResponse { date: string; summary: { total: number; present: number; checkedOut: number; onBreak: number }; records: TeamRow[] }
 
 interface AttRecord {
   id: string;
@@ -24,7 +44,7 @@ interface AttRecord {
   workedMinutes: number;
   onBreak: boolean;
 }
-interface MeResponse { today: AttRecord | null; history: AttRecord[] }
+interface MeResponse { today: AttRecord | null; history: AttRecord[]; geofenced?: boolean }
 
 interface Workspace {
   hasEmployee: boolean;
@@ -74,6 +94,53 @@ export function AttendancePage() {
     staleTime: 300_000,
   });
 
+  const { hasPermission } = useAuth();
+  const isHr = hasPermission('hr:read');
+  const { data: team } = useQuery({
+    queryKey: ['attendance-team'],
+    queryFn: () => api<TeamResponse>('/api/attendance/team'),
+    enabled: isHr,
+    refetchInterval: 60_000,
+  });
+
+  async function downloadCsv() {
+    try {
+      const res = await fetch(`${API_BASE}/api/attendance/export`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      if (!res.ok) throw new Error('export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'attendance.csv'; a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error('Could not download CSV'); }
+  }
+
+  const registerOffice = useMutation({
+    mutationFn: async () => {
+      const c = await getCoords();
+      if (!c) throw new ApiError(0, 'Location unavailable - allow location access');
+      return api('/api/attendance/offices', {
+        method: 'POST',
+        body: { name: 'Head office', latitude: c.lat, longitude: c.lng, radiusMeters: 200, bufferMeters: 100 },
+      });
+    },
+    onSuccess: () => toast.success('Office geofence set at your location'),
+    onError: (e: unknown) => toast.error(e instanceof ApiError ? e.message : 'Could not set office'),
+  });
+
+  const teamColumns: Column<TeamRow>[] = [
+    {
+      key: 'name', header: 'Employee',
+      render: (r) => (
+        <div><div className={styles.teamName}>{r.name}</div><div className={styles.teamEmail}>{r.email}</div></div>
+      ),
+    },
+    { key: 'in', header: 'In', render: (r) => fmtClock(r.punchInAt) },
+    { key: 'out', header: 'Out', render: (r) => fmtClock(r.punchOutAt) },
+    { key: 'worked', header: 'Worked', align: 'right', render: (r) => fmtDuration(r.workedMinutes) },
+    { key: 'status', header: 'Status', align: 'right', render: (r) => <Badge color={STATUS_COLOR[r.status] ?? 'slate'}>{r.status.replace('_', ' ')}</Badge> },
+  ];
+
   // Tick every second so the working-hours clock stays live.
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -86,13 +153,17 @@ export function AttendancePage() {
   const onBreak = !!today?.onBreak;
 
   const makeAction = (path: string, label: string) => ({
-    mutationFn: () => api(`/api/attendance/${path}`, { method: 'POST' }),
+    mutationFn: (body?: { lat: number; lng: number }) =>
+      api(`/api/attendance/${path}`, { method: 'POST', body: body ?? {} }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-me'] }); toast.success(label); },
-    onError: () => toast.error('Could not record attendance'),
+    onError: (e: unknown) =>
+      toast.error(e instanceof ApiError ? e.message : 'Could not record attendance'),
   });
 
   const punchIn = useMutation(makeAction('punch-in', 'Punched in'));
   const punchOut = useMutation(makeAction('punch-out', 'Punched out'));
+  const doPunchIn = async () => punchIn.mutate(await getCoords());
+  const doPunchOut = async () => punchOut.mutate(await getCoords());
   const breakStart = useMutation(makeAction('break/start', 'Break started'));
   const breakEnd = useMutation(makeAction('break/end', 'Break ended'));
   const busy = punchIn.isPending || punchOut.isPending || breakStart.isPending || breakEnd.isPending;
@@ -141,24 +212,25 @@ export function AttendancePage() {
             <span><LogIn size={14} /> In {fmtClock(today?.punchInAt ?? null)}</span>
             <span><LogOut size={14} /> Out {fmtClock(today?.punchOutAt ?? null)}</span>
             <span><Coffee size={14} /> Break {today?.breakMinutes ?? 0}m</span>
+            {data?.geofenced && <span className={styles.geoHint}><MapPin size={14} /> Geofenced punch</span>}
           </div>
           <div className={styles.actions}>
             {!isIn ? (
-              <button className={`${styles.btn} ${styles.btnIn}`} disabled={busy} onClick={() => punchIn.mutate()}>
+              <button className={`${styles.btn} ${styles.btnIn}`} disabled={busy} onClick={doPunchIn}>
                 <LogIn size={18} /> Punch in
               </button>
             ) : (
               <>
                 {!onBreak ? (
-                  <button className={`${styles.btn} ${styles.btnBreak}`} disabled={busy} onClick={() => breakStart.mutate()}>
+                  <button className={`${styles.btn} ${styles.btnBreak}`} disabled={busy} onClick={() => breakStart.mutate(undefined)}>
                     <Coffee size={18} /> Start break
                   </button>
                 ) : (
-                  <button className={`${styles.btn} ${styles.btnResume}`} disabled={busy} onClick={() => breakEnd.mutate()}>
+                  <button className={`${styles.btn} ${styles.btnResume}`} disabled={busy} onClick={() => breakEnd.mutate(undefined)}>
                     <Play size={18} /> End break
                   </button>
                 )}
-                <button className={`${styles.btn} ${styles.btnOut}`} disabled={busy} onClick={() => punchOut.mutate()}>
+                <button className={`${styles.btn} ${styles.btnOut}`} disabled={busy} onClick={doPunchOut}>
                   <LogOut size={18} /> Punch out
                 </button>
               </>
@@ -248,6 +320,32 @@ export function AttendancePage() {
           ) : <div className={styles.widgetMeta}>No announcements.</div>}
         </Card>
       </div>
+
+      {isHr && (
+        <Card>
+          <CardHeader
+            title="Team attendance today"
+            subtitle={team ? `${team.summary.present} present, ${team.summary.onBreak} on break, ${team.summary.checkedOut} checked out of ${team.summary.total}` : 'All employees'}
+            actions={
+              <div className={styles.adminActions}>
+                <Button variant="secondary" size="sm" icon={<Building2 size={15} />} onClick={() => registerOffice.mutate()}>
+                  Set office here
+                </Button>
+                <Button variant="secondary" size="sm" icon={<Download size={15} />} onClick={downloadCsv}>
+                  Download CSV
+                </Button>
+              </div>
+            }
+          />
+          <Table
+            columns={teamColumns}
+            rows={team?.records}
+            rowKey={(r) => r.id}
+            empty={<EmptyState icon={<Users size={18} />} title="No attendance recorded today" message="Records appear as employees punch in." />}
+            skeletonRows={4}
+          />
+        </Card>
+      )}
 
       <Card>
         <CardHeader title="Attendance history" subtitle="Your records over the last 30 days" />

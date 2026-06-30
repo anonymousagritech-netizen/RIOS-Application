@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
-import { appPool, closePools } from '../src/db.js';
+import { appPool, ownerQuery, closePools } from '../src/db.js';
 
 let app: FastifyInstance;
 let dbUp = true;
@@ -63,5 +63,41 @@ describe('Attendance', () => {
     if (!dbUp) return;
     const res = await app.inject({ method: 'POST', url: '/api/attendance/punch-in' });
     expect(res.statusCode).toBe(401);
+  });
+
+  it('geofences punches once an office is configured, and exports CSV', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };
+
+    // Create an office at London; admin has admin:manage so hr:write passes.
+    const office = await app.inject({
+      method: 'POST', url: '/api/attendance/offices', headers: auth,
+      payload: { name: 'Test HQ', latitude: 51.5, longitude: -0.12, radiusMeters: 150, bufferMeters: 50 },
+    });
+    expect(office.statusCode).toBe(201);
+
+    // A punch ~1.1 km away is outside radius+buffer -> rejected.
+    const far = await app.inject({
+      method: 'POST', url: '/api/attendance/punch-in', headers: auth,
+      payload: { lat: 51.51, lng: -0.12 },
+    });
+    expect(far.statusCode).toBe(403);
+
+    // A punch within the buffer is accepted and flagged geofence_ok.
+    const near = await app.inject({
+      method: 'POST', url: '/api/attendance/punch-in', headers: auth,
+      payload: { lat: 51.5005, lng: -0.12 },
+    });
+    expect(near.statusCode).toBe(200);
+    expect(near.json().record.geofenceOk).toBe(true);
+
+    // CSV export returns text with a header row.
+    const csv = await app.inject({ method: 'GET', url: '/api/attendance/export', headers: auth });
+    expect(csv.statusCode).toBe(200);
+    expect(csv.headers['content-type']).toContain('text/csv');
+    expect(csv.body.split('\r\n')[0]).toContain('Employee');
+
+    // Clean up so other tests/punches are not geofenced.
+    await ownerQuery('delete from office_location');
   });
 });
