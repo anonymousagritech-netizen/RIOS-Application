@@ -82,7 +82,9 @@ insert into permission (code, module, action, description) values
   ('ops:write',        'ops',        'write',  'Manage SLA targets & operations'),
   ('portal:read',      'portal',     'read',   'Access an external counterparty portal'),
   ('treasury:read',    'treasury',   'read',   'View investments, treasury & tax levies'),
-  ('treasury:write',   'treasury',   'write',  'Manage investments & tax levy configuration')
+  ('treasury:write',   'treasury',   'write',  'Manage investments & tax levy configuration'),
+  ('risk:read',        'risk',       'read',   'View risk & capital, RDS scenarios'),
+  ('risk:write',       'risk',       'write',  'Manage capital positions & RDS scenarios')
 on conflict (code) do nothing;
 
 insert into role (tenant_id, code, name, is_system) values
@@ -421,6 +423,22 @@ insert into tax_levy (tenant_id, code, name, jurisdiction, rate, basis, active) 
   (:'tenant_id'::uuid,'PREM_TAX','Premium Tax','US', 0.0500,'premium',true),
   (:'tenant_id'::uuid,'FET','Federal Excise Tax','US', 0.0100,'premium',true),
   (:'tenant_id'::uuid,'STAMP','Stamp Duty','GB', 0.0050,'premium',true)
+on conflict (tenant_id, code) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Risk & capital: a current capital position and a library of Realistic
+-- Disaster Scenarios (§13). Metrics are computed by @rios/domain.
+-- ---------------------------------------------------------------------------
+insert into capital_position (tenant_id, as_of_date, currency, own_funds_minor, scr_minor, mcr_minor, note)
+values (:'tenant_id'::uuid, date '2026-06-30','USD', 1800000000, 1200000000, 540000000,
+        'Q2 2026 own funds vs standard-formula SCR')
+on conflict (tenant_id, as_of_date) do nothing;
+
+insert into rds_scenario (tenant_id, code, name, peril, region, currency, gross_loss_minor, assumed_recovery_minor)
+values
+  (:'tenant_id'::uuid,'RDS-FL-WIND','Florida Windstorm (two events)','Windstorm','US Southeast','USD', 900000000, 600000000),
+  (:'tenant_id'::uuid,'RDS-EU-FLOOD','Northern European Flood','Flood','Europe','USD', 450000000, 250000000),
+  (:'tenant_id'::uuid,'RDS-JP-QUAKE','Japanese Earthquake','Earthquake','Japan','USD', 1200000000, 850000000)
 on conflict (tenant_id, code) do nothing;
 
 -- ---------------------------------------------------------------------------

@@ -40,6 +40,7 @@ import { PortalPage } from '../pages/PortalPage';
 import { DesignerPage } from '../pages/DesignerPage';
 import { AnalyticsPage } from '../pages/AnalyticsPage';
 import { TreasuryPage } from '../pages/TreasuryPage';
+import { RiskCapitalPage } from '../pages/RiskCapitalPage';
 
 export function App() {
   const { status } = useAuth();
@@ -99,6 +100,7 @@ export function App() {
         <Route path="/designer" element={<DesignerPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/treasury" element={<TreasuryPage />} />
+        <Route path="/risk-capital" element={<RiskCapitalPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

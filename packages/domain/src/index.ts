@@ -20,3 +20,4 @@ export * from './analytics.js';
 export * from './catastrophe.js';
 export * from './treasury.js';
 export * from './tax.js';
+export * from './riskcapital.js';
