@@ -45,6 +45,7 @@ import { analyticsModule } from './modules/analytics.js';
 import { treasuryModule } from './modules/treasury.js';
 import { riskCapitalModule } from './modules/riskCapital.js';
 import { searchModule } from './modules/search.js';
+import { retentionModule } from './modules/retention.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -188,6 +189,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(treasuryModule);
   await app.register(riskCapitalModule);
   await app.register(searchModule);
+  await app.register(retentionModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);

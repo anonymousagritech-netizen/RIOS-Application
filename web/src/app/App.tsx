@@ -42,6 +42,7 @@ import { AnalyticsPage } from '../pages/AnalyticsPage';
 import { TreasuryPage } from '../pages/TreasuryPage';
 import { RiskCapitalPage } from '../pages/RiskCapitalPage';
 import { SearchPage } from '../pages/SearchPage';
+import { RetentionPage } from '../pages/RetentionPage';
 
 export function App() {
   const { status } = useAuth();
@@ -103,6 +104,7 @@ export function App() {
         <Route path="/treasury" element={<TreasuryPage />} />
         <Route path="/risk-capital" element={<RiskCapitalPage />} />
         <Route path="/search" element={<SearchPage />} />
+        <Route path="/retention" element={<RetentionPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
