@@ -85,6 +85,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Operations', to: '/operations', icon: '◍', permission: 'ops:read' },
       { label: 'Scheduler', to: '/scheduler', icon: '◔', permission: 'ops:read' },
       { label: 'Integration', to: '/integration', icon: '⇲', permission: 'integration:read' },
+      { label: 'Integration Hub', to: '/integration-hub', icon: '⊕', permission: 'integration:read' },
+      { label: 'Messaging', to: '/messaging', icon: '✉', permission: 'integration:read' },
       { label: 'Portal', to: '/portal', icon: '◈', permission: 'portal:read' },
       { label: 'Security', to: '/security', icon: '⛨' },
       { label: 'Retention', to: '/retention', icon: '⧗', permission: 'retention:read' },

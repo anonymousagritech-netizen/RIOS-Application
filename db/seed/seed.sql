@@ -605,4 +605,15 @@ insert into cost_record (tenant_id, category, period, amount_minor, currency, ca
   (:'tenant_id'::uuid,'staff','2026-06',  12500000,'USD', null, null, null)
 on conflict (tenant_id, category, period) do nothing;
 
+-- ---------------------------------------------------------------------------
+-- Integration: a couple of registered connectors (§12). Config validated by
+-- @rios/domain; secrets are redacted on read.
+-- ---------------------------------------------------------------------------
+insert into connector (tenant_id, key, name, kind, config, enabled, last_status) values
+  (:'tenant_id'::uuid,'bureau-rest','Market Bureau REST','rest',
+    '{"baseUrl":"https://bureau.example.com/api","apiKey":"secret-token"}'::jsonb, true, 'ok'),
+  (:'tenant_id'::uuid,'bordereaux-sftp','Bordereaux SFTP drop','sftp',
+    '{"host":"sftp.example.com","username":"rios","password":"s3cr3t"}'::jsonb, true, null)
+on conflict (tenant_id, key) do nothing;
+
 commit;
