@@ -1,0 +1,12 @@
+{
+  "name": "@rios/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RIOS end-to-end browser tests (Playwright).",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}

@@ -10,3 +10,6 @@ coverage/
 .vite/
 .turbo/
 pgdata/
+test-results/
+playwright-report/
+.last-run.json

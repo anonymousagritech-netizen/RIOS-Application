@@ -8,6 +8,7 @@ import cors from '@fastify/cors';
 import { z } from 'zod';
 import { login, AuthError, requirePermission, authContext, authenticate } from './auth.js';
 import { runAs } from './db.js';
+import { observabilityPlugin } from './observability.js';
 import { referenceModule } from './modules/reference.js';
 import { partiesModule } from './modules/parties.js';
 import { treatiesModule } from './modules/treaties.js';
@@ -51,6 +52,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(cors, { origin: true, credentials: true });
+  // Called directly (not via register) so its metrics hooks are NOT encapsulated
+  // and apply to every route registered afterwards.
+  await observabilityPlugin(app);
 
   app.get('/health', async () => ({ status: 'ok', service: 'rios-server', time: new Date().toISOString() }));
 
