@@ -22,6 +22,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Retrocession', to: '/retrocession', icon: '⇄', permission: 'retro:read' },
       { label: 'Placement', to: '/placement', icon: '✎', permission: 'placement:read' },
       { label: 'Pricing', to: '/pricing', icon: '⊿', permission: 'pricing:read' },
+      { label: 'Adjustments', to: '/adjustments', icon: '⇅', permission: 'treaty:read' },
     ],
   },
   {
@@ -38,6 +39,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Claims', to: '/claims', icon: '◬', permission: 'claims:read' },
       { label: 'Bordereaux', to: '/bordereaux', icon: '▦', permission: 'bordereaux:read' },
       { label: 'Exposure', to: '/exposure', icon: '◴', permission: 'exposure:read' },
+      { label: 'Recoveries', to: '/recoveries', icon: '↩', permission: 'claims:read' },
     ],
   },
   {
@@ -46,6 +48,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Accounting', to: '/accounting', icon: '$', permission: 'accounting:read' },
       { label: 'Statements', to: '/statements', icon: '▥', permission: 'statement:read' },
       { label: 'Finance', to: '/finance', icon: '▣', permission: 'finance:read' },
+      { label: 'Period Close', to: '/period-close', icon: '▦', permission: 'finance:read' },
     ],
   },
   {
@@ -53,6 +56,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Reports', to: '/reports', icon: '▬', permission: 'reporting:read' },
       { label: 'Regulatory', to: '/regulatory', icon: '§', permission: 'regulatory:read' },
+      { label: 'Returns', to: '/returns', icon: '⊟', permission: 'regulatory:read' },
       { label: 'Workflow', to: '/workflow', icon: '◉', permission: 'workflow:read' },
     ],
   },
@@ -60,6 +64,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Corporate',
     items: [
       { label: 'People', to: '/hr', icon: '☻', permission: 'hr:read' },
+      { label: 'Payroll', to: '/payroll', icon: '⊡', permission: 'hr:read' },
       { label: 'Procurement', to: '/procurement', icon: '⊞', permission: 'procurement:read' },
       { label: 'Assets', to: '/assets', icon: '▢', permission: 'asset:read' },
     ],
