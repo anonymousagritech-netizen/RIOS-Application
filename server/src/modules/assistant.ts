@@ -65,10 +65,23 @@ const NAV: { re: RegExp; route: string; label: string }[] = [
   { re: /report/i, route: '/reports', label: 'Reports' },
   { re: /regulator|ifrs|solvency|return|schedule f|qrt/i, route: '/regulatory', label: 'Regulatory' },
   { re: /workflow|approval|notification/i, route: '/workflow', label: 'Workflow' },
-  { re: /people|employee|\bhr\b|leave/i, route: '/hr', label: 'People' },
+  { re: /attendance|punch|geofence|timesheet/i, route: '/attendance', label: 'Attendance' },
+  { re: /people|employee|\bhr\b|hrms|leave/i, route: '/hr', label: 'People' },
   { re: /payroll|payslip/i, route: '/payroll', label: 'Payroll' },
+  { re: /performance|appraisal|review/i, route: '/performance', label: 'Performance' },
   { re: /procurement|purchase|vendor|\bpo\b/i, route: '/procurement', label: 'Procurement' },
   { re: /asset|license|entitlement/i, route: '/assets', label: 'Assets' },
+  { re: /treasury|investment|cash management/i, route: '/treasury', label: 'Treasury' },
+  { re: /analytic|pivot|cube|aal|pml/i, route: '/analytics', label: 'Analytics' },
+  { re: /risk|capital|scr|\bvar\b|solvency ratio/i, route: '/risk-capital', label: 'Risk & Capital' },
+  { re: /intelligence|insight|prediction|ocr/i, route: '/intelligence', label: 'Intelligence' },
+  { re: /product|catalog|parametric|ilw/i, route: '/products', label: 'Products' },
+  { re: /scheduler|cron job/i, route: '/scheduler', label: 'Scheduler' },
+  { re: /designer|no.?code|form builder/i, route: '/designer', label: 'Designer' },
+  { re: /marketplace|app store|install app/i, route: '/marketplace', label: 'Marketplace' },
+  { re: /messaging|email|sms|notification queue/i, route: '/messaging', label: 'Messaging' },
+  { re: /portal|broker portal|cedent portal/i, route: '/portal', label: 'Portal' },
+  { re: /security|mfa|sso|webauthn|passkey/i, route: '/security', label: 'Security' },
   { re: /operation|observability|audit|sla|health|metric/i, route: '/operations', label: 'Operations' },
   { re: /integration|webhook|export|import/i, route: '/integration', label: 'Integration' },
   { re: /admin|config|code list/i, route: '/admin', label: 'Admin' },
@@ -309,6 +322,22 @@ const INTENTS: Intent[] = [
         return prep(`${kind} return`, { kind: 'generate_return', description: `Generate a ${kind} regulatory return`, preview: { kind } });
       }
       return answer('I can prepare treaties, parties, claims, cash calls, vendors, opportunities, payroll runs and regulatory returns. What would you like to create?');
+    },
+  },
+
+  // ---- Loose navigation catch-all --------------------------------------
+  // Runs only if nothing above matched: if the message mentions ANY module by
+  // name (e.g. "hrms", "report", "treasury"), offer to open it. Otherwise the
+  // capability summary. This makes the assistant responsive across all modules,
+  // not only when the message starts with "go to / open".
+  {
+    test: /.*/,
+    handler: async (_db, _ctx, message) => {
+      const target = NAV.find((n) => n.re.test(message));
+      if (target) return { reply: `Opening ${target.label}.`, actions: [navAction(target.route, target.label)] };
+      return answer(
+        'I can open any module (try "treaties", "claims", "attendance", "risk capital"), count records, summarise premium, pipeline, exposure, payroll and the financial position, list open claims and pending approvals, and prepare new treaties, parties, claims, cash calls, vendors, opportunities, payroll runs and regulatory returns - each confirmed before anything changes. What would you like?',
+      );
     },
   },
 ];

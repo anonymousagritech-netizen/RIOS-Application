@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Mic } from 'lucide-react';
 import type { AssistantAction } from '@rios/shared';
 import { Drawer } from '../components/Drawer';
 import { Button } from '../components/Button';
@@ -8,6 +9,7 @@ import { Spinner } from '../components/Feedback';
 import { useToast } from '../components/Toast';
 import { useAssistant, useAssistantConfirm } from '../lib/queries';
 import { ApiError } from '../lib/api';
+import { useVoice } from './useVoice';
 import styles from './AssistantDrawer.module.css';
 
 interface Grounding { entity: string; id: string; label: string; }
@@ -34,6 +36,8 @@ export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () 
   const [input, setInput] = useState('');
   const [pending, setPending] = useState<AssistantAction | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Voice command: transcribe speech and send it straight to the assistant.
+  const voice = useVoice((text) => { setInput(text); void send(text); });
 
   const scrollDown = () => {
     requestAnimationFrame(() => {
@@ -173,9 +177,20 @@ export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () 
             className={styles.composerInput}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask anything…"
+            placeholder={voice.listening ? 'Listening…' : 'Ask anything, or use voice…'}
             aria-label="Message the assistant"
           />
+          {voice.supported && (
+            <button
+              type="button"
+              className={`${styles.micBtn} ${voice.listening ? styles.micActive : ''}`}
+              onClick={() => (voice.listening ? voice.stop() : voice.start())}
+              aria-label={voice.listening ? 'Stop voice' : 'Voice command'}
+              title="Voice command"
+            >
+              <Mic size={18} />
+            </button>
+          )}
           <Button type="submit" variant="primary" size="sm" disabled={!input.trim() || ask.isPending}>
             Send
           </Button>

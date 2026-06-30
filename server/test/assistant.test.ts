@@ -37,6 +37,16 @@ describe('assistant - navigation & grounded reads', () => {
     expect(r.actions[0].preview.route).toBe('/finance');
   });
 
+  it('navigates on a loose module mention (no command prefix)', async () => {
+    if (!dbUp) return;
+    const tkn = await token('admin@demo.rios');
+    for (const [msg, route] of [['hrms', '/hr'], ['attendance', '/attendance'], ['give me the treasury', '/treasury']] as const) {
+      const r = await ask(tkn, msg);
+      expect(r.actions?.[0]?.kind).toBe('navigate');
+      expect(r.actions[0].preview.route).toBe(route);
+    }
+  });
+
   it('answers counts grounded in tenant data', async () => {
     if (!dbUp) return;
     const tkn = await token('admin@demo.rios');
