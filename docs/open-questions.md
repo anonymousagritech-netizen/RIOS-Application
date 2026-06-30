@@ -141,6 +141,19 @@ deployment, is the external **sink**:
 These are integration points, not missing logic: the queue, relay, registry and key
 lifecycle are exercised by the server test-suite.
 
+## 12. KMS, SAML & backup: real mechanics, managed providers (§14, §15)
+
+- **KMS** — envelope encryption is real (AES-256-GCM; a per-alias DEK is generated,
+  wrapped by a master key and stored wrapped; encrypt/decrypt round-trip is tested).
+  The **dev master key is derived from `JWT_SECRET`**; production injects a managed
+  HSM/KMS master key and never derives it from app config.
+- **SAML** — SP metadata is served and providers are configurable (reusing
+  `identity_provider`). The **assertion-consumer handshake (XML-signature
+  validation) is provider-wired** — a deployment plugs a SAML library into the ACS
+  endpoint. (OIDC SSO is fully wired.) WebAuthn remains designed-for.
+- **Backup/DR** — the run **catalog** (markers, status, restore points) is real and
+  tested; the actual snapshot/restore is driven by the **DB/infra layer**, not the app.
+
 ## Assumptions
 
 - This is a **foundation/vertical-slice**, intended to prove correctness, security, audit, and the

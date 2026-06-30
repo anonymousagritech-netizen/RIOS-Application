@@ -53,6 +53,7 @@ import { FeaturesPage } from '../pages/FeaturesPage';
 import { CostPage } from '../pages/CostPage';
 import { MessagingPage } from '../pages/MessagingPage';
 import { IntegrationHubPage } from '../pages/IntegrationHubPage';
+import { SecurityOpsPage } from '../pages/SecurityOpsPage';
 
 export function App() {
   const { status } = useAuth();
@@ -125,6 +126,7 @@ export function App() {
         <Route path="/cost" element={<CostPage />} />
         <Route path="/messaging" element={<MessagingPage />} />
         <Route path="/integration-hub" element={<IntegrationHubPage />} />
+        <Route path="/security-ops" element={<SecurityOpsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

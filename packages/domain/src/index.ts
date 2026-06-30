@@ -30,3 +30,4 @@ export * from './performance.js';
 export * from './product.js';
 export * from './capacity.js';
 export * from './integration.js';
+export * from './i18n.js';
