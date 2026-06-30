@@ -48,6 +48,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Accounting', to: '/accounting', icon: '$', permission: 'accounting:read' },
       { label: 'Statements', to: '/statements', icon: '▥', permission: 'statement:read' },
       { label: 'Finance', to: '/finance', icon: '▣', permission: 'finance:read' },
+      { label: 'Treasury', to: '/treasury', icon: '◷', permission: 'treasury:read' },
       { label: 'Period Close', to: '/period-close', icon: '▦', permission: 'finance:read' },
     ],
   },
