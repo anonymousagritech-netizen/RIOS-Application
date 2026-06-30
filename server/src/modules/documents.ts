@@ -1,9 +1,9 @@
 /**
- * Documents / templates module (brief §9.4 — template engine + document generation).
+ * Documents / templates module (brief §9.4 - template engine + document generation).
  *
  * Reusable, versioned templates live in `document_template`; generated artifacts
  * (slips, statements, wordings) are recorded in `document` with their merge
- * context. Rendering is a PURE, allowlist-free string merge — a regex replace of
+ * context. Rendering is a PURE, allowlist-free string merge - a regex replace of
  * `{{ dotted.path }}` placeholders resolved against a plain context object. No
  * eval, no template library: the engine cannot execute caller-supplied code.
  */

@@ -3,7 +3,7 @@
  *
  * Gross-to-net for a single pay period: earnings build to gross, progressive
  * income tax and social contributions are withheld, and net pay is derived.
- * Employer on-costs are computed separately. Pure and explainable — tax bands
+ * Employer on-costs are computed separately. Pure and explainable - tax bands
  * and rates are inputs (configurable per jurisdiction, §10), never hard-coded.
  */
 
@@ -18,7 +18,7 @@ export interface PayComponent {
 }
 
 export interface TaxBand {
-  /** Lower bound of the band in major-unit-equivalent minor units (annualised or per-period — caller chooses consistently). */
+  /** Lower bound of the band in major-unit-equivalent minor units (annualised or per-period - caller chooses consistently). */
   from: number;
   /** Marginal rate as a fraction (e.g. 0.20 for 20%). */
   rate: number;

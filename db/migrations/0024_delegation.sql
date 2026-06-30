@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0024: Approval delegation (brief §3)
+-- RIOS - Migration 0024: Approval delegation (brief §3)
 -- A delegation grants a delegate the delegator's approval authority for a window,
 -- optionally scoped to one permission. The "may act" decision is computed by
 -- @rios/domain (canActAs); this table holds the grants.

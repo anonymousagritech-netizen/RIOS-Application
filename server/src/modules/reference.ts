@@ -53,7 +53,7 @@ export async function referenceModule(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // Add a code value WITHOUT a deployment — the core configurability proof (§10, §20).
+  // Add a code value WITHOUT a deployment - the core configurability proof (§10, §20).
   app.post<{ Params: { key: string }; Body: { code: string; label: string; meta?: Record<string, unknown> } }>(
     '/api/config/code-lists/:key/values',
     { preHandler: requirePermission('config:write') },

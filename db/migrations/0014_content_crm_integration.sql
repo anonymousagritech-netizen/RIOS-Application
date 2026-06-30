@@ -1,10 +1,10 @@
 -- =============================================================================
--- RIOS — Migration 0014: Content/Templates, Reporting, CRM, Integration
+-- RIOS - Migration 0014: Content/Templates, Reporting, CRM, Integration
 -- Brief §9.4 (content), §13 (reporting/BI), §9.11 (CRM), §17 (integration)
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- Template engine (§9.4) — document templates with a safe merge syntax.
+-- Template engine (§9.4) - document templates with a safe merge syntax.
 -- The `document` table (migration 0013) stores rendered output; this holds the
 -- reusable, versioned templates (slips, statements, contract wordings, emails).
 -- ---------------------------------------------------------------------------
@@ -25,7 +25,7 @@ create table document_template (
 create index on document_template (tenant_id, doc_type) where is_active;
 
 -- ---------------------------------------------------------------------------
--- Reporting & BI (§13) — governed report definitions executed over the warehouse.
+-- Reporting & BI (§13) - governed report definitions executed over the warehouse.
 -- ---------------------------------------------------------------------------
 create table report_definition (
   id            uuid primary key default gen_random_uuid(),
@@ -62,7 +62,7 @@ create table report_run (
 create index on report_run (tenant_id, definition_id);
 
 -- ---------------------------------------------------------------------------
--- CRM (§9.11) — relationship activity & pipeline on parties.
+-- CRM (§9.11) - relationship activity & pipeline on parties.
 -- ---------------------------------------------------------------------------
 create table crm_activity (
   id            uuid primary key default gen_random_uuid(),
@@ -98,7 +98,7 @@ create index on crm_opportunity (tenant_id, stage);
 create index on crm_opportunity (tenant_id, status);
 
 -- ---------------------------------------------------------------------------
--- Integration (§17) — webhook subscriptions & delivery (outbox-driven §9.3).
+-- Integration (§17) - webhook subscriptions & delivery (outbox-driven §9.3).
 -- ---------------------------------------------------------------------------
 create table webhook_subscription (
   id            uuid primary key default gen_random_uuid(),

@@ -1,5 +1,5 @@
 /**
- * Embedded assistant (brief §12) — wired across the platform.
+ * Embedded assistant (brief §12) - wired across the platform.
  *
  * Design commitments:
  *  - Strictly within the user's permissions (§12.4): all access is RLS-scoped and
@@ -122,7 +122,7 @@ const INTENTS: Intent[] = [
           where not is_deleted and status not in ('CLOSED','SETTLED') order by notified_date desc limit 10`,
       );
       if (!r.rows.length) return answer('No open claims right now.');
-      const lines = r.rows.map((c) => `• ${c.reference} — ${c.status}, outstanding ${fmt(c.outstanding_minor, c.currency)}`).join('\n');
+      const lines = r.rows.map((c) => `• ${c.reference} - ${c.status}, outstanding ${fmt(c.outstanding_minor, c.currency)}`).join('\n');
       return answer(`Open claims:\n${lines}`, r.rows.map((c) => ({ entity: 'claim', id: c.reference, label: c.reference })));
     },
   },
@@ -179,7 +179,7 @@ const INTENTS: Intent[] = [
           where expiry_date is not null and expiry_date <= current_date + interval '60 days' order by expiry_date`,
       );
       if (!r.rows.length) return answer('No software licenses are expiring in the next 60 days.');
-      return answer(`Licenses expiring soon:\n${r.rows.map((l) => `• ${l.name} — expires ${l.expiry_date}, ${l.seats_used}/${l.seats_total} seats`).join('\n')}`);
+      return answer(`Licenses expiring soon:\n${r.rows.map((l) => `• ${l.name} - expires ${l.expiry_date}, ${l.seats_used}/${l.seats_total} seats`).join('\n')}`);
     },
   },
 
@@ -245,7 +245,7 @@ const INTENTS: Intent[] = [
           }),
         );
       }
-      return { reply: `I can generate the statement of account for ${c.reference} (${c.name}). It nets the contract's financial events — review before issuing.`, actions, grounding: [{ entity: 'contract', id: c.id, label: c.reference }] };
+      return { reply: `I can generate the statement of account for ${c.reference} (${c.name}). It nets the contract's financial events - review before issuing.`, actions, grounding: [{ entity: 'contract', id: c.id, label: c.reference }] };
     },
   },
 
@@ -332,14 +332,14 @@ export async function assistantModule(app: FastifyInstance): Promise<void> {
         const intent = INTENTS.find((i) => i.test.test(message));
         if (intent) return intent.handler(db, ctx, message, perms);
 
-        // No deterministic match — try the LLM (grounded, read-only) if enabled.
+        // No deterministic match - try the LLM (grounded, read-only) if enabled.
         if (isLlmEnabled()) {
           const snapshot = await groundingSnapshot(db);
           const text = await llmAnswer({ question: message, grounding: snapshot });
           if (text) return answer(text);
         }
         return answer(
-          'I can navigate to any module, count records, summarise premium, pipeline, exposure and payroll, list open claims and pending approvals, and prepare new treaties, parties, claims, cash calls, vendors, opportunities, payroll runs and regulatory returns — each confirmed before anything changes. What would you like?',
+          'I can navigate to any module, count records, summarise premium, pipeline, exposure and payroll, list open claims and pending approvals, and prepare new treaties, parties, claims, cash calls, vendors, opportunities, payroll runs and regulatory returns - each confirmed before anything changes. What would you like?',
         );
       });
     },
@@ -491,5 +491,5 @@ function prepared(a: Omit<AssistantAction, 'id'>): AssistantAction {
 /** Build a standard "prepared mutation" response from a partial action. */
 function prep(noun: string, a: Omit<AssistantAction, 'id' | 'requiresConfirmation' | 'destructive'> & { destructive?: boolean }): AssistantResponse {
   const action = prepared({ requiresConfirmation: true, destructive: a.destructive ?? false, kind: a.kind, description: a.description, preview: a.preview });
-  return { reply: `I've prepared ${noun}. Nothing is saved yet — review and confirm to apply it.`, actions: [action] };
+  return { reply: `I've prepared ${noun}. Nothing is saved yet - review and confirm to apply it.`, actions: [action] };
 }

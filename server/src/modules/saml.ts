@@ -3,7 +3,7 @@
  * the Service-Provider (SP) metadata that an IdP needs to register RIOS, and
  * lists the SAML providers configured via the existing identity_provider store
  * (POST /api/auth/sso/providers with type:'saml'). The assertion-consumer
- * handshake (XML signature validation) is provider-wired — a real deployment
+ * handshake (XML signature validation) is provider-wired - a real deployment
  * plugs in a SAML library at the ACS endpoint (docs/open-questions.md).
  */
 
@@ -26,7 +26,7 @@ function spMetadata(baseUrl: string): string {
 }
 
 export async function samlModule(app: FastifyInstance): Promise<void> {
-  // SP metadata for IdP registration (public — an IdP must fetch it).
+  // SP metadata for IdP registration (public - an IdP must fetch it).
   app.get('/api/auth/saml/metadata', async (req, reply) => {
     const base = `${req.protocol}://${req.headers.host ?? 'localhost:4000'}`;
     reply.header('content-type', 'application/xml');

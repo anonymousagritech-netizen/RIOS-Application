@@ -1,5 +1,5 @@
 /**
- * Taxes & levies (brief §9 — premium taxes / FET / stamp duty / withholding).
+ * Taxes & levies (brief §9 - premium taxes / FET / stamp duty / withholding).
  *
  * Reinsurance premiums attract a configurable stack of jurisdiction levies, each
  * a rate on a base. This module computes the stack deterministically over

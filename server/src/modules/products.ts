@@ -1,8 +1,8 @@
 /**
- * Product lifecycle management (brief §14 — insurance-product factory). Versioned
+ * Product lifecycle management (brief §14 - insurance-product factory). Versioned
  * insurance products driven through the canonical lifecycle. Transitions are
  * validated by the pure @rios/domain interpreter (applyEvent over
- * PRODUCT_LIFECYCLE), re-checking the caller's permissions — so an illegal or
+ * PRODUCT_LIFECYCLE), re-checking the caller's permissions - so an illegal or
  * unauthorised transition is refused the same way the workflow designer enforces
  * it. product:read to view, product:write to author/transition; audited.
  */

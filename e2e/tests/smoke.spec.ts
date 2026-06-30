@@ -37,7 +37,7 @@ test('finance trial balance reconciles (Balanced)', async ({ page }) => {
   await login(page);
   await page.goto('/finance');
   await expect(page.getByText(/trial balance/i).first()).toBeVisible();
-  // The GL self-balances — a "Balanced" indicator is shown.
+  // The GL self-balances - a "Balanced" indicator is shown.
   await expect(page.getByText(/balanced/i).first()).toBeVisible();
 });
 

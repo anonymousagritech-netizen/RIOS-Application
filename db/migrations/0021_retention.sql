@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0021: Data retention & legal hold (brief §14)
+-- RIOS - Migration 0021: Data retention & legal hold (brief §14)
 -- Retention policies (how long each entity type is kept, and what happens when
 -- it ages out) and legal holds (suspend disposal of records under litigation).
 -- The eligibility decision is computed by @rios/domain (retentionVerdict);

@@ -44,7 +44,7 @@ export async function devPortalModule(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // Issue a key — returns the raw key ONCE; only its hash + prefix are stored.
+  // Issue a key - returns the raw key ONCE; only its hash + prefix are stored.
   app.post('/api/devportal/keys', { preHandler: requirePermission('admin:manage') }, async (req, reply) => {
     const ctx = authContext(req);
     const parsed = keySchema.safeParse(req.body);

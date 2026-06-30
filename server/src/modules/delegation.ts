@@ -60,7 +60,7 @@ export async function delegationModule(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // Tenant users (for the delegate picker) — id + display name only.
+  // Tenant users (for the delegate picker) - id + display name only.
   app.get('/api/delegations/users', { preHandler: requirePermission() }, async (req) => {
     const ctx = authContext(req);
     return runAs(ctx, async (db) => {

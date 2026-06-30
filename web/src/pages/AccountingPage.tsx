@@ -26,7 +26,7 @@ export function AccountingPage() {
   const columns: Column<TreatyListItem>[] = [
     { key: 'reference', header: 'Reference', sortValue: (t) => t.reference ?? '', render: (t) => <span className={shared.cellRef}>{t.reference}</span> },
     { key: 'name', header: 'Treaty', sortValue: (t) => t.name, render: (t) => <span className={shared.cellMain}>{t.name}</span> },
-    { key: 'cedent', header: 'Cedent', render: (t) => t.cedentName ?? '—' },
+    { key: 'cedent', header: 'Cedent', render: (t) => t.cedentName ?? '-' },
     { key: 'currency', header: 'CCY', render: (t) => t.currency },
     { key: 'period', header: 'Inception', sortValue: (t) => t.periodStart ?? '', render: (t) => formatDate(t.periodStart) },
     { key: 'status', header: 'Status', align: 'right', sortValue: (t) => t.status, render: (t) => <StatusPill status={t.status} metaColors={statusColors} /> },

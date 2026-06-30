@@ -34,7 +34,7 @@ export function AdminPage() {
     <>
       <PageHeader
         title="Configuration"
-        description="No-code configuration: add status and code values that take effect immediately — no deployment required."
+        description="No-code configuration: add status and code values that take effect immediately - no deployment required."
       />
 
       {listKeys.map((key) => {
@@ -81,7 +81,7 @@ function CodeListCard({ listKey, values, onAdd }: {
       header: 'Colour',
       render: (v) => {
         const c = (v.meta as { color?: string } | undefined)?.color;
-        return c ? <Badge color={isTokenColor(c) ? (c as TokenColor) : 'gray'}>{c}</Badge> : <span className={shared.cellSub}>—</span>;
+        return c ? <Badge color={isTokenColor(c) ? (c as TokenColor) : 'gray'}>{c}</Badge> : <span className={shared.cellSub}>-</span>;
       },
     },
     { key: 'sortOrder', header: 'Order', align: 'right', sortValue: (v) => v.sortOrder, render: (v) => v.sortOrder },
@@ -148,7 +148,7 @@ function AddValueModal({ listKey, onClose }: { listKey: string | null; onClose: 
       open={!!listKey}
       onClose={() => { reset(); onClose(); }}
       title={`Add value to ${listKey ? titleCase(listKey) : ''}`}
-      description="Demonstrates configuration without deployment — the new value is available app-wide instantly."
+      description="Demonstrates configuration without deployment - the new value is available app-wide instantly."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>

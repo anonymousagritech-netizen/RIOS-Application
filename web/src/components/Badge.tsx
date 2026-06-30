@@ -15,7 +15,7 @@ export function StatusPill({ status, metaColors, label }: StatusPillProps) {
   return (
     <span className={styles.pill} data-color={color}>
       <span className={styles.pillDot} aria-hidden />
-      {label ?? titleCase(status) ?? '—'}
+      {label ?? titleCase(status) ?? '-'}
     </span>
   );
 }

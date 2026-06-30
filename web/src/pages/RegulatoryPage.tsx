@@ -251,7 +251,7 @@ function NewGroupModal({ open, onClose }: { open: boolean; onClose: () => void }
     >
       <form onSubmit={submit} className={shared.grid2} style={{ display: 'grid' }}>
         <div style={{ gridColumn: '1 / -1' }}>
-          <TextField label="Group name" value={name} onChange={setName} required placeholder="e.g. Property QS 2026 — Onerous" />
+          <TextField label="Group name" value={name} onChange={setName} required placeholder="e.g. Property QS 2026 - Onerous" />
         </div>
         <FormField label="Measurement model">
           <Select value={measurementModel} onChange={(e) => setMeasurementModel(e.target.value)}>
@@ -326,7 +326,7 @@ function MeasureModal({ group, onClose }: { group: Ifrs17Group | null; onClose: 
       open={!!group}
       onClose={close}
       size="lg"
-      title={group ? `Measure — ${group.name}` : 'Measure'}
+      title={group ? `Measure - ${group.name}` : 'Measure'}
       description="Premium Allocation Approach inputs (major units)."
       footer={
         <>
@@ -441,7 +441,7 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
     <div className={styles.tabBody}>
       <div className={styles.stack}>
         <Card>
-          <CardHeader title="Run SCR" subtitle="Standard formula — values in major units. Correlation defaults to identity." />
+          <CardHeader title="Run SCR" subtitle="Standard formula - values in major units. Correlation defaults to identity." />
           {canRun ? (
             <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <div className={shared.grid2} style={{ display: 'grid' }}>

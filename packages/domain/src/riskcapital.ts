@@ -1,5 +1,5 @@
 /**
- * Risk & capital management (brief §13 — risk & capital; complements Solvency II).
+ * Risk & capital management (brief §13 - risk & capital; complements Solvency II).
  *
  * Pure capital and tail-risk metrics: empirical Value-at-Risk / Tail-VaR over a
  * loss sample, diversified capital aggregation across risk modules (a
@@ -25,7 +25,7 @@ export function valueAtRisk(losses: number[], confidence: number): number {
 
 /**
  * Tail Value-at-Risk (expected shortfall): the mean of the worst ⌈(1−α)·N⌉
- * samples — the average loss given the VaR threshold is breached.
+ * samples - the average loss given the VaR threshold is breached.
  */
 export function tailValueAtRisk(losses: number[], confidence: number): number {
   const sorted = [...(losses ?? [])].sort((a, b) => b - a);
@@ -72,7 +72,7 @@ export interface CapitalAdequacy {
 
 /**
  * Capital coverage ratio = own funds ÷ SCR. Unlike the strict Pillar-3
- * `solvencyRatio` in solvency2 (which requires a positive SCR), this is total —
+ * `solvencyRatio` in solvency2 (which requires a positive SCR), this is total -
  * it returns Infinity (or 0) when the SCR is zero, so post-event projections
  * never throw.
  */

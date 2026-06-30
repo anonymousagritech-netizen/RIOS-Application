@@ -1,9 +1,9 @@
 /**
- * Time-based One-Time Password (TOTP) — RFC 6238 / RFC 4226 (HOTP).
+ * Time-based One-Time Password (TOTP) - RFC 6238 / RFC 4226 (HOTP).
  *
  * Dependency-free, standards-compliant MFA primitive used by the auth module.
  * Works with any authenticator app (Google Authenticator, Authy, 1Password, …)
- * via the otpauth:// URI. Pure and unit-testable — no clock is read except where
+ * via the otpauth:// URI. Pure and unit-testable - no clock is read except where
  * a timestamp is explicitly passed in, so generation/verification are
  * deterministic in tests.
  *
@@ -14,7 +14,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
-/** Encode bytes as RFC 4648 base32 (no padding) — the format authenticator apps expect. */
+/** Encode bytes as RFC 4648 base32 (no padding) - the format authenticator apps expect. */
 export function base32Encode(buf: Buffer): string {
   let bits = 0;
   let value = 0;

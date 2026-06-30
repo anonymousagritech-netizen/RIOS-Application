@@ -1,5 +1,5 @@
 /**
- * Product lifecycle management (brief §14 — insurance-product factory). The
+ * Product lifecycle management (brief §14 - insurance-product factory). The
  * lifecycle of an insurance product is itself a workflow definition, so it reuses
  * the pure interpreter in workflow.ts (validateWorkflow / applyEvent) rather than
  * a second engine. This module exposes the canonical product lifecycle; the

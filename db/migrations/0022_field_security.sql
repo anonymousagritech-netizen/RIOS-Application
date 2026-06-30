@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0022: Field-level security (brief §14 — RLS/FLS)
+-- RIOS - Migration 0022: Field-level security (brief §14 - RLS/FLS)
 -- Column-masking policies: a sensitive field is masked unless the viewer holds
 -- the required permission. Masking is computed by @rios/domain (applyMasking);
 -- this table holds the policy. Complements row-level security.

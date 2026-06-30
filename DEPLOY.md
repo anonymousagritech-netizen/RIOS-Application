@@ -1,10 +1,10 @@
-# Deploying RIOS (Render + Vercel + Neon) — pilot/UAT
+# Deploying RIOS (Render + Vercel + Neon) - pilot/UAT
 
 This is the turnkey path for a **pilot** environment. It is not yet cleared for
-production reinsurance (real money/PII) — see `docs/open-questions.md` for the
+production reinsurance (real money/PII) - see `docs/open-questions.md` for the
 hardening + sign-off backlog.
 
-## 1. Database — Neon
+## 1. Database - Neon
 
 1. Create a Neon project → a database. Neon gives you two endpoints:
    - **Direct** (`...neon.tech`)
@@ -24,7 +24,7 @@ hardening + sign-off backlog.
 > context is set with `SET LOCAL` **inside a transaction** (`runAs`), which is
 > transaction-pooling-safe.
 
-## 2. Backend — Render
+## 2. Backend - Render
 
 - New → **Blueprint** → select this repo. `render.yaml` configures build, the
   pre-deploy `db:migrate`, the start command and `/health` check.
@@ -37,7 +37,7 @@ hardening + sign-off backlog.
   (Skip the seed if you want an empty tenant.)
 - Note your service URL, e.g. `https://rios-server.onrender.com`.
 
-## 3. Frontend — Vercel
+## 3. Frontend - Vercel
 
 - New Project → import this repo. `vercel.json` sets the install/build/output
   and the SPA fallback.
@@ -58,7 +58,7 @@ hardening + sign-off backlog.
 ## Pilot caveats (do before real go-live)
 
 - Set a strong `rios_app` DB password (not the seed default).
-- KMS master key currently derives from `JWT_SECRET` — wire a managed KMS.
-- Email/SMS/Kafka/OCR/speech are in-process stubs — wire real providers.
+- KMS master key currently derives from `JWT_SECRET` - wire a managed KMS.
+- Email/SMS/Kafka/OCR/speech are in-process stubs - wire real providers.
 - Cold starts: Render `free` and Neon scale-to-zero add first-request latency;
   use paid tiers to keep warm.

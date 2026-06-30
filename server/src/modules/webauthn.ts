@@ -3,7 +3,7 @@
  * TOTP/OIDC/SAML: the registration and authentication *ceremonies* (challenge
  * issuance, credential registry, sign-count tracking) are implemented and tested.
  * Full attestation/assertion signature verification needs a WebAuthn library and
- * a real authenticator/browser — wired at deployment (docs/open-questions.md).
+ * a real authenticator/browser - wired at deployment (docs/open-questions.md).
  * Self-service: an authenticated user manages their own passkeys.
  */
 

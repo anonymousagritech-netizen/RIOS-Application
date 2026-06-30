@@ -47,7 +47,7 @@ export function FieldSecurityPage() {
 
   return (
     <>
-      <PageHeader title="Field-level security" description="Column masking — sensitive fields are hidden within a visible row unless you hold the required permission." />
+      <PageHeader title="Field-level security" description="Column masking - sensitive fields are hidden within a visible row unless you hold the required permission." />
 
       <Card>
         <CardHeader title="Masking policies" subtitle="Complements row-level security (which hides whole rows)." />
@@ -76,7 +76,7 @@ export function FieldSecurityPage() {
                   <div key={k} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', padding: 'var(--space-2) 0' }}>
                     <span className={shared.cellSub}>{titleCase(k)}{isMasked && <Badge color="red">masked</Badge>}</span>
                     <span className={shared.cellMain} style={{ fontFamily: typeof v === 'object' ? 'var(--font-mono)' : undefined }}>
-                      {typeof v === 'object' ? JSON.stringify(v) : String(v ?? '—')}
+                      {typeof v === 'object' ? JSON.stringify(v) : String(v ?? '-')}
                     </span>
                   </div>
                 );

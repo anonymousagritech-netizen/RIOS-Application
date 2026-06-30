@@ -2,7 +2,7 @@
  * Treaty / contract module (brief §7.2–§7.3, §29.1).
  *
  * Implements the core lifecycle and the binding transition, which generates the
- * deposit-premium Financial Event(s) from the term set — the start of the
+ * deposit-premium Financial Event(s) from the term set - the start of the
  * reconcilable accounting chain (§7.6). Money is computed by @rios/domain so the
  * numbers are the same ones the unit tests prove correct.
  */

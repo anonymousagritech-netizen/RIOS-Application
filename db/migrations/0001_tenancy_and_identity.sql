@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0001: Tenancy, identity & the RLS foundation
+-- RIOS - Migration 0001: Tenancy, identity & the RLS foundation
 -- Brief §4.2 (multi-tenant, secure-by-design), §14 (security), §16.3 (data-layer tenancy)
 -- =============================================================================
 -- Multi-tenancy model: shared schema with Row-Level Security. Every tenant-owned
@@ -86,7 +86,7 @@ create table user_role (
 );
 
 -- ---------------------------------------------------------------------------
--- Organisation structure (multi-company / branch, §9.1) — tenant-scoped, hierarchical
+-- Organisation structure (multi-company / branch, §9.1) - tenant-scoped, hierarchical
 -- ---------------------------------------------------------------------------
 create table org_unit (
   id          uuid primary key default gen_random_uuid(),

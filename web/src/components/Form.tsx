@@ -2,7 +2,31 @@ import {
   forwardRef, useId, type InputHTMLAttributes, type SelectHTMLAttributes,
   type TextareaHTMLAttributes, type ReactNode,
 } from 'react';
+import { ChevronDown } from 'lucide-react';
 import styles from './Form.module.css';
+
+/** Grouping primitives so create/edit forms read as titled sections, not a wall of inputs. */
+export function FormSection({ title, description, children }: { title?: ReactNode; description?: ReactNode; children: ReactNode }) {
+  return (
+    <section className={styles.section}>
+      {title && (
+        <div className={styles.sectionHead}>
+          <h3 className={styles.sectionTitle}>{title}</h3>
+          {description && <p className={styles.sectionDesc}>{description}</p>}
+        </div>
+      )}
+      <div className={styles.grid}>{children}</div>
+    </section>
+  );
+}
+
+export function FormGrid({ children }: { children: ReactNode }) {
+  return <div className={styles.grid}>{children}</div>;
+}
+
+export function FormActions({ children }: { children: ReactNode }) {
+  return <div className={styles.formActions}>{children}</div>;
+}
 
 interface FieldProps {
   label: ReactNode;
@@ -49,7 +73,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <select ref={ref} className={`${styles.control} ${styles.select} ${className}`} {...rest}>
           {children}
         </select>
-        <span className={styles.caret} aria-hidden>▾</span>
+        <ChevronDown className={styles.caret} size={16} aria-hidden />
       </div>
     );
   },

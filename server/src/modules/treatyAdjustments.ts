@@ -1,5 +1,5 @@
 /**
- * Treaty adjustments module (brief §7.2, §28.3) — depth on the treaty domain.
+ * Treaty adjustments module (brief §7.2, §28.3) - depth on the treaty domain.
  *
  * Profit commission, portfolio entry/withdrawal, endorsements and commutation.
  * The money figures come from @rios/domain so the numbers are the same ones the

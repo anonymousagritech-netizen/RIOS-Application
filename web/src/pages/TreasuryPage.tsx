@@ -35,7 +35,7 @@ export function TreasuryPage() {
   const [tab, setTab] = useState('portfolio');
   return (
     <>
-      <PageHeader title="Treasury" description="Investment portfolio and the premium-tax / levy stack — valued by pure, reconcilable engines." />
+      <PageHeader title="Treasury" description="Investment portfolio and the premium-tax / levy stack - valued by pure, reconcilable engines." />
       <Card>
         <Tabs tabs={[{ id: 'portfolio', label: 'Investments' }, { id: 'tax', label: 'Tax & levies' }]} active={tab} onChange={setTab} />
         <div style={{ padding: 'var(--space-5)' }}>
@@ -56,8 +56,8 @@ function Portfolio() {
   const cols: Column<Holding>[] = [
     { key: 'name', header: 'Holding', render: (h) => <span className={shared.cellMain}>{h.name}</span> },
     { key: 'type', header: 'Type', render: (h) => <Badge color="slate">{titleCase(h.instrumentType)}</Badge> },
-    { key: 'coupon', header: 'Coupon', align: 'right', render: (h) => h.couponRate != null ? formatPercent(h.couponRate) : '—' },
-    { key: 'maturity', header: 'Maturity', render: (h) => h.maturityDate ? formatDate(h.maturityDate) : '—' },
+    { key: 'coupon', header: 'Coupon', align: 'right', render: (h) => h.couponRate != null ? formatPercent(h.couponRate) : '-' },
+    { key: 'maturity', header: 'Maturity', render: (h) => h.maturityDate ? formatDate(h.maturityDate) : '-' },
     { key: 'book', header: 'Book', align: 'right', sortValue: (h) => h.bookValueMinor, render: (h) => formatMoney(h.bookValueMinor, h.currency) },
     { key: 'market', header: 'Market', align: 'right', sortValue: (h) => h.marketValueMinor, render: (h) => formatMoney(h.marketValueMinor, h.currency) },
     { key: 'pnl', header: 'Unrealised', align: 'right', render: (h) => {
@@ -108,7 +108,7 @@ function TaxLevies() {
   const cols: Column<Levy>[] = [
     { key: 'code', header: 'Code', render: (l) => <span className={shared.cellRef}>{l.code}</span> },
     { key: 'name', header: 'Name', render: (l) => <span className={shared.cellMain}>{l.name}</span> },
-    { key: 'jur', header: 'Jurisdiction', render: (l) => l.jurisdiction ?? '—' },
+    { key: 'jur', header: 'Jurisdiction', render: (l) => l.jurisdiction ?? '-' },
     { key: 'basis', header: 'Basis', render: (l) => titleCase(l.basis) },
     { key: 'rate', header: 'Rate', align: 'right', render: (l) => formatPercent(l.rate) },
     { key: 'active', header: 'Active', render: (l) => <Badge color={l.active ? 'green' : 'gray'}>{l.active ? 'Active' : 'Inactive'}</Badge> },
@@ -120,7 +120,7 @@ function TaxLevies() {
         empty={<EmptyState title="No levies" message="No tax levies are configured." />} />
 
       <Card>
-        <CardHeader title="Levy calculator" subtitle="Apply the active levy stack to a premium base — lines reconcile to the total." />
+        <CardHeader title="Levy calculator" subtitle="Apply the active levy stack to a premium base - lines reconcile to the total." />
         <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-4)' }}>
           <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div style={{ minWidth: 220 }}>

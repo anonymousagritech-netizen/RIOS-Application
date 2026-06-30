@@ -1,6 +1,6 @@
 /**
  * Key management (brief §14.2). Envelope encryption: a per-alias data-encryption
- * key (DEK) is generated, wrapped by a master key and stored wrapped — the raw
+ * key (DEK) is generated, wrapped by a master key and stored wrapped - the raw
  * DEK is never persisted. Encrypt/decrypt unwrap the DEK in memory and use
  * AES-256-GCM. The dev master key is derived from JWT_SECRET; production injects
  * a managed HSM/KMS master key (docs/open-questions.md). admin:manage only.

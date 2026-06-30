@@ -1,9 +1,9 @@
 -- =============================================================================
--- RIOS — Migration 0010: Bordereaux ingestion (premium & loss)
--- Brief §7.10, §9.6, §29.6 — mapped, validated ingestion → Financial Events / Losses
+-- RIOS - Migration 0010: Bordereaux ingestion (premium & loss)
+-- Brief §7.10, §9.6, §29.6 - mapped, validated ingestion → Financial Events / Losses
 -- =============================================================================
 
--- A reusable column mapping from a source file layout to RIOS fields (§10 — config).
+-- A reusable column mapping from a source file layout to RIOS fields (§10 - config).
 create table bordereau_mapping (
   id            uuid primary key default gen_random_uuid(),
   tenant_id     uuid not null references tenant(id) on delete cascade,

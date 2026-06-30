@@ -1,6 +1,6 @@
 /**
  * Mobile portal (brief §9.11). A condensed, touch-first home that consumes the
- * mobile projection endpoint — the same auth/RLS, a smaller payload.
+ * mobile projection endpoint - the same auth/RLS, a smaller payload.
  */
 
 import { useQuery } from '@tanstack/react-query';

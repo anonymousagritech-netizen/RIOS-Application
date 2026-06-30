@@ -1,9 +1,9 @@
 /**
- * Business rules engine (brief §10.3 — metadata-driven decisioning).
+ * Business rules engine (brief §10.3 - metadata-driven decisioning).
  *
  * A rule set is metadata (a config document of `kind: 'rule'`): an ordered list
  * of rules, each a boolean condition over a flat context object plus the effects
- * to emit when it matches. This is the *pure* evaluator — a small, safe
+ * to emit when it matches. This is the *pure* evaluator - a small, safe
  * expression interpreter (NOT JavaScript `eval`) so untrusted, user-authored
  * rules can never execute arbitrary code. The server loads the definition,
  * builds a context from the entity, evaluates, and acts on the effects
@@ -120,7 +120,7 @@ export interface RuleOutcome {
 
 /**
  * Evaluate a rule set against a context. Rules run in order; `stop` short-circuits.
- * Pure and total — never throws on a malformed rule, it simply skips effects it
+ * Pure and total - never throws on a malformed rule, it simply skips effects it
  * cannot apply.
  */
 export function evaluateRuleSet(set: RuleSet, ctx: Context): RuleOutcome {

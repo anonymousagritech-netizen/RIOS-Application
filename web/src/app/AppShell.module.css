@@ -3,104 +3,193 @@
   grid-template-columns: var(--nav-width) 1fr;
   height: 100vh;
   overflow: hidden;
+  transition: grid-template-columns var(--motion-base);
+}
+.collapsed {
+  grid-template-columns: var(--nav-width-collapsed) 1fr;
 }
 
+/* ---------- Sidebar ---------- */
 .sidebar {
   display: flex;
   flex-direction: column;
-  background: var(--surface);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  padding: 0 var(--space-4);
   height: var(--topbar-height);
+  flex-shrink: 0;
   border-bottom: 1px solid var(--border);
 }
 .logo {
   display: grid;
   place-items: center;
-  width: 32px; height: 32px;
+  width: 34px; height: 34px;
+  flex-shrink: 0;
   border-radius: var(--radius-md);
-  background: var(--primary);
-  color: var(--primary-fg);
+  background: linear-gradient(135deg, var(--primary), var(--accent-violet));
+  color: #fff;
   font-weight: var(--weight-bold);
   font-size: var(--text-md);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 40%, transparent);
 }
-.brandText { display: flex; flex-direction: column; line-height: 1.2; }
-.brandText strong { font-size: var(--text-md); letter-spacing: -0.01em; }
-.brandText span { font-size: var(--text-xs); color: var(--text-muted); }
+.brandText { display: flex; flex-direction: column; line-height: 1.15; flex: 1; min-width: 0; }
+.brandText strong { font-size: var(--text-md); letter-spacing: -0.01em; color: var(--text); }
+.brandText span { font-size: var(--text-2xs); color: var(--text-muted); }
+.collapseBtn {
+  display: grid; place-items: center;
+  width: 30px; height: 30px;
+  border-radius: var(--radius-md);
+  color: var(--text-faint);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.collapseBtn:hover { background: var(--surface-2); color: var(--text); }
+.collapsed .brand { justify-content: center; padding: 0; }
+.collapsed .collapseBtn { display: none; }
 
 .nav {
   flex: 1;
-  padding: var(--space-4) var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: 2px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
 }
-.navGroup { display: flex; flex-direction: column; gap: 2px; }
-.navGroupLabel {
-  font-size: var(--text-2xs);
-  font-weight: var(--weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.nav::-webkit-scrollbar { width: 8px; }
+.nav::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+
+.navGroup { display: flex; flex-direction: column; }
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+  border-radius: var(--radius-md);
   color: var(--text-faint);
-  padding: 0 var(--space-3) var(--space-2);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  transition: color var(--motion-fast), background var(--motion-fast);
 }
+.groupHeader:hover { color: var(--text-muted); background: var(--surface-2); }
+.groupHeaderActive { color: var(--primary); }
+.groupIcon { flex-shrink: 0; opacity: 0.85; }
+.groupLabel { flex: 1; text-align: left; }
+.groupChevron { flex-shrink: 0; transition: transform var(--motion-base); opacity: 0.7; }
+.groupChevronOpen { transform: rotate(180deg); }
+
+/* Accordion body: animate via max-height + opacity. */
+.groupItems {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--motion-base), opacity var(--motion-fast);
+}
+.groupItems > * { overflow: hidden; min-height: 0; }
+.groupItemsOpen {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 2px;
+}
+.groupItemsInner { display: flex; flex-direction: column; gap: 2px; }
+
 .navLink {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
+  margin-left: var(--space-2);
   border-radius: var(--radius-md);
   color: var(--text-muted);
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
+  white-space: nowrap;
   transition: background var(--motion-fast), color var(--motion-fast);
 }
 .navLink:hover { background: var(--surface-2); color: var(--text); }
-.navLinkActive {
+.navLinkActive,
+.navLinkActive:hover {
   background: var(--primary-soft);
   color: var(--primary);
+  font-weight: var(--weight-semibold);
 }
-.navIcon {
-  width: 18px;
-  text-align: center;
-  font-size: var(--text-md);
-  opacity: 0.9;
+.navLinkActive::before {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--space-2) - 1px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 18px;
+  border-radius: 999px;
+  background: var(--primary);
 }
+.navIcon { display: grid; place-items: center; flex-shrink: 0; width: 18px; height: 18px; }
+.navLabel { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 
+/* ---------- Collapsed (icon-only) ---------- */
+.collapsedDivider {
+  display: block;
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-2) var(--space-2);
+}
+.collapsed .navGroup:first-child .collapsedDivider { display: none; }
+.collapsed .groupItems { grid-template-rows: 1fr; opacity: 1; }
+.collapsed .navLink {
+  margin-left: 0;
+  justify-content: center;
+  padding: var(--space-3) 0;
+}
+.collapsed .navLabel { display: none; }
+.collapsed .navLinkActive::before { display: none; }
+
+/* ---------- Footer ---------- */
 .sidebarFooter {
   padding: var(--space-3);
+  flex-shrink: 0;
   border-top: 1px solid var(--border);
 }
 .assistantBtn {
   width: 100%;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
   padding: var(--space-3);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-strong);
-  background: var(--surface-2);
-  color: var(--text);
+  border: 1px solid transparent;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--primary) 12%, var(--surface)),
+    color-mix(in srgb, var(--accent-violet) 12%, var(--surface)));
+  color: var(--primary);
   font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  transition: background var(--motion-fast), border-color var(--motion-fast);
+  font-weight: var(--weight-semibold);
+  transition: filter var(--motion-fast), border-color var(--motion-fast);
 }
-.assistantBtn:hover { background: var(--surface-3); border-color: var(--primary); }
-.assistantSpark { color: var(--primary); }
+.assistantBtn:hover { filter: brightness(0.97); border-color: color-mix(in srgb, var(--primary) 35%, transparent); }
+.assistantSpark { flex-shrink: 0; }
 
+/* ---------- Main ---------- */
 .main {
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  min-width: 0;
 }
 .content {
   flex: 1;
@@ -108,9 +197,10 @@
   background: var(--bg);
 }
 .contentInner {
+  width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: var(--space-6);
+  padding: var(--space-6) var(--space-7);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -118,8 +208,12 @@
 
 .scrim { display: none; }
 
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .contentInner { padding: var(--space-5) var(--space-6); }
+}
 @media (max-width: 880px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout, .collapsed { grid-template-columns: 1fr; }
   .sidebar {
     position: fixed;
     top: 0; left: 0;
@@ -130,12 +224,16 @@
     box-shadow: var(--shadow-lg);
   }
   .sidebarOpen { transform: translateX(0); }
+  .collapsed .navLabel, .collapsed .brandText { display: flex; }
+  .collapsed .navLink { margin-left: var(--space-2); justify-content: flex-start; padding: var(--space-2) var(--space-3); }
   .scrim {
     display: block;
     position: fixed;
     inset: 0;
     background: var(--overlay);
     z-index: 70;
+    animation: fade var(--motion-fast);
   }
   .contentInner { padding: var(--space-4); }
 }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }

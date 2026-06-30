@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0007: Immutable audit log
+-- RIOS - Migration 0007: Immutable audit log
 -- Brief §4.3 (auditable & reversible), §14.3 (immutable audit), §9.2
 -- =============================================================================
 -- Every material action is attributable (who/what/when/before/after). The log is

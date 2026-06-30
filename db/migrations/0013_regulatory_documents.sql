@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0013: Regulatory (IFRS 17 / Solvency II) & Documents
+-- RIOS - Migration 0013: Regulatory (IFRS 17 / Solvency II) & Documents
 -- Brief §18.1–§18.2 (regulatory), §9.4 (documents/templates)
 -- =============================================================================
 
@@ -66,7 +66,7 @@ create table scr_module (
 create index on scr_module (tenant_id, run_id);
 
 -- ---------------------------------------------------------------------------
--- Documents & templates (§9.4) — generated artifacts (slips, statements, etc.)
+-- Documents & templates (§9.4) - generated artifacts (slips, statements, etc.)
 -- ---------------------------------------------------------------------------
 -- Template definitions live in config_document (kind='template'); generated
 -- documents are recorded here with their merge context and a link to storage.

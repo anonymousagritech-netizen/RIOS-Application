@@ -1,5 +1,5 @@
 /**
- * Party module (brief §7 / §16.1 — party/role-centric).
+ * Party module (brief §7 / §16.1 - party/role-centric).
  * A party can hold many roles; the list and detail views surface them together.
  */
 

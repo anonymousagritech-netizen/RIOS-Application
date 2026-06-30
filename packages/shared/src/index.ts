@@ -1,5 +1,5 @@
 /**
- * @rios/shared — API DTO contracts shared between the server and web client.
+ * @rios/shared - API DTO contracts shared between the server and web client.
  * Keeping these in one place is the lightweight equivalent of the OpenAPI
  * contract described in brief §6 (Phase 6). The full OpenAPI doc is generated
  * from the server routes; these types are the hand-maintained source of truth

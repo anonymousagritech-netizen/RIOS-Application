@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0026: Product lifecycle management (brief §14)
+-- RIOS - Migration 0026: Product lifecycle management (brief §14)
 -- The insurance-product factory: versioned product definitions driven through a
 -- lifecycle state machine. The lifecycle and its transitions are interpreted by
 -- @rios/domain (PRODUCT_LIFECYCLE + applyEvent); this table holds the products.

@@ -138,7 +138,7 @@ export function percentOf(m: Money, percent: number, rounding: Rounding = 'half-
 /**
  * Allocate an amount across integer weights with no lost or invented minor units
  * (the classic "penny allocation" problem). The sum of the parts always equals
- * the original amount exactly — essential for reconciliation (§7.6).
+ * the original amount exactly - essential for reconciliation (§7.6).
  */
 export function allocate(m: Money, weights: number[]): Money[] {
   if (weights.length === 0) throw new MoneyError('allocate requires at least one weight');

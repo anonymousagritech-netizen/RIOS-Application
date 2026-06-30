@@ -35,7 +35,7 @@ function isDateCol(c: string) { return /_(at|date)$/.test(c) || c.endsWith('_sta
 function isMinorCol(c: string) { return c.endsWith('_minor'); }
 
 function renderCell(col: string, value: unknown) {
-  if (value == null) return '—';
+  if (value == null) return '-';
   if (isMinorCol(col) && (typeof value === 'number' || typeof value === 'string')) {
     const n = Number(value);
     return Number.isNaN(n) ? String(value) : <span className={shared.money}>{formatNumber(n)}</span>;
@@ -289,7 +289,7 @@ function SavedDefinitions() {
     {
       key: 'certified',
       header: 'Certified',
-      render: (d) => (d.is_certified ? <Badge color="green">Certified</Badge> : <span className={shared.cellSub}>—</span>),
+      render: (d) => (d.is_certified ? <Badge color="green">Certified</Badge> : <span className={shared.cellSub}>-</span>),
     },
     {
       key: 'actions',

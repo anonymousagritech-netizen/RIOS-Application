@@ -2,7 +2,7 @@
  * Placement / Slip module (brief §7.3 steps 3–5, §29.4).
  *
  * Markets the risk on a slip, captures written market lines (which may
- * oversubscribe the order), then signs down to the order — the final signed
+ * oversubscribe the order), then signs down to the order - the final signed
  * shares flow into participations without re-keying (§29.4 acceptance).
  */
 

@@ -1,5 +1,5 @@
 /**
- * AI prediction & insights (brief §13). Pure, explainable predictive helpers —
+ * AI prediction & insights (brief §13). Pure, explainable predictive helpers -
  * loss ratio, a heuristic renewal-likelihood score, and its band. These are
  * transparent deterministic models (no black box); an optional LLM layer can
  * narrate them, but the numbers come from here and are unit-tested.

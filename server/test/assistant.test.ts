@@ -27,7 +27,7 @@ beforeAll(async () => {
 });
 afterAll(async () => { if (app) await app.close(); await closePools(); });
 
-describe('assistant — navigation & grounded reads', () => {
+describe('assistant - navigation & grounded reads', () => {
   it('returns a non-mutating navigation action', async () => {
     if (!dbUp) return;
     const tkn = await token('admin@demo.rios');
@@ -52,7 +52,7 @@ describe('assistant — navigation & grounded reads', () => {
   });
 });
 
-describe('assistant — mutation guardrails (§12.4)', () => {
+describe('assistant - mutation guardrails (§12.4)', () => {
   it('prepares a claim registration but does not execute it', async () => {
     if (!dbUp) return;
     const tkn = await token('admin@demo.rios');

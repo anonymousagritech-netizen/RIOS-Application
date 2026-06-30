@@ -2,7 +2,7 @@
  * Optional LLM enrichment for the assistant (brief §12).
  *
  * Calls the Anthropic Messages API to answer free-form questions that the
- * deterministic intent engine doesn't recognise — but only when an API key is
+ * deterministic intent engine doesn't recognise - but only when an API key is
  * configured. It is grounded with a compact, RLS-scoped data snapshot supplied
  * by the caller and is instructed never to invent figures. Every failure path
  * returns null so the assistant falls back to the deterministic engine and the
@@ -53,7 +53,7 @@ export async function llmAnswer(req: LlmGroundedRequest): Promise<string | null>
             role: 'user',
             content:
               `Question: ${req.question}\n\n` +
-              `Grounding data (JSON, authoritative — do not contradict it):\n` +
+              `Grounding data (JSON, authoritative - do not contradict it):\n` +
               JSON.stringify(req.grounding).slice(0, 12000),
           },
         ],

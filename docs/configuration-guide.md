@@ -1,4 +1,4 @@
-# RIOS — Configuration & Administration Guide
+# RIOS - Configuration & Administration Guide
 
 **Phase:** cross-cutting (§10 mandate) / 15 (admin docs) · **Version:** 1.0
 **Roles consulted:** Enterprise Solution Architect, Product Owner, System Administrator persona, Technical Writer
@@ -11,7 +11,7 @@ how to add a status or code value **without a deployment**, the guardrails, and 
 forbidden (§10.5).
 
 This is the §4.1 / §10 non-negotiable: *anything a customer could reasonably want to change is configuration,
-stored in the database and served at runtime — never a literal in source.* RIOS delivers the reference-data
+stored in the database and served at runtime - never a literal in source.* RIOS delivers the reference-data
 core of this; the no-code designer surfaces (forms, workflows, rules, templates) are designed-for and noted.
 
 ---
@@ -20,7 +20,7 @@ core of this; the no-code designer surfaces (forms, workflows, rules, templates)
 
 | Configurable thing | Where it lives | Status |
 |---|---|---|
-| Statuses & state vocabularies (contract, claim, statement, programme, participation) | `code_list` / `code_value` | **Delivered** — validated at the app layer, **not** DB enums, so editable |
+| Statuses & state vocabularies (contract, claim, statement, programme, participation) | `code_list` / `code_value` | **Delivered** - validated at the app layer, **not** DB enums, so editable |
 | Dropdowns / classes (line of business, party roles, financial-event types) | `code_list` / `code_value` | **Delivered** |
 | Currencies & minor units | `currency` | **Delivered** (API: `GET /api/config/currencies`) |
 | Exchange rates (effective-dated) | `exchange_rate` | **Delivered** (schema; admin UI in progress) |
@@ -37,13 +37,13 @@ value carrying a `{"dir":"DR"|"CR"}` meta) are reference data. See
 
 Configuration is time-aware so a value introduced today does not corrupt last year's records:
 
-- **`code_value`** — `effective_from` / `effective_to` window + `is_active`. Only active, in-effect values are
+- **`code_value`** - `effective_from` / `effective_to` window + `is_active`. Only active, in-effect values are
   returned by the config API. The uniqueness key includes `effective_from`, so a code can be re-defined for a
   new period without overwriting history.
-- **`exchange_rate`** — a point-in-time series keyed by `rate_date`; "latest as of" is a DESC-index lookup.
-- **`config_document`** — immutable **`version`** accretion with a `status` lifecycle
+- **`exchange_rate`** - a point-in-time series keyed by `rate_date`; "latest as of" is a DESC-index lookup.
+- **`config_document`** - immutable **`version`** accretion with a `status` lifecycle
   (`draft → published → archived`) and `effective_from`. The published version is the one served at runtime.
-- **`term_set`** — contract/layer commercial terms are versioned (`version` + `effective_from`), so a
+- **`term_set`** - contract/layer commercial terms are versioned (`version` + `effective_from`), so a
   binding's terms are pinned to the version in force.
 
 ## 3. How to add a status or code value without a deployment
@@ -60,7 +60,7 @@ Content-Type: application/json
 ```
 The server validates the list key exists (else `404`), requires `code` and `label` (else `400`), auto-assigns
 `sort_order` (max+1), inserts the value into the tenant's `claim_status` list, and returns it. The new status
-is immediately available to every screen and query that reads `claim_status` — **no build, no release**.
+is immediately available to every screen and query that reads `claim_status` - **no build, no release**.
 
 ### Via the Admin screen
 The Admin → Configuration area (web, in progress) wraps the same endpoint: pick a code list, add/edit a value,
@@ -72,19 +72,19 @@ guardrails and audit apply.
 
 ## 4. Guardrails (§10.4)
 
-- **Permission-controlled** — reads need `config:read`, writes need `config:write` (or `admin:manage`).
-- **Tenant-scoped** — all reference data is under RLS; one tenant's configuration is invisible to another.
-- **Effective-dated & versioned** — changes never silently rewrite history (see §2).
-- **Audited** — configuration changes are mutations under the same audit regime as business data (the
+- **Permission-controlled** - reads need `config:read`, writes need `config:write` (or `admin:manage`).
+- **Tenant-scoped** - all reference data is under RLS; one tenant's configuration is invisible to another.
+- **Effective-dated & versioned** - changes never silently rewrite history (see §2).
+- **Audited** - configuration changes are mutations under the same audit regime as business data (the
   add-value path is a `config:write` action; extending audit coverage to all config writes is a small,
   recommended hardening).
-- **Fail safe** — misconfiguration should block with a clear message rather than silently produce a wrong
+- **Fail safe** - misconfiguration should block with a clear message rather than silently produce a wrong
   number (§10.4). Today, unknown list keys and missing fields are rejected; richer validation/sandbox/approval
   workflows for config are designed-for.
 
 ## 5. Forbidden anti-patterns (§10.5)
 
-RIOS is built to *structurally avoid* these — call them out in any review:
+RIOS is built to *structurally avoid* these - call them out in any review:
 
 - Enums hard-coded in source for **business** values (statuses, LOBs, party roles, event types). → Use code
   lists.
@@ -95,7 +95,7 @@ RIOS is built to *structurally avoid* these — call them out in any review:
   config.
 - Menus assembled in code. → Navigation is metadata (designed-for).
 
-> **Boundary:** true correctness invariants are **not** configuration and stay in code — double-entry must
+> **Boundary:** true correctness invariants are **not** configuration and stay in code - double-entry must
 > balance, money is integer minor units, and the legal contract-transition map is enforced by the engine. The
 > *labels and allowed values* are configurable; the *integrity guarantees* are not.
 
@@ -112,11 +112,11 @@ behaviour with no deployment, satisfying the §20 configurability target for the
 
 ## Open Questions / Assumptions / Gaps
 
-- **No-code designer UIs** for forms, workflows, rules, approval stages, and templates — the `config_document`
+- **No-code designer UIs** for forms, workflows, rules, approval stages, and templates - the `config_document`
   store exists; the **interpreters and designers are designed-for** (brief §9.3, §10.3, §13).
-- **Config sandbox / simulate / promotion / approval workflows** (§10.4) — designed-for.
-- **Entitlement engine** (per-tenant/plan feature flags & limits) — designed-for (§9.1).
-- **Audit on every config write** — the add-value path should consistently emit an audit row; a small
+- **Config sandbox / simulate / promotion / approval workflows** (§10.4) - designed-for.
+- **Entitlement engine** (per-tenant/plan feature flags & limits) - designed-for (§9.1).
+- **Audit on every config write** - the add-value path should consistently emit an audit row; a small
   hardening item.
-- **Tax/levy and rating-parameter** configuration — modelled as terms/reference data conceptually, not yet a
+- **Tax/levy and rating-parameter** configuration - modelled as terms/reference data conceptually, not yet a
   governed surface.

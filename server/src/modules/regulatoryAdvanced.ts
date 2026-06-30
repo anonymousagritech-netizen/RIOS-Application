@@ -1,10 +1,10 @@
 /**
- * Regulatory (advanced) module — IFRS 17 GMM/VFA measurement + CSM roll-forward,
+ * Regulatory (advanced) module - IFRS 17 GMM/VFA measurement + CSM roll-forward,
  * and governed regulatory returns (brief §18.3 / §18.4).
  *
  * Extends the §18.1/§18.2 regulatory module: it adds the General Measurement
- * Model (GMM/BBA) and Variable Fee Approach (VFA) — CSM, fulfilment cash flows
- * and the contractual-service-margin roll-forward — and a small suite of
+ * Model (GMM/BBA) and Variable Fee Approach (VFA) - CSM, fulfilment cash flows
+ * and the contractual-service-margin roll-forward - and a small suite of
  * governed regulatory returns (Solvency II QRT, US Schedule F, Lloyd's, IFRS 17
  * disclosure) that aggregate the tenant's own RLS-scoped data into a prepared,
  * signed-off pack.
@@ -59,7 +59,7 @@ const createReturnSchema = z.object({
 
 export async function regulatoryAdvancedModule(app: FastifyInstance): Promise<void> {
   // -------------------------------------------------------------------------
-  // IFRS 17 GMM / VFA (§18.1) — operate on an existing ifrs17_group
+  // IFRS 17 GMM / VFA (§18.1) - operate on an existing ifrs17_group
   // -------------------------------------------------------------------------
 
   app.post<{ Params: { id: string } }>(
@@ -276,7 +276,7 @@ export async function regulatoryAdvancedModule(app: FastifyInstance): Promise<vo
   );
 
   // -------------------------------------------------------------------------
-  // Regulatory returns (§18.3 / §18.4) — governed packs over tenant data
+  // Regulatory returns (§18.3 / §18.4) - governed packs over tenant data
   // -------------------------------------------------------------------------
 
   app.post('/api/regulatory/returns', { preHandler: requirePermission('regulatory:run') }, async (req, reply) => {
@@ -429,7 +429,7 @@ async function generateReturn(db: Db, kind: (typeof returnKinds)[number]): Promi
 }
 
 /**
- * US Schedule F — reinsurance recoverables by counterparty/contract. Summarises
+ * US Schedule F - reinsurance recoverables by counterparty/contract. Summarises
  * loss-side financial events (paid/recovered) grouped by ceding counterparty.
  */
 async function scheduleF(db: Db): Promise<GeneratedReturn> {
@@ -471,7 +471,7 @@ async function scheduleF(db: Db): Promise<GeneratedReturn> {
   };
 }
 
-/** Solvency II QRT (S.25.01-like) — latest solvency_run capital figures. */
+/** Solvency II QRT (S.25.01-like) - latest solvency_run capital figures. */
 async function solvency2Qrt(db: Db): Promise<GeneratedReturn> {
   const { rows } = await db.query<{
     id: string;
@@ -508,7 +508,7 @@ async function solvency2Qrt(db: Db): Promise<GeneratedReturn> {
   };
 }
 
-/** IFRS 17 disclosure — LRC/LIC/CSM totals across the tenant's measurements. */
+/** IFRS 17 disclosure - LRC/LIC/CSM totals across the tenant's measurements. */
 async function ifrs17Disclosure(db: Db): Promise<GeneratedReturn> {
   const { rows } = await db.query<{
     lrc_minor: number;
@@ -539,7 +539,7 @@ async function ifrs17Disclosure(db: Db): Promise<GeneratedReturn> {
   return { data, summary: { csmMinor: t.csm_minor, totalLiabilityMinor: t.total_liability_minor }, rowCount: t.measurements };
 }
 
-/** Lloyd's return — contracts and premium by line of business. */
+/** Lloyd's return - contracts and premium by line of business. */
 async function lloydsReturn(db: Db): Promise<GeneratedReturn> {
   const { rows } = await db.query<{
     line_of_business: string | null;

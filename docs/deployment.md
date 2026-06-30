@@ -1,4 +1,4 @@
-# RIOS — Deployment & Operations Runbook
+# RIOS - Deployment & Operations Runbook
 
 > Phase 14 (Deployment) of the build brief. Covers containerisation, local
 > full-stack, Kubernetes/Helm, configuration, observability, and backup/DR.
@@ -79,13 +79,13 @@ All configuration is environment-driven (brief §14). Key variables:
 ## 6. Observability
 
 The API exposes (no auth, for infra/probes):
-- `GET /live` — liveness (process up).
-- `GET /ready` — readiness (checks DB connectivity; 503 when the DB is down).
-- `GET /metrics` — Prometheus exposition: `rios_http_requests_total`,
+- `GET /live` - liveness (process up).
+- `GET /ready` - readiness (checks DB connectivity; 503 when the DB is down).
+- `GET /metrics` - Prometheus exposition: `rios_http_requests_total`,
   `rios_http_request_duration_seconds` (histogram), in-flight requests, process
   memory/uptime, and `rios_build_info`. Route labels are low-cardinality
   (ids collapsed to `:id`).
-- `GET /version` — build info.
+- `GET /version` - build info.
 
 Structured request logs are emitted by Fastify's pino logger (JSON) for
 aggregation. Wire `/metrics` to Prometheus (scrape annotations are set) and the

@@ -1,5 +1,5 @@
 /**
- * Product lifecycle management (brief §14 — insurance-product factory). Lists
+ * Product lifecycle management (brief §14 - insurance-product factory). Lists
  * versioned insurance products with their lifecycle state and the actions
  * available from that state (computed from the same workflow definition the
  * server enforces), and drives transitions. Authoring/transitions need
@@ -47,10 +47,10 @@ export function ProductsPage() {
   const cols: Column<Product>[] = [
     { key: 'code', header: 'Code', render: (p) => <span className={shared.cellRef}>{p.code}</span> },
     { key: 'name', header: 'Product', render: (p) => <span className={shared.cellMain}>{p.name}</span> },
-    { key: 'lob', header: 'Line', render: (p) => p.lineOfBusiness ? titleCase(p.lineOfBusiness) : '—' },
+    { key: 'lob', header: 'Line', render: (p) => p.lineOfBusiness ? titleCase(p.lineOfBusiness) : '-' },
     { key: 'version', header: 'Ver', align: 'right', render: (p) => `v${p.version}` },
     { key: 'status', header: 'Lifecycle', render: (p) => <Badge color={STATUS_COLOR[p.status] ?? 'slate'}>{titleCase(p.status)}</Badge> },
-    { key: 'updated', header: 'Updated', render: (p) => p.updatedAt ? formatDateTime(p.updatedAt) : '—' },
+    { key: 'updated', header: 'Updated', render: (p) => p.updatedAt ? formatDateTime(p.updatedAt) : '-' },
     {
       key: 'act', header: '', align: 'right',
       render: (p) => canWrite && p.actions.length ? (
@@ -68,7 +68,7 @@ export function ProductsPage() {
 
   return (
     <>
-      <PageHeader title="Products" description="The insurance-product factory — versioned definitions driven through a lifecycle the server enforces." />
+      <PageHeader title="Products" description="The insurance-product factory - versioned definitions driven through a lifecycle the server enforces." />
       <Card>
         <CardHeader title="Insurance products" subtitle="DRAFT → ACTIVE → (SUSPENDED ↔ ACTIVE) → RETIRED" />
         <div style={{ padding: 'var(--space-4)' }}>

@@ -1,7 +1,7 @@
 /**
  * Designer surfaces (brief §10.3): the no-code Workflow Designer and Business
  * Rules console. Both browse versioned `config_document` definitions and exercise
- * the server-side pure interpreters live — a workflow simulator (pick a state +
+ * the server-side pure interpreters live - a workflow simulator (pick a state +
  * event, see the resulting transition) and a rules tester (supply a JSON context,
  * see which rules fire and what they emit). Authoring is gated on `config:write`.
  */
@@ -40,7 +40,7 @@ export function DesignerPage() {
     <>
       <PageHeader
         title="Designer"
-        description="Author metadata-driven workflows and business rules — interpreted, never executed as code."
+        description="Author metadata-driven workflows and business rules - interpreted, never executed as code."
       />
       <Card>
         <Tabs
@@ -135,7 +135,7 @@ function WorkflowDetail({ wfKey }: { wfKey: string }) {
               { key: 'event', header: 'Event', render: (t: Transition) => <span className={shared.cellRef}>{t.event}</span> },
               { key: 'from', header: 'From', render: (t: Transition) => t.from },
               { key: 'to', header: 'To', render: (t: Transition) => t.to },
-              { key: 'perm', header: 'Permission', render: (t: Transition) => t.permission ?? '—' },
+              { key: 'perm', header: 'Permission', render: (t: Transition) => t.permission ?? '-' },
             ]}
             rows={body.transitions}
             rowKey={(t) => `${t.event}:${t.from}:${t.to}`}
@@ -155,7 +155,7 @@ function WorkflowDetail({ wfKey }: { wfKey: string }) {
             <div style={{ minWidth: 180 }}>
               <FormField label="Event">
                 <Select value={event || events[0] || ''} onChange={(e) => setEvent(e.target.value)}>
-                  {events.length === 0 ? <option value="">— terminal —</option> : events.map((ev) => <option key={ev} value={ev}>{ev}</option>)}
+                  {events.length === 0 ? <option value="">- terminal -</option> : events.map((ev) => <option key={ev} value={ev}>{ev}</option>)}
                 </Select>
               </FormField>
             </div>

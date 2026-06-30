@@ -101,7 +101,7 @@ export async function intelligenceModule(app: FastifyInstance): Promise<void> {
         'There are {openClaims} open claims with {outstanding} of outstanding reserves. ' +
         '{health}';
       const health = k.open_claims === 0
-        ? 'No claims are currently open — the book is running clean.'
+        ? 'No claims are currently open - the book is running clean.'
         : Number(k.outstanding) > 0
           ? 'Outstanding reserves should be monitored against the latest capital position.'
           : 'Open claims carry no outstanding reserve.';

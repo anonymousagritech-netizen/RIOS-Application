@@ -1,6 +1,6 @@
-# RIOS — Domain Calculations Reference
+# RIOS - Domain Calculations Reference
 
-**Phase:** 10 (Backend Development — domain core) · **Domain:** Reinsurance Core / Accounting · **Version:** 1.0
+**Phase:** 10 (Backend Development - domain core) · **Domain:** Reinsurance Core / Accounting · **Version:** 1.0
 **Roles consulted:** Reinsurance Domain Expert, Enterprise Solution Architect, QA Lead, Technical Writer
 **Status:** Delivered (38 passing unit tests)
 
@@ -11,7 +11,7 @@ This document is the authoritative reference for the pure reinsurance mathematic
 and outputs, a **worked numeric example that uses the exact numbers from the unit tests** (so each
 example is independently verifiable by running `npm test`), and the §7 lifecycle term it implements.
 
-The domain library is deliberately **pure** — no I/O, no framework, no clock, no database (brief §4.4).
+The domain library is deliberately **pure** - no I/O, no framework, no clock, no database (brief §4.4).
 Financial correctness is therefore provable in isolation. The server (`server/src/modules/*`) calls
 these functions; it never re-implements the maths.
 
@@ -47,9 +47,9 @@ these are configuration (§10); the table here is a sane built-in default.
 
 ### Construction & conversion
 
-- `money(amount, currency)` — throws `MoneyError` if `amount` is not an integer.
-- `fromMajor(major, currency, rounding='half-up')` — build from a decimal major amount.
-- `toMajor(m)` — back to a decimal (display/test only).
+- `money(amount, currency)` - throws `MoneyError` if `amount` is not an integer.
+- `fromMajor(major, currency, rounding='half-up')` - build from a decimal major amount.
+- `toMajor(m)` - back to a decimal (display/test only).
 
 **Worked example** (`money.test.ts`):
 `fromMajor(1234.56, 'USD').amount === 123456`; `fromMajor(1234.56, 'JPY').amount === 1235` (0 minor
@@ -57,7 +57,7 @@ units, rounded); `fromMajor(1.234, 'BHD').amount === 1234` (3 minor units).
 
 ### Arithmetic
 
-`add`, `subtract`, `negate`, `sum`, `compare`, `max`, `min`, `clamp`. All assert matching currency —
+`add`, `subtract`, `negate`, `sum`, `compare`, `max`, `min`, `clamp`. All assert matching currency -
 **cross-currency arithmetic throws** (`Currency mismatch…`). Cross-currency must first pass through FX.
 
 ### Rounding (`Rounding`)
@@ -70,14 +70,14 @@ so every monetary result is reproducible.
 
 ### Rate & percentage application
 
-- `multiply(m, factor, rounding)` — e.g. a share `0.30` or rate `0.025`.
-- `percentOf(m, percent, rounding)` — `percent` is a whole-number percentage (`2.5` = 2.5%).
+- `multiply(m, factor, rounding)` - e.g. a share `0.30` or rate `0.025`.
+- `percentOf(m, percent, rounding)` - `percent` is a whole-number percentage (`2.5` = 2.5%).
 
 **Worked example:** `percentOf(money(10000,'USD'), 2.5).amount === 250` (100.00 × 2.5% = 2.50).
 
-### Penny-perfect allocation — `allocate(m, weights)`
+### Penny-perfect allocation - `allocate(m, weights)`
 
-Splits an amount across integer weights so **the parts always sum back to the original exactly** — the
+Splits an amount across integer weights so **the parts always sum back to the original exactly** - the
 classic penny-allocation problem, essential for reconciliation (§7.6). It floor-divides, then distributes
 the leftover one minor unit at a time to the largest weights (sign-aware for negative amounts).
 
@@ -88,9 +88,9 @@ sums to **-1000**.
 
 ---
 
-## 2. Proportional treaties (`proportional.ts`) — brief §7.2, §7.3
+## 2. Proportional treaties (`proportional.ts`) - brief §7.2, §7.3
 
-### 2.1 Quota share cession — `quotaShareCession(grossPremium, { cededShare })`
+### 2.1 Quota share cession - `quotaShareCession(grossPremium, { cededShare })`
 
 A fixed fraction of every risk is ceded. `cededShare ∈ [0,1]` (out-of-range throws).
 
@@ -101,7 +101,7 @@ retainedPremium = grossPremium − cededPremium
 
 **Worked example:** gross **1,000,000 USD**, `cededShare 0.30` → ceded **300,000**, retained **700,000**.
 
-### 2.2 Surplus cession — `surplusCession(sumInsured, grossPremium, { retentionLine, numberOfLines })`
+### 2.2 Surplus cession - `surplusCession(sumInsured, grossPremium, { retentionLine, numberOfLines })`
 
 Retention ("line") is fixed; the surplus above it is ceded, capped by capacity = `retentionLine ×
 numberOfLines`. The ceded share is expressed as a fraction of the sum insured.
@@ -119,7 +119,7 @@ cededPremium = grossPremium × cededShare
   ceded premium **50,000** (of 60,000).
 - Risk **20m**, same treaty → ceded capped at 9m → `cededShare = 9/20`.
 
-### 2.3 Commission stack — `commissions(cededPremium, terms)`
+### 2.3 Commission stack - `commissions(cededPremium, terms)`
 
 Computed **on the ceded premium**. `cedingCommissionPct` (required), `overridingCommissionPct`,
 `brokeragePct` (optional, default 0).
@@ -134,7 +134,7 @@ total       = ceding + overriding + brokerage
 **Worked example:** ceded **300,000**, `{ ceding 25, overriding 2.5, brokerage 1 }` → ceding **75,000**,
 overriding **7,500**, brokerage **3,000**, total **85,500**.
 
-### 2.4 Profit commission with loss carry-forward — `profitCommission(input, terms)`
+### 2.4 Profit commission with loss carry-forward - `profitCommission(input, terms)`
 
 Implements the classic reinsurer-account basis (§7.2): the reinsurer shares favourable results with the
 cedent **after** allowable expenses and after absorbing any prior-year deficit.
@@ -158,7 +158,7 @@ The result carries a full `workings` object for explainability (§4.4).
 2. Same but losses 800,000 → profit = **−100,000** → PC **0**, carry-forward **100,000**.
 3. Same as (1) but 250,000 brought forward → profit = 300,000 − 250,000 = **50,000** → PC @20% = **10,000**.
 
-### 2.5 Sliding-scale commission — `slidingScaleCommissionPct(lossRatio, terms)`
+### 2.5 Sliding-scale commission - `slidingScaleCommissionPct(lossRatio, terms)`
 
 Returns the commission % for an actual loss ratio by **linear interpolation** between band points,
 clamped to `[minPct, maxPct]`. Commission is highest at low loss ratios. Below the first band point it
@@ -177,7 +177,7 @@ clamp to [minPct, maxPct]
 - LR 0.50 → **30** (halfway between 35% and 25%)
 - LR 0.95 → **15** (min, above last point)
 
-### 2.6 Account balance — `proportionalAccountBalance({ cededPremium, totalCommission, cededLosses })`
+### 2.6 Account balance - `proportionalAccountBalance({ cededPremium, totalCommission, cededLosses })`
 
 ```
 balance = cededPremium − totalCommission − cededLosses
@@ -188,12 +188,12 @@ A positive balance is owed by the cedent to the reinsurer.
 
 ---
 
-## 3. Non-proportional / excess of loss (`nonproportional.ts`) — brief §7.2
+## 3. Non-proportional / excess of loss (`nonproportional.ts`) - brief §7.2
 
 A `Layer` is `{ attachment, limit, aggregateDeductible?, reinstatements, reinstatementRates? }`.
 Total layer capacity = `limit × (reinstatements + 1)`.
 
-### 3.1 Single-loss layer recovery — `layerRecovery(grossLoss, layer)`
+### 3.1 Single-loss layer recovery - `layerRecovery(grossLoss, layer)`
 
 ```
 recovery = min( max(0, grossLoss − attachment), limit )
@@ -201,7 +201,7 @@ recovery = min( max(0, grossLoss − attachment), limit )
 
 **Worked example** ($5m xs $5m): loss 3m → **0**; loss 8m → **3m**; loss 12m → capped at **5m**.
 
-### 3.2 Programme / tower recovery — `programmeRecovery(grossLoss, layers[])`
+### 3.2 Programme / tower recovery - `programmeRecovery(grossLoss, layers[])`
 
 Sorts layers by attachment ascending; each pays its excess slice up to its own limit. Returns
 `totalRecovery`, `retainedByCedent` (= grossLoss − totalRecovery), and a per-layer breakdown.
@@ -209,10 +209,10 @@ Sorts layers by attachment ascending; each pays its excess slice up to its own l
 **Worked example:** tower `5 xs 5` + `10 xs 10`, loss **18m** → layer 1 pays **5m** (full), layer 2 pays
 **8m**, total **13m**, cedent retains **5m** (the initial retention).
 
-### 3.3 Aggregate erosion over a period — `applyLossesToLayer(grossLosses[], layer)`
+### 3.3 Aggregate erosion over a period - `applyLossesToLayer(grossLosses[], layer)`
 
-Applies a sequence of losses, honouring (a) the **annual aggregate deductible (AAD)** — eroded first,
-across losses — and (b) the **finite reinstatement capacity**. Recoveries stop once total capacity is
+Applies a sequence of losses, honouring (a) the **annual aggregate deductible (AAD)** - eroded first,
+across losses - and (b) the **finite reinstatement capacity**. Recoveries stop once total capacity is
 exhausted. Returns per-loss applications with cumulative usage, `totalRecovered`, `capacityRemaining`,
 `aadEroded`.
 
@@ -230,7 +230,7 @@ for each loss:
 - $5m xs $5m, 1 reinstatement, AAD 1m, losses 6m then 7m → loss 1 excess 1m fully absorbed by AAD
   (**recovery 0**), loss 2 excess 2m (**recovery 2m**), `aadEroded` **1m**.
 
-### 3.4 Rate on line — `premiumFromRateOnLine(limit, rol)` / `rateOnLine(premium, limit)`
+### 3.4 Rate on line - `premiumFromRateOnLine(limit, rol)` / `rateOnLine(premium, limit)`
 
 ```
 layerPremium = limit × rateOnLine
@@ -238,7 +238,7 @@ rateOnLine   = layerPremium / limit
 ```
 **Worked example:** limit 5m, ROL 0.10 → premium **500,000**; back-computed ROL ≈ **0.10**.
 
-### 3.5 Minimum & deposit premium — `minimumAndDepositPremium(terms)`
+### 3.5 Minimum & deposit premium - `minimumAndDepositPremium(terms)`
 
 ```
 depositPremium = estimatedPremium × depositPct%
@@ -246,7 +246,7 @@ minimumPremium = estimatedPremium × minimumPct%
 ```
 **Worked example:** EPI 500,000, deposit 80%, minimum 90% → deposit **400,000**, minimum **450,000**.
 
-### 3.6 Reinstatement premium (pro-rata as to time **and** amount) — `reinstatementPremium(input)`
+### 3.6 Reinstatement premium (pro-rata as to time **and** amount) - `reinstatementPremium(input)`
 
 Restores exhausted limit after a loss, for additional premium (§7.2). Per recovery, in date order:
 
@@ -269,7 +269,7 @@ RP = annualPremium × (amountReinstated / limit) × rate × timeFraction
 
 ---
 
-## 4. Accounting & reconciliation (`accounting.ts`) — brief §7.6
+## 4. Accounting & reconciliation (`accounting.ts`) - brief §7.6
 
 ### 4.1 Financial events
 
@@ -285,21 +285,21 @@ A `FinancialEvent` is the immutable technical-accounting fact:
 `signedAmount(event)` signs from the **cedent's perspective**: `DR` is positive (cedent owes reinsurer,
 e.g. premium), `CR` is negative (reinsurer pays the cedent, e.g. commission, paid loss, recovery).
 
-### 4.2 Statement of account — `buildStatement(events[], currency)`
+### 4.2 Statement of account - `buildStatement(events[], currency)`
 
-Nets events into a statement grouped by type. **All events must share the statement currency** —
+Nets events into a statement grouped by type. **All events must share the statement currency** -
 mixed-currency netting throws (`…convert via FX before netting`). Returns lines (type, count, signed
 total), the net `balance`, and `eventCount`.
 
 **Worked example** (`accounting.test.ts`): DEPOSIT_PREMIUM 300,000 (DR), CEDING_COMMISSION 75,000 (CR),
 PAID_LOSS 120,000 (CR) → balance = 300,000 − 75,000 − 120,000 = **105,000** owed by the cedent.
 
-### 4.3 Double-entry postings — `assertBalanced(posting)`
+### 4.3 Double-entry postings - `assertBalanced(posting)`
 
 A `LedgerPosting` has `sourceEventIds` (lineage, §18.4) and `legs` (`{ account, debit, credit }`).
 `assertBalanced` throws `UnbalancedPostingError` unless **total debits == total credits**.
 
-### 4.4 The reconciliation contract — `reconcile(statement, postings[], controlAccount)`
+### 4.4 The reconciliation contract - `reconcile(statement, postings[], controlAccount)`
 
 This is the heart of the technical→financial chain (§7.6, §27). Each financial event posts a balanced
 entry with one leg hitting a counterparty **control account**. The net movement on that control account
@@ -314,7 +314,7 @@ reconciled      = (difference == 0)
 **Worked example:** the 105,000 statement above, posted as three balanced entries each touching
 `REINSURER_CONTROL`, reconciles: `controlAccountMovement` = **105,000**, `difference` = **0**,
 `reconciled` = **true**. A deliberately wrong posting (250,000 instead of 300,000) yields
-`reconciled = false`, `difference = 50,000` — the chain refuses to lie.
+`reconciled = false`, `difference = 50,000` - the chain refuses to lie.
 
 This same contract is exercised end-to-end by the server vertical-slice integration test
 (`/api/treaties/:id/post` returns `reconciled: true`, `controlMovementMinor == statementBalanceMinor`).
@@ -343,6 +343,6 @@ reconcilable (§16, §20).
   (e.g. expense treatment, multi-year carry-forward schemes) would be configuration (§3.5, §10).
 - **Sliding scale** uses linear interpolation; stepped (non-interpolated) scales would be a config flag.
 - **Indexation/stability clauses, hours clauses, occurrence definitions, swing/burning-cost rating,
-  exposure rating** (§7.2, §7.8) are not yet in the domain library — see [open-questions.md](./open-questions.md).
+  exposure rating** (§7.2, §7.8) are not yet in the domain library - see [open-questions.md](./open-questions.md).
 - Reinstatement rate selection uses a simple cumulative-fraction index; complex tiered reinstatement
   schedules may need richer modelling.

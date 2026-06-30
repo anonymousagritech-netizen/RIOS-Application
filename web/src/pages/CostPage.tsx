@@ -34,10 +34,10 @@ export function CostPage() {
     { key: 'cat', header: 'Category', render: (r) => <span className={shared.cellMain}>{titleCase(r.category)}</span> },
     { key: 'period', header: 'Period', render: (r) => r.period },
     { key: 'amount', header: 'Spend', align: 'right', sortValue: (r) => r.amountMinor, render: (r) => formatMoney(r.amountMinor, r.currency) },
-    { key: 'cap', header: 'Capacity', align: 'right', render: (r) => r.capacityProvisioned != null ? `${formatNumber(r.capacityUsed)} / ${formatNumber(r.capacityProvisioned)} ${r.capacityUnit ?? ''}` : '—' },
+    { key: 'cap', header: 'Capacity', align: 'right', render: (r) => r.capacityProvisioned != null ? `${formatNumber(r.capacityUsed)} / ${formatNumber(r.capacityProvisioned)} ${r.capacityUnit ?? ''}` : '-' },
     {
       key: 'util', header: 'Utilisation', align: 'right',
-      render: (r) => r.utilisationBand ? <span><Badge color={BAND[r.utilisationBand] ?? 'slate'}>{formatPercent(r.utilisation)}</Badge></span> : '—',
+      render: (r) => r.utilisationBand ? <span><Badge color={BAND[r.utilisationBand] ?? 'slate'}>{formatPercent(r.utilisation)}</Badge></span> : '-',
     },
   ];
 

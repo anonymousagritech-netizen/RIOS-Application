@@ -1,9 +1,9 @@
 -- =============================================================================
--- RIOS — Migration 0029: Security & resilience (brief §14, §15, §19)
+-- RIOS - Migration 0029: Security & resilience (brief §14, §15, §19)
 -- KMS key registry (envelope encryption), backup/DR run catalog, and locale
 -- message store for i18n. SOC/SIEM reads the existing audit_log; SAML reuses the
 -- existing identity_provider table. The dev KMS master key is environment-config;
--- production uses a managed HSM/KMS — see docs/open-questions.md.
+-- production uses a managed HSM/KMS - see docs/open-questions.md.
 -- =============================================================================
 
 -- A data-encryption key (DEK), stored WRAPPED by the KMS master key. The raw DEK

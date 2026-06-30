@@ -1,9 +1,9 @@
 /**
- * Reporting & BI module (brief §13 — governed report definitions, execution, export).
+ * Reporting & BI module (brief §13 - governed report definitions, execution, export).
  *
  * SAFETY IS CRITICAL: report queries are assembled from a fixed allowlist of
  * sources, columns and filter operators. User input never reaches the SQL as an
- * identifier — sources/columns/ops are validated against the allowlist below, and
+ * identifier - sources/columns/ops are validated against the allowlist below, and
  * only the *values* of filters are bound as parameters ($1,$2,…). Because every
  * identifier originates from the constant allowlist (not the request), it is safe
  * to interpolate once validated. RLS scopes all rows to the active tenant.
@@ -214,7 +214,7 @@ export async function reportingModule(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // Ad-hoc run — not persisted.
+  // Ad-hoc run - not persisted.
   app.post('/api/reports/run', { preHandler: requirePermission('reporting:read') }, async (req, reply) => {
     const ctx = authContext(req);
     const parsed = reportShapeSchema.safeParse(req.body);
@@ -338,7 +338,7 @@ export async function reportingModule(app: FastifyInstance): Promise<void> {
           reply.header('content-type', 'application/json');
           return { rows, rowCount: rows.length, source: built.source };
         }
-        // CSV — always include a header row built from the definition columns even
+        // CSV - always include a header row built from the definition columns even
         // when there are no rows, so consumers get a stable shape.
         const header = `${def.columns.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')}`;
         const body = rows.length > 0 ? toCsv(rows) : header;

@@ -36,7 +36,7 @@ export function RiskCapitalPage() {
   const [tab, setTab] = useState('capital');
   return (
     <>
-      <PageHeader title="Risk & capital" description="Capital adequacy, Realistic Disaster Scenarios and tail-risk — on pure, reconcilable engines." />
+      <PageHeader title="Risk & capital" description="Capital adequacy, Realistic Disaster Scenarios and tail-risk - on pure, reconcilable engines." />
       <Card>
         <Tabs
           tabs={[{ id: 'capital', label: 'Capital adequacy' }, { id: 'rds', label: 'Disaster scenarios' }, { id: 'var', label: 'VaR calculator' }]}
@@ -83,7 +83,7 @@ function RdsPanel() {
   const cols: Column<Scenario>[] = [
     { key: 'code', header: 'Scenario', render: (s) => <span className={shared.cellRef}>{s.code}</span> },
     { key: 'name', header: 'Name', render: (s) => <span className={shared.cellMain}>{s.name}</span> },
-    { key: 'peril', header: 'Peril', render: (s) => s.peril ?? '—' },
+    { key: 'peril', header: 'Peril', render: (s) => s.peril ?? '-' },
     { key: 'gross', header: 'Gross', align: 'right', sortValue: (s) => s.grossLossMinor, render: (s) => formatMoney(s.grossLossMinor, s.currency) },
     { key: 'recovery', header: 'Recovery', align: 'right', render: (s) => formatMoney(s.result.totalRecoveryMinor, s.currency) },
     { key: 'net', header: 'Net loss', align: 'right', sortValue: (s) => s.result.netLossMinor, render: (s) => <strong>{formatMoney(s.result.netLossMinor, s.currency)}</strong> },

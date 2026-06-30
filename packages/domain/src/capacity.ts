@@ -1,6 +1,6 @@
 /**
- * Cost & capacity (brief §13 — cost & capacity management). Pure utilisation
- * maths over provisioned vs used capacity, and the band it falls in. No I/O —
+ * Cost & capacity (brief §13 - cost & capacity management). Pure utilisation
+ * maths over provisioned vs used capacity, and the band it falls in. No I/O -
  * the server loads cost records and asks this module for the derived figures.
  */
 

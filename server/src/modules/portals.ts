@@ -2,7 +2,7 @@
  * External portals (brief §9.15).
  *
  * A portal is a thin, permission-scoped *projection* of the core APIs for one
- * external counterparty — it never reads a parallel data store. Each request is
+ * external counterparty - it never reads a parallel data store. Each request is
  * resolved to a single `portal_grant` (user → party + portal type); every query
  * is then filtered to the contracts that party can legitimately see:
  *
@@ -80,7 +80,7 @@ async function resolvePortal(
 export async function portalsModule(app: FastifyInstance): Promise<void> {
   const guard = { preHandler: requirePermission('portal:read') };
 
-  // The grants this user holds — drives the portal picker in the UI. Admins see
+  // The grants this user holds - drives the portal picker in the UI. Admins see
   // an empty list here (they impersonate explicitly), which the UI handles.
   app.get('/api/portal/grants', guard, async (req) => {
     const ctx = authContext(req);

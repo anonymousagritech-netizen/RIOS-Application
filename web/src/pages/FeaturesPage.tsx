@@ -36,7 +36,7 @@ export function FeaturesPage() {
   const cols: Column<Feature>[] = [
     { key: 'key', header: 'Key', render: (f) => <span className={shared.cellRef}>{f.key}</span> },
     { key: 'name', header: 'Feature', render: (f) => <span className={shared.cellMain}>{f.name}</span> },
-    { key: 'plan', header: 'Plan', render: (f) => f.plan ? <Badge color="violet">{titleCase(f.plan)}</Badge> : '—' },
+    { key: 'plan', header: 'Plan', render: (f) => f.plan ? <Badge color="violet">{titleCase(f.plan)}</Badge> : '-' },
     { key: 'seats', header: 'Seats', align: 'right', render: (f) => f.seatLimit != null ? String(f.seatLimit) : 'Unlimited' },
     { key: 'enabled', header: 'Status', render: (f) => <Badge color={f.enabled ? 'green' : 'gray'}>{f.enabled ? 'Enabled' : 'Disabled'}</Badge> },
     {

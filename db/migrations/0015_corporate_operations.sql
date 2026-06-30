@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0015: Corporate back-office & Operations/Observability
+-- RIOS - Migration 0015: Corporate back-office & Operations/Observability
 -- Brief §9.14 (Procurement, HRMS, Payroll, Assets), §9.13 (observability/SLA),
 -- §9.1 (entitlement engine)
 -- =============================================================================
@@ -168,7 +168,7 @@ create table feature_entitlement (
 create index on feature_entitlement (tenant_id);
 
 -- ---------------------------------------------------------------------------
--- Operations / Observability (§9.13) — SLA targets; the module also reads the
+-- Operations / Observability (§9.13) - SLA targets; the module also reads the
 -- existing audit_log and outbox tables for the audit viewer & event monitor.
 -- ---------------------------------------------------------------------------
 create table sla_target (

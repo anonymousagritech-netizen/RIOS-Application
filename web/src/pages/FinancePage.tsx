@@ -141,8 +141,8 @@ function TrialBalanceTab() {
     { key: 'code', header: 'Code', sortValue: (a) => a.code, render: (a) => <span className={shared.cellRef}>{a.code}</span> },
     { key: 'name', header: 'Account', sortValue: (a) => a.name, render: (a) => <span className={shared.cellMain}>{a.name}</span> },
     { key: 'type', header: 'Type', sortValue: (a) => a.type, render: (a) => titleCase(a.type) },
-    { key: 'debit', header: 'Debit', align: 'right', sortValue: (a) => a.debitMinor, render: (a) => <span className={shared.money}>{a.debitMinor ? formatMoney(a.debitMinor) : '—'}</span> },
-    { key: 'credit', header: 'Credit', align: 'right', sortValue: (a) => a.creditMinor, render: (a) => <span className={shared.money}>{a.creditMinor ? formatMoney(a.creditMinor) : '—'}</span> },
+    { key: 'debit', header: 'Debit', align: 'right', sortValue: (a) => a.debitMinor, render: (a) => <span className={shared.money}>{a.debitMinor ? formatMoney(a.debitMinor) : '-'}</span> },
+    { key: 'credit', header: 'Credit', align: 'right', sortValue: (a) => a.creditMinor, render: (a) => <span className={shared.money}>{a.creditMinor ? formatMoney(a.creditMinor) : '-'}</span> },
   ];
 
   return (

@@ -4,7 +4,7 @@
  * Mapped, validated ingestion of premium and loss bordereaux. Each uploaded file
  * is validated line-by-line; a malformed bordereau is rejected with line-level
  * errors, while a fully-valid one converts to reconciling Financial Events
- * (premium) or feeds Claims (loss) on processing — the §29.6 acceptance contract.
+ * (premium) or feeds Claims (loss) on processing - the §29.6 acceptance contract.
  */
 
 import type { FastifyInstance } from 'fastify';

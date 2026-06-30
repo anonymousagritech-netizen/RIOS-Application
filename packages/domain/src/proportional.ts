@@ -1,5 +1,5 @@
 /**
- * Proportional (pro-rata) treaty calculations — brief §7.2.
+ * Proportional (pro-rata) treaty calculations - brief §7.2.
  *
  * Covers quota share and surplus cession, the standard commission stack
  * (ceding / overriding / brokerage), profit commission with allowable expenses
@@ -101,7 +101,7 @@ export function commissions(cededPremium: Money, terms: CommissionTerms): Commis
 }
 
 // ---------------------------------------------------------------------------
-// Profit commission (§7.2 — allowable expenses + loss carry-forward)
+// Profit commission (§7.2 - allowable expenses + loss carry-forward)
 // ---------------------------------------------------------------------------
 
 export interface ProfitCommissionTerms {
@@ -259,7 +259,7 @@ export function proportionalAccountBalance(args: {
 }
 
 // ---------------------------------------------------------------------------
-// Portfolio entry / withdrawal (§7.2 — proportional treaty inception/expiry)
+// Portfolio entry / withdrawal (§7.2 - proportional treaty inception/expiry)
 // ---------------------------------------------------------------------------
 
 export interface PortfolioTransferTerms {

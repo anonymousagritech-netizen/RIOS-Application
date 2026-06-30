@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { ChevronDown, PanelLeftClose, PanelLeftOpen, Sparkles } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { NAV_GROUPS } from './nav';
 import { TopBar } from './TopBar';
@@ -7,13 +8,53 @@ import { CommandPalette } from './CommandPalette';
 import { AssistantDrawer } from '../assistant/AssistantDrawer';
 import styles from './AppShell.module.css';
 
+const COLLAPSE_KEY = 'rios.nav.collapsed';
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { hasPermission } = useAuth();
+  const location = useLocation();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(
+    () => typeof localStorage !== 'undefined' && localStorage.getItem(COLLAPSE_KEY) === '1',
+  );
 
-  // ⌘K / Ctrl-K opens the command palette.
+  // Groups the current user is allowed to see (permission-filtered).
+  const groups = useMemo(
+    () =>
+      NAV_GROUPS.map((g) => ({
+        ...g,
+        items: g.items.filter((i) => !i.permission || hasPermission(i.permission)),
+      })).filter((g) => g.items.length > 0),
+    [hasPermission],
+  );
+
+  const activeGroup = useMemo(
+    () => groups.find((g) => g.items.some((i) => location.pathname.startsWith(i.to)))?.label,
+    [groups, location.pathname],
+  );
+
+  // Accordion state: the group holding the active route opens automatically.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (activeGroup) setOpenGroups((s) => (s.has(activeGroup) ? s : new Set(s).add(activeGroup)));
+  }, [activeGroup]);
+
+  const toggleGroup = (label: string) =>
+    setOpenGroups((s) => {
+      const next = new Set(s);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+
+  const setCollapsedPersist = (v: boolean) => {
+    setCollapsed(v);
+    try { localStorage.setItem(COLLAPSE_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+  };
+
+  // Cmd/Ctrl-K opens the command palette.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -25,44 +66,86 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => { setNavOpen(false); }, [location.pathname]);
+
   return (
-    <div className={styles.layout}>
+    <div className={`${styles.layout} ${collapsed ? styles.collapsed : ''}`}>
       <aside className={`${styles.sidebar} ${navOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <span className={styles.logo} aria-hidden>R</span>
-          <div className={styles.brandText}>
-            <strong>RIOS</strong>
-            <span>Reinsurance OS</span>
-          </div>
+          {!collapsed && (
+            <div className={styles.brandText}>
+              <strong>RIOS</strong>
+              <span>Reinsurance OS</span>
+            </div>
+          )}
+          <button
+            className={styles.collapseBtn}
+            onClick={() => setCollapsedPersist(!collapsed)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand' : 'Collapse'}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
+
         <nav className={styles.nav} aria-label="Primary">
-          {NAV_GROUPS.map((group) => {
-            const items = group.items.filter((i) => !i.permission || hasPermission(i.permission));
-            if (!items.length) return null;
+          {groups.map((group) => {
+            const open = collapsed || openGroups.has(group.label);
+            const isActiveGroup = group.label === activeGroup;
             return (
               <div key={group.label} className={styles.navGroup}>
-                <span className={styles.navGroupLabel}>{group.label}</span>
-                {items.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    className={({ isActive }) =>
-                      `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
-                    }
-                    onClick={() => setNavOpen(false)}
+                {collapsed ? (
+                  <span className={styles.collapsedDivider} aria-hidden />
+                ) : (
+                  <button
+                    type="button"
+                    className={`${styles.groupHeader} ${isActiveGroup ? styles.groupHeaderActive : ''}`}
+                    onClick={() => toggleGroup(group.label)}
+                    aria-expanded={open}
                   >
-                    <span className={styles.navIcon} aria-hidden>{item.icon}</span>
-                    {item.label}
-                  </NavLink>
-                ))}
+                    <group.icon className={styles.groupIcon} size={16} />
+                    <span className={styles.groupLabel}>{group.label}</span>
+                    <ChevronDown
+                      className={`${styles.groupChevron} ${open ? styles.groupChevronOpen : ''}`}
+                      size={15}
+                    />
+                  </button>
+                )}
+
+                <div className={`${styles.groupItems} ${open ? styles.groupItemsOpen : ''}`}>
+                  <div className={styles.groupItemsInner}>
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        title={collapsed ? item.label : undefined}
+                        className={({ isActive }) =>
+                          `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+                        }
+                      >
+                        <span className={styles.navIcon} aria-hidden>
+                          <item.icon size={18} strokeWidth={2} />
+                        </span>
+                        <span className={styles.navLabel}>{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
               </div>
             );
           })}
         </nav>
+
         <div className={styles.sidebarFooter}>
-          <button className={styles.assistantBtn} onClick={() => setAssistantOpen(true)}>
-            <span className={styles.assistantSpark} aria-hidden>✦</span>
-            Ask RIOS Assistant
+          <button
+            className={styles.assistantBtn}
+            onClick={() => setAssistantOpen(true)}
+            title="Ask RIOS Assistant"
+          >
+            <Sparkles size={18} className={styles.assistantSpark} />
+            {!collapsed && <span>Ask RIOS Assistant</span>}
           </button>
         </div>
       </aside>

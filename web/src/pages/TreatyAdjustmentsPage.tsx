@@ -83,7 +83,7 @@ export function TreatyAdjustmentsPage() {
     <>
       <PageHeader
         title="Treaty adjustments"
-        description="Profit commission, portfolio transfers, endorsements and commutation — an adjustments workbench."
+        description="Profit commission, portfolio transfers, endorsements and commutation - an adjustments workbench."
         actions={canWrite ? <Badge color="green">treaty:write granted</Badge> : <Badge color="slate">read-only</Badge>}
       />
 
@@ -171,7 +171,7 @@ function ProfitCommissionCard({ treaty, canWrite }: { treaty: TreatyOption; canW
   };
 
   const columns: Column<PcRun>[] = [
-    { key: 'period', header: 'Period', sortValue: (r) => r.period ?? '', render: (r) => r.period ?? '—' },
+    { key: 'period', header: 'Period', sortValue: (r) => r.period ?? '', render: (r) => r.period ?? '-' },
     { key: 'profit', header: 'Profit', align: 'right', sortValue: (r) => r.profitMinor, render: (r) => <span className={shared.money}>{formatMoney(r.profitMinor, r.currency)}</span> },
     { key: 'pc', header: 'Profit comm.', align: 'right', sortValue: (r) => r.profitCommissionMinor, render: (r) => <span className={shared.money}>{formatMoney(r.profitCommissionMinor, r.currency)}</span> },
     { key: 'date', header: 'Run', sortValue: (r) => r.createdAt, render: (r) => formatDate(r.createdAt) },

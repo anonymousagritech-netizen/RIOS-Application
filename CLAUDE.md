@@ -1,11 +1,11 @@
-# CLAUDE.md — RIOS orientation
+# CLAUDE.md - RIOS orientation
 
-**RIOS — Reinsurance Intelligent Operating System** is a metadata-driven, multi-tenant reinsurance ERP. This
+**RIOS - Reinsurance Intelligent Operating System** is a metadata-driven, multi-tenant reinsurance ERP. This
 file orients engineers and agents working in the repo. Full documentation is under [`docs/`](./docs/README.md);
 the product/engineering brief is `Reinsurance-ERP-Build-Brief.md` (its §-references appear throughout the docs).
 
-> **What this is:** a correct, secure, audited **foundation / vertical slice** — place → bind → account →
-> reconcile → claims, plus a guardrailed assistant — not a finished commercial product. Designed-for capability
+> **What this is:** a correct, secure, audited **foundation / vertical slice** - place → bind → account →
+> reconcile → claims, plus a guardrailed assistant - not a finished commercial product. Designed-for capability
 > is named in [docs/open-questions.md](./docs/open-questions.md), never silently faked. Document the reality.
 
 ## Repository layout (npm workspaces monorepo)
@@ -45,8 +45,8 @@ Useful: `npm run db:migrate`, `npm run db:seed`, `npm run build`, `npm run typec
 | `uw@demo.rios` | TREATY_UW | read config/parties, write+bind treaties, read accounting/claims |
 | `acct@demo.rios` | ACCOUNTANT | read; post accounting (no treaty write) |
 | `claims@demo.rios` | CLAIMS | read; write claims |
-| `broker@demo.rios` | PORTAL | broker portal — only its own party's contracts/statements/claims |
-| `cedent@demo.rios` | PORTAL | cedent portal — only its own party's contracts/statements/claims |
+| `broker@demo.rios` | PORTAL | broker portal - only its own party's contracts/statements/claims |
+| `cedent@demo.rios` | PORTAL | cedent portal - only its own party's contracts/statements/claims |
 
 ```bash
 curl -s localhost:4000/api/auth/login -H 'content-type: application/json' \
@@ -68,11 +68,11 @@ gate (403), and the assistant confirmation gate. It skips cleanly if no Postgres
 ## Key conventions (do not break these)
 
 - **Money is integer minor units**, never floats. Construct via `money()`/`fromMajor()` from `@rios/domain`;
-  same-currency arithmetic only (cross-currency throws — go through FX). DB columns are `*_minor bigint`; wire
+  same-currency arithmetic only (cross-currency throws - go through FX). DB columns are `*_minor bigint`; wire
   fields use a `…Minor` suffix. See [docs/domain-calculations.md](./docs/domain-calculations.md) §1 and
   [ADR 0003](./docs/adr/0003-money-as-minor-units.md).
 - **Metadata-driven config**: business vocabularies (statuses, LOBs, party roles, event types) are **code
-  lists**, not hard-coded enums. Add values via `POST /api/config/code-lists/:key/values` — **no deployment**.
+  lists**, not hard-coded enums. Add values via `POST /api/config/code-lists/:key/values` - **no deployment**.
   Never compare status string literals for customer-facing meaning. See
   [docs/configuration-guide.md](./docs/configuration-guide.md), [ADR 0004](./docs/adr/0004-metadata-driven-config.md).
 - **RLS tenant context**: every tenant-scoped query runs inside `runAs({ tenantId, userId }, …)` on the

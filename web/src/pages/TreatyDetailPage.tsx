@@ -65,7 +65,7 @@ export function TreatyDetailPage() {
   };
 
   const onTransitionClick = (to: string) => {
-    // Binding books the deposit premium — always confirm.
+    // Binding books the deposit premium - always confirm.
     if (to === 'BOUND' || to === 'CANCELLED' || to === 'COMMUTED') setConfirmTo(to);
     else runTransition(to);
   };
@@ -145,12 +145,12 @@ function StructureTab({ treaty, currency }: { treaty: ReturnType<typeof useTreat
     { key: 'attachment', header: 'Attachment', align: 'right', render: (l) => <span className={shared.money}>{formatMoney(l.attachmentMinor, l.currency)}</span> },
     { key: 'limit', header: 'Limit', align: 'right', render: (l) => <span className={shared.money}>{formatMoney(l.limitMinor, l.currency)}</span> },
     { key: 'aad', header: 'AAD', align: 'right', render: (l) => <span className={shared.money}>{formatMoney(l.aadMinor, l.currency)}</span> },
-    { key: 'rol', header: 'ROL', align: 'right', render: (l) => l.rateOnLine != null ? formatPercent(l.rateOnLine) : '—' },
+    { key: 'rol', header: 'ROL', align: 'right', render: (l) => l.rateOnLine != null ? formatPercent(l.rateOnLine) : '-' },
     {
       key: 'reinst',
       header: 'Reinstatements',
       align: 'right',
-      render: (l) => l.reinstatements == null ? '—' : (
+      render: (l) => l.reinstatements == null ? '-' : (
         <span>
           {l.reinstatements}
           {l.reinstatementRates?.length ? ` @ ${l.reinstatementRates.map((r) => formatPercent(r)).join(', ')}` : ''}
@@ -162,8 +162,8 @@ function StructureTab({ treaty, currency }: { treaty: ReturnType<typeof useTreat
   const partCols: Column<ParticipationDTO>[] = [
     { key: 'party', header: 'Reinsurer', render: (p) => <span className={shared.cellMain}>{p.partyName ?? p.partyId}</span> },
     { key: 'written', header: 'Written line', align: 'right', render: (p) => formatPercent(p.writtenLine) },
-    { key: 'signed', header: 'Signed line', align: 'right', render: (p) => p.signedLine != null ? formatPercent(p.signedLine) : '—' },
-    { key: 'order', header: 'Order', align: 'right', render: (p) => p.orderPct != null ? formatPercent(p.orderPct) : '—' },
+    { key: 'signed', header: 'Signed line', align: 'right', render: (p) => p.signedLine != null ? formatPercent(p.signedLine) : '-' },
+    { key: 'order', header: 'Order', align: 'right', render: (p) => p.orderPct != null ? formatPercent(p.orderPct) : '-' },
     { key: 'status', header: 'Status', align: 'right', render: (p) => <Badge color="slate">{titleCase(p.status)}</Badge> },
   ];
 
@@ -174,7 +174,7 @@ function StructureTab({ treaty, currency }: { treaty: ReturnType<typeof useTreat
         <Table columns={layerCols} rows={layers} rowKey={(l) => l.id} empty={<EmptyState title="No layers" message="This treaty has no structured layers." />} skeletonRows={3} />
       </section>
       <section>
-        <CardHeader title="Participations" subtitle={`${participations.length} reinsurer(s) — written vs signed lines`} />
+        <CardHeader title="Participations" subtitle={`${participations.length} reinsurer(s) - written vs signed lines`} />
         <Table columns={partCols} rows={participations} rowKey={(p) => p.id} empty={<EmptyState title="No participations" message="No reinsurers placed on this treaty yet." />} skeletonRows={3} />
       </section>
     </div>
@@ -197,7 +197,7 @@ function TermsTab({ terms }: { terms?: Record<string, unknown> }) {
 }
 
 function renderTermValue(key: string, value: unknown): string {
-  if (value == null) return '—';
+  if (value == null) return '-';
   if (typeof value === 'object') return JSON.stringify(value);
   if (typeof value === 'number' && /premium|amount|deposit|limit/i.test(key)) {
     return value.toLocaleString();
@@ -210,7 +210,7 @@ function FinancialsTab({ id, currency }: { id: string; currency: string }) {
   const cols: Column<FinancialEventDTO>[] = [
     { key: 'bookedAt', header: 'Booked', sortValue: (e) => e.bookedAt, render: (e) => formatDate(e.bookedAt) },
     { key: 'eventType', header: 'Type', render: (e) => <Badge color="indigo">{titleCase(e.eventType)}</Badge> },
-    { key: 'narrative', header: 'Narrative', render: (e) => e.narrative ?? '—' },
+    { key: 'narrative', header: 'Narrative', render: (e) => e.narrative ?? '-' },
     { key: 'direction', header: 'Dr/Cr', align: 'center', render: (e) => <Badge color={e.direction === 'DR' ? 'blue' : 'teal'}>{e.direction}</Badge> },
     { key: 'amount', header: 'Amount', align: 'right', sortValue: (e) => e.amountMinor, render: (e) => <span className={shared.money}>{formatMoney(e.amountMinor, e.currency || currency)}</span> },
   ];
@@ -234,7 +234,7 @@ function StatementTab({ id, canPost }: { id: string; canPost: boolean }) {
   const doPost = async () => {
     try {
       const res = await post.mutateAsync();
-      toast.success(res.reconciled ? 'Posted to GL — reconciled ✓' : 'Posted to GL');
+      toast.success(res.reconciled ? 'Posted to GL - reconciled ✓' : 'Posted to GL');
       setConfirm(false);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Posting failed');

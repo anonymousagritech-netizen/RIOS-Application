@@ -1,7 +1,7 @@
 /**
  * Data retention & legal hold (brief §14). Manages retention policies (per
  * entity type) and legal holds, and evaluates a record's disposition via the
- * pure @rios/domain engine (retentionVerdict) — a hold always overrides a
+ * pure @rios/domain engine (retentionVerdict) - a hold always overrides a
  * policy. retention:read to view, retention:write to author; mutations audited.
  */
 

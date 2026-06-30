@@ -1,5 +1,5 @@
 /**
- * Claims advanced module (brief §7.7) — depth on the claims domain.
+ * Claims advanced module (brief §7.7) - depth on the claims domain.
  *
  * Cash calls, reinstatement-premium automation (§7.7 step 5), recoveries and the
  * net (inuring) retained position (§7.7 step 6). Money figures come from
@@ -78,7 +78,7 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
         );
         const cashCallId = rows[0]!.id;
 
-        // A cash call is an advance on the loss — book a CASH_LOSS financial event.
+        // A cash call is an advance on the loss - book a CASH_LOSS financial event.
         await db.query(
           `insert into financial_event (tenant_id, contract_id, claim_id, event_type, direction, amount_minor, currency, narrative, created_by)
            values ($1,$2,$3,'CASH_LOSS','CR',$4,$5,'Cash call',$6)`,
@@ -261,7 +261,7 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
           [claim.id, amount.amount],
         );
 
-        // A recovery reduces the net loss — a debit on the reinsurer/loss account.
+        // A recovery reduces the net loss - a debit on the reinsurer/loss account.
         await db.query(
           `insert into financial_event (tenant_id, contract_id, claim_id, event_type, direction, amount_minor, currency, narrative, created_by)
            values ($1,$2,$3,'RECOVERY','DR',$4,$5,'Recovery',$6)`,

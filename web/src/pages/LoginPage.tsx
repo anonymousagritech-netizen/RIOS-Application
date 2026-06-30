@@ -86,7 +86,7 @@ export function LoginPage() {
         <div className={styles.brandBody}>
           <h1 className={styles.tagline}>The reinsurance operating system for modern carriers.</h1>
           <p className={styles.blurb}>
-            Treaty lifecycle, claims, accounting and configurable workflows — unified in one
+            Treaty lifecycle, claims, accounting and configurable workflows - unified in one
             confident, auditable platform.
           </p>
           <ul className={styles.featureList}>

@@ -1,9 +1,9 @@
 /**
- * Assistant evaluation harness (brief §12.7 — assistant guardrails & evaluation).
+ * Assistant evaluation harness (brief §12.7 - assistant guardrails & evaluation).
  * Runs a curated suite of prompts through the live assistant and checks each
  * response contains the expected signal (a route or keyword), returning a pass
  * rate. This is a real, reproducible regression check on the deterministic intent
- * engine — it catches a broken or drifted assistant before release.
+ * engine - it catches a broken or drifted assistant before release.
  */
 
 import type { FastifyInstance } from 'fastify';

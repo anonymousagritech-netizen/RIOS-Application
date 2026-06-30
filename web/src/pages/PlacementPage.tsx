@@ -101,8 +101,8 @@ export function PlacementPage() {
 
   const columns: Column<SlipItem>[] = useMemo(() => [
     { key: 'reference', header: 'Reference', sortValue: (s) => s.reference ?? '', render: (s) => <span className={shared.cellRef}>{s.reference}</span> },
-    { key: 'umr', header: 'UMR', sortValue: (s) => s.umr ?? '', render: (s) => s.umr ?? '—' },
-    { key: 'order', header: 'Order', align: 'right', sortValue: (s) => s.orderPct ?? 0, render: (s) => (s.orderPct != null ? formatPercent(s.orderPct) : '—') },
+    { key: 'umr', header: 'UMR', sortValue: (s) => s.umr ?? '', render: (s) => s.umr ?? '-' },
+    { key: 'order', header: 'Order', align: 'right', sortValue: (s) => s.orderPct ?? 0, render: (s) => (s.orderPct != null ? formatPercent(s.orderPct) : '-') },
     { key: 'written', header: 'Written', align: 'right', sortValue: (s) => s.totalWritten, render: (s) => formatPercent(s.totalWritten) },
     { key: 'signed', header: 'Signed', align: 'right', sortValue: (s) => s.totalSigned, render: (s) => formatPercent(s.totalSigned) },
     {
@@ -141,7 +141,7 @@ export function PlacementPage() {
               aria-label="Select a contract"
             >
               <option value="">Select a contract…</option>
-              {treatyList.map((t) => <option key={t.id} value={t.id}>{t.reference} — {t.name}</option>)}
+              {treatyList.map((t) => <option key={t.id} value={t.id}>{t.reference} - {t.name}</option>)}
             </Select>
           </div>
           <div className={shared.spacer} />
@@ -190,7 +190,7 @@ function SlipDetailCard({ slipId, canWrite, statusColors }: { slipId: string; ca
   const lineColumns: Column<MarketLine>[] = [
     { key: 'party', header: 'Market', sortValue: (l) => l.partyName, render: (l) => <span className={shared.cellMain}>{l.partyName}</span> },
     { key: 'written', header: 'Written', align: 'right', sortValue: (l) => l.writtenLine, render: (l) => formatPercent(l.writtenLine) },
-    { key: 'signed', header: 'Signed', align: 'right', sortValue: (l) => l.signedLine ?? 0, render: (l) => (l.signedLine != null ? formatPercent(l.signedLine) : '—') },
+    { key: 'signed', header: 'Signed', align: 'right', sortValue: (l) => l.signedLine ?? 0, render: (l) => (l.signedLine != null ? formatPercent(l.signedLine) : '-') },
     { key: 'status', header: 'Status', align: 'right', sortValue: (l) => l.status, render: (l) => <StatusPill status={l.status} metaColors={statusColors} /> },
   ];
 

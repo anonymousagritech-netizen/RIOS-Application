@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
       if (process.env[key] === undefined) process.env[key] = val;
     }
   } catch {
-    /* no .env file — rely on the real environment */
+    /* no .env file - rely on the real environment */
   }
 })();
 
@@ -34,9 +34,9 @@ function required(name: string, fallback?: string): string {
 export const config = {
   env: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 4000),
-  /** Owner connection — used for migrations & seeding only (bypasses RLS). */
+  /** Owner connection - used for migrations & seeding only (bypasses RLS). */
   databaseUrl: required('DATABASE_URL', 'postgres://rios:rios@localhost:5432/rios'),
-  /** Application connection — low-privilege role; RLS enforced. */
+  /** Application connection - low-privilege role; RLS enforced. */
   databaseAppUrl:
     process.env.DATABASE_APP_URL ?? process.env.DATABASE_URL ?? 'postgres://rios_app:rios_app@localhost:5432/rios',
   jwtSecret: required('JWT_SECRET', 'dev-only-change-me-please-32-characters-min'),

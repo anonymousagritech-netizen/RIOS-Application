@@ -1,5 +1,5 @@
 /**
- * HRMS module (brief §9.14 — HR: employees, departments, leave).
+ * HRMS module (brief §9.14 - HR: employees, departments, leave).
  * Departments hold employees; employees file leave requests that managers
  * decide. Approving a leave request flips the employee to 'on_leave'.
  */

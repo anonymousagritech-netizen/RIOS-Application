@@ -41,7 +41,7 @@ describe('Disposition evaluation', () => {
   it('keeps an aged-out claim because a legal hold covers claims', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };
-    // A very old claim (well past 10 years) — but the seeded claim hold overrides.
+    // A very old claim (well past 10 years) - but the seeded claim hold overrides.
     const res = await app.inject({
       method: 'POST', url: '/api/retention/evaluate', headers: auth,
       payload: { entityType: 'claim', recordedAt: '2000-01-01T00:00:00Z' },

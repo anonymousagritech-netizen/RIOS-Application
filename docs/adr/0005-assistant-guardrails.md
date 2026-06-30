@@ -1,4 +1,4 @@
-# ADR 0005 — Assistant guardrails: deterministic, permission-bound, confirmation-gated
+# ADR 0005 - Assistant guardrails: deterministic, permission-bound, confirmation-gated
 
 **Status:** Accepted · **Date:** 2026 · **Deciders:** AI Engineer, Security Architect, Reinsurance Domain Expert, CTO
 **Brief refs:** §12.4 (hard requirements), §12.6 (graceful degradation), §9.15, §4.3
@@ -18,11 +18,11 @@ Implement the assistant as a **deterministic intent engine** that prepares actio
 itself:
 
 - **Intent recognition is deterministic** (rule/intent matching over the message), so behaviour is
-  predictable and testable — not dependent on a model's mood. An LLM may *assist* phrasing/summaries, but
+  predictable and testable - not dependent on a model's mood. An LLM may *assist* phrasing/summaries, but
   the action contract is deterministic.
 - **Two-phase, confirmation-gated mutation.** `POST /api/assistant` *prepares* an `AssistantAction`
   (`requiresConfirmation: true`, a human-readable `preview` of exactly what will change) but does **not**
-  execute it. A separate `POST /api/assistant/confirm` executes — and only after re-checking permissions.
+  execute it. A separate `POST /api/assistant/confirm` executes - and only after re-checking permissions.
 - **Permission-bound, same path as a human.** Confirmation runs through the same RBAC checks as the
   equivalent direct API; an under-permissioned user is refused **403** (proven by integration test:
   `acct@demo.rios` cannot confirm `create_treaty`).

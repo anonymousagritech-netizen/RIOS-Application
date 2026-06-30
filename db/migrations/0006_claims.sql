@@ -1,5 +1,5 @@
 -- =============================================================================
--- RIOS — Migration 0006: Claims, events, reserves & recoveries
+-- RIOS - Migration 0006: Claims, events, reserves & recoveries
 -- Brief §7.7 (claims & recoveries lifecycle), §9.7, §28.4 (claim state machine)
 -- =============================================================================
 

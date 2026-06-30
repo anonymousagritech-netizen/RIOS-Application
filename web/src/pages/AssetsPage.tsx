@@ -189,10 +189,10 @@ function AssetsTab({ canWrite }: { canWrite: boolean }) {
     const cols: Column<Asset>[] = [
       { key: 'tag', header: 'Tag', sortValue: (a) => a.tag, render: (a) => <span className={shared.cellRef}>{a.tag}</span> },
       { key: 'name', header: 'Name', sortValue: (a) => a.name, render: (a) => <span className={shared.cellMain}>{a.name}</span> },
-      { key: 'category', header: 'Category', sortValue: (a) => a.category ?? '', render: (a) => a.category ? titleCase(a.category) : <span className={shared.cellSub}>—</span> },
+      { key: 'category', header: 'Category', sortValue: (a) => a.category ?? '', render: (a) => a.category ? titleCase(a.category) : <span className={shared.cellSub}>-</span> },
       { key: 'assignee', header: 'Assignee', sortValue: (a) => a.assigneeName ?? '', render: (a) => a.assigneeName ?? <span className={shared.cellSub}>Unassigned</span> },
       { key: 'status', header: 'Status', sortValue: (a) => a.status, render: (a) => <StatusPill status={a.status} /> },
-      { key: 'value', header: 'Value', align: 'right', sortValue: (a) => a.valueMinor ?? 0, render: (a) => <span className={shared.money}>{a.valueMinor != null ? formatMoney(a.valueMinor, a.currency ?? 'USD') : '—'}</span> },
+      { key: 'value', header: 'Value', align: 'right', sortValue: (a) => a.valueMinor ?? 0, render: (a) => <span className={shared.money}>{a.valueMinor != null ? formatMoney(a.valueMinor, a.currency ?? 'USD') : '-'}</span> },
     ];
     if (canWrite) {
       cols.push({
@@ -367,7 +367,7 @@ function LicensesTab({ canWrite }: { canWrite: boolean }) {
 
   const columns: Column<License>[] = [
     { key: 'name', header: 'Name', sortValue: (l) => l.name, render: (l) => <span className={shared.cellMain}>{l.name}</span> },
-    { key: 'vendor', header: 'Vendor', sortValue: (l) => l.vendor ?? '', render: (l) => l.vendor ?? <span className={shared.cellSub}>—</span> },
+    { key: 'vendor', header: 'Vendor', sortValue: (l) => l.vendor ?? '', render: (l) => l.vendor ?? <span className={shared.cellSub}>-</span> },
     { key: 'seats', header: 'Seats', align: 'right', sortValue: (l) => l.seatsUsed, render: (l) => <span className={shared.money}>{l.seatsUsed} / {l.seatsTotal}</span> },
     { key: 'available', header: 'Available', align: 'right', sortValue: (l) => l.seatsAvailable, render: (l) => <span className={shared.money}>{l.seatsAvailable}</span> },
     {
@@ -507,8 +507,8 @@ function EntitlementsTab({ canWrite }: { canWrite: boolean }) {
   const columns: Column<Entitlement>[] = useMemo(() => {
     const cols: Column<Entitlement>[] = [
       { key: 'featureKey', header: 'Feature key', sortValue: (e) => e.featureKey, render: (e) => <span className={shared.cellRef}>{e.featureKey}</span> },
-      { key: 'plan', header: 'Plan', sortValue: (e) => e.plan ?? '', render: (e) => e.plan ? titleCase(e.plan) : <span className={shared.cellSub}>—</span> },
-      { key: 'limit', header: 'Limit', align: 'right', sortValue: (e) => e.limitValue ?? -1, render: (e) => e.limitValue != null ? e.limitValue : <span className={shared.cellSub}>—</span> },
+      { key: 'plan', header: 'Plan', sortValue: (e) => e.plan ?? '', render: (e) => e.plan ? titleCase(e.plan) : <span className={shared.cellSub}>-</span> },
+      { key: 'limit', header: 'Limit', align: 'right', sortValue: (e) => e.limitValue ?? -1, render: (e) => e.limitValue != null ? e.limitValue : <span className={shared.cellSub}>-</span> },
       {
         key: 'state', header: 'State',
         render: (e) => (
@@ -542,7 +542,7 @@ function EntitlementsTab({ canWrite }: { canWrite: boolean }) {
   return (
     <>
       <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
-        <CardHeader title="Feature entitlements" subtitle="Toggle a feature per tenant instantly — no deployment required." />
+        <CardHeader title="Feature entitlements" subtitle="Toggle a feature per tenant instantly - no deployment required." />
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} feature{rows.length === 1 ? '' : 's'}</span>
         {canWrite && <Button size="sm" variant="primary" onClick={() => setAdding(true)} icon={<span aria-hidden>+</span>}>Add entitlement</Button>}
@@ -587,7 +587,7 @@ function AddEntitlementModal({ open, onClose }: { open: boolean; onClose: () => 
       open={open}
       onClose={close}
       title="Add entitlement"
-      description="Define a feature flag for this tenant — it takes effect immediately."
+      description="Define a feature flag for this tenant - it takes effect immediately."
       size="sm"
       footer={
         <>

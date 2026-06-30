@@ -1,5 +1,5 @@
 /**
- * Technical & financial accounting primitives — brief §7.6.
+ * Technical & financial accounting primitives - brief §7.6.
  *
  * A Financial Event is the immutable, reinsurance-specific monetary fact
  * (premium, commission, tax, paid loss, reserve movement, reinstatement premium,
@@ -118,7 +118,7 @@ export interface PostingLeg {
 }
 
 export interface LedgerPosting {
-  /** The financial event(s) this posting derives from — preserves lineage (§18.4). */
+  /** The financial event(s) this posting derives from - preserves lineage (§18.4). */
   sourceEventIds: string[];
   legs: PostingLeg[];
 }

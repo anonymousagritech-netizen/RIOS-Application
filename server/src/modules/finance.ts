@@ -1,5 +1,5 @@
 /**
- * Finance module (brief §9.8) — GL / AR / AP / cash / bank.
+ * Finance module (brief §9.8) - GL / AR / AP / cash / bank.
  *
  * The read side exposes the general-ledger chart and a trial balance that proves
  * the GL self-balances (total debits === total credits). The sub-ledgers (AR/AP)

@@ -2,7 +2,7 @@
  * Email & SMS engines (brief §3). A transactional message outbox: callers
  * enqueue a message, a delivery step hands it to a provider and records the
  * outcome. The mechanics (queue, status, audit) are real and tested; the dev
- * provider is in-process (it marks queued messages 'sent' and logs them) — wire
+ * provider is in-process (it marks queued messages 'sent' and logs them) - wire
  * a real SMTP/SMS gateway in production (see docs/open-questions.md).
  * integration:read to view, integration:write to send/deliver.
  */

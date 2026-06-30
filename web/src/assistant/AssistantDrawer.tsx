@@ -79,7 +79,7 @@ export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () 
   const doConfirm = async (action: AssistantAction) => {
     try {
       const res = await confirm.mutateAsync({ kind: action.kind, preview: action.preview });
-      toast.success(`Done — ${action.description}`);
+      toast.success(`Done - ${action.description}`);
       setTurns((t) => [
         ...t,
         { role: 'assistant', text: `✓ Confirmed: ${action.description} (ref ${res.id ?? action.id}).` },
@@ -140,7 +140,7 @@ export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () 
                         <strong>{a.description}</strong>
                         {a.requiresConfirmation && (
                           <span className={styles.actionNote}>
-                            {a.destructive ? 'Destructive — ' : ''}requires confirmation
+                            {a.destructive ? 'Destructive - ' : ''}requires confirmation
                           </span>
                         )}
                       </div>

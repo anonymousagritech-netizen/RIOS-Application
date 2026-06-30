@@ -1,4 +1,4 @@
-/* RIOS design tokens. Semantic custom properties only — components must never
+/* RIOS design tokens. Semantic custom properties only - components must never
    hard-code colours. Light is the default; [data-theme="dark"] overrides. */
 
 :root {
@@ -50,9 +50,10 @@
   --motion-slow: 320ms cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Layout */
-  --nav-width: 244px;
-  --topbar-height: 56px;
-  --content-max: 1320px;
+  --nav-width: 264px;
+  --nav-width-collapsed: 72px;
+  --topbar-height: 60px;
+  --content-max: 1640px;
 
   /* ---- Light palette ---- */
   --bg: #f6f7f9;
@@ -65,10 +66,19 @@
   --text-muted: #5d6675;
   --text-faint: #8a93a3;
 
+  --sidebar-bg: #ffffff;
+
   --primary: #4f46e5;
   --primary-hover: #4338ca;
   --primary-fg: #ffffff;
   --primary-soft: #eef0fe;
+
+  /* Accent palette for gradients, charts and highlights */
+  --accent-violet: #7c3aed;
+  --accent-cyan: #0891b2;
+  --accent-orange: #ea580c;
+  --accent-emerald: #059669;
+  --accent-rose: #e11d48;
 
   --focus-ring: color-mix(in srgb, var(--primary) 45%, transparent);
   --overlay: rgba(17, 21, 28, 0.42);
@@ -107,10 +117,18 @@
   --text-muted: #9aa3b2;
   --text-faint: #69727f;
 
+  --sidebar-bg: #0f1219;
+
   --primary: #7c74f6;
   --primary-hover: #8c84ff;
   --primary-fg: #0c0e13;
   --primary-soft: #1e1f3a;
+
+  --accent-violet: #a78bfa;
+  --accent-cyan: #22d3ee;
+  --accent-orange: #fb923c;
+  --accent-emerald: #34d399;
+  --accent-rose: #fb7185;
 
   --focus-ring: color-mix(in srgb, var(--primary) 55%, transparent);
   --overlay: rgba(0, 0, 0, 0.6);

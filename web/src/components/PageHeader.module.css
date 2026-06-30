@@ -7,6 +7,6 @@
   flex-wrap: wrap;
 }
 .text { display: flex; flex-direction: column; gap: var(--space-2); }
-.title { font-size: var(--text-2xl); font-weight: var(--weight-semibold); }
-.desc { color: var(--text-muted); font-size: var(--text-base); max-width: 70ch; }
+.title { font-size: var(--text-2xl); font-weight: var(--weight-bold); letter-spacing: -0.02em; }
+.desc { color: var(--text-muted); font-size: var(--text-base); max-width: 80ch; }
 .actions { display: flex; gap: var(--space-2); flex-shrink: 0; }

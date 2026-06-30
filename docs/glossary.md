@@ -1,4 +1,4 @@
-# RIOS — Glossary
+# RIOS - Glossary
 
 **Version:** 1.0 · **Status:** Reference · Self-contained (derived from brief §25, kept consistent with the code)
 
@@ -27,13 +27,13 @@ technical/delivery terms. Where the platform implements a term, the implementing
 - **CSM (Contractual Service Margin):** unearned profit recognised over time under IFRS 17. *Designed-for.*
 - **Direction (DR/CR):** debit/credit of a financial event from the **cedent's perspective** (premium = DR,
   commission/paid-loss/recovery = CR). *Implemented:* `accounting.ts`.
-- **EBOT / ECOT:** Electronic Back-Office / Claims-Office Transactions — market messaging standards.
+- **EBOT / ECOT:** Electronic Back-Office / Claims-Office Transactions - market messaging standards.
   *Designed-for.*
 - **EPI (Estimated Premium Income):** projected premium used to set deposit/minimum premiums.
   *Implemented:* `minimumAndDepositPremium`.
 - **Facultative:** reinsurance of a single, individually assessed risk. *Modelled as* `contract_kind = 'FAC'`.
 - **Financial event:** an immutable technical-accounting fact (premium, commission, tax, paid loss,
-  reserve movement, reinstatement premium, portfolio transfer, deposit/interest) — the source of the
+  reserve movement, reinstatement premium, portfolio transfer, deposit/interest) - the source of the
   reconcilable chain. *Implemented:* `accounting.ts`, `financial_event` table.
 - **GMM/BBA, PAA, VFA:** IFRS 17 measurement models. *Designed-for.*
 - **IBNR / IBNER:** incurred but not reported / not enough reported reserves. *Designed-for at portfolio grain.*
@@ -53,7 +53,7 @@ technical/delivery terms. Where the platform implements a term, the implementing
   `programme` table.
 - **Quota Share / Surplus:** proportional treaty forms (fixed percentage / retention-based lines).
   *Implemented:* `quotaShareCession`, `surplusCession`.
-- **RDS:** Realistic Disaster Scenario — prescribed exposure stress scenarios. *Designed-for.*
+- **RDS:** Realistic Disaster Scenario - prescribed exposure stress scenarios. *Designed-for.*
 - **Reinstatement (premium):** restoring exhausted XL limit after a loss, usually for additional premium
   (pro-rata as to time/amount). *Implemented:* `reinstatementPremium`.
 - **Retrocession / retrocessionaire:** reinsurance of a reinsurer / the party providing it. *Modelled as*

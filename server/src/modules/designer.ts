@@ -1,7 +1,7 @@
 /**
  * Designer surfaces (brief §10.3): the no-code Workflow Designer and Business
- * Rules engine. Both author *metadata* — versioned `config_document` rows of
- * `kind: 'workflow'` and `kind: 'rule'` — and both interpret it with the pure
+ * Rules engine. Both author *metadata* - versioned `config_document` rows of
+ * `kind: 'workflow'` and `kind: 'rule'` - and both interpret it with the pure
  * engines in `@rios/domain` (validateWorkflow/applyEvent, evaluateRuleSet). No
  * definition ever executes code; the server only ever interprets a JSON AST.
  *

@@ -202,7 +202,7 @@ export function ClaimsRecoveriesPage() {
               <option value="">{isLoading ? 'Loading claims…' : 'Select a claim…'}</option>
               {claims.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {(c.reference ?? c.id)} — {c.description ?? 'Untitled claim'}
+                  {(c.reference ?? c.id)} - {c.description ?? 'Untitled claim'}
                 </option>
               ))}
             </Select>
@@ -249,7 +249,7 @@ function RecoveriesTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite: bo
   const columns: Column<RecoveryItem>[] = [
     { key: 'type', header: 'Type', sortValue: (r) => r.recoveryType, render: (r) => <Badge color="blue">{titleCase(r.recoveryType)}</Badge> },
     { key: 'amount', header: 'Amount', align: 'right', sortValue: (r) => r.amountMinor, render: (r) => <span className={shared.money}>{formatMoney(r.amountMinor, r.currency)}</span> },
-    { key: 'status', header: 'Status', render: (r) => <span className={shared.cellSub}>{r.status ? titleCase(r.status) : '—'}</span> },
+    { key: 'status', header: 'Status', render: (r) => <span className={shared.cellSub}>{r.status ? titleCase(r.status) : '-'}</span> },
     { key: 'collected', header: 'Collected', render: (r) => formatDate(r.collectedDate) },
     { key: 'created', header: 'Booked', sortValue: (r) => r.createdAt ?? '', render: (r) => formatDate(r.createdAt) },
   ];
@@ -327,7 +327,7 @@ function AddRecoveryModal({ claim, open, onClose }: { claim: ClaimPickItem; open
         <FormField label={`Amount (major units of ${claim.currency})`} required>
           <Input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 50000" />
         </FormField>
-        <FormField label="Recovery contract" hint="Optional — the inuring contract the recovery flows from.">
+        <FormField label="Recovery contract" hint="Optional - the inuring contract the recovery flows from.">
           <Select value={recoveryContractId} onChange={(e) => setRecoveryContractId(e.target.value)}>
             <option value="">None</option>
             {(treaty?.id ? [{ id: treaty.id, name: 'This claim’s treaty' }] : []).map((t) => (

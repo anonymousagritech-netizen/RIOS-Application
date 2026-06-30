@@ -1,9 +1,9 @@
 /**
- * Catastrophe analytics (brief §13 — cat analysis / PML / RDS).
+ * Catastrophe analytics (brief §13 - cat analysis / PML / RDS).
  *
  * Works from an Event Loss Table (ELT): each potential event carries an annual
  * occurrence rate (frequency λ) and a loss. From it we derive the standard
- * actuarial cat metrics — Average Annual Loss, the occurrence exceedance
+ * actuarial cat metrics - Average Annual Loss, the occurrence exceedance
  * probability (OEP) curve, and the loss at a given return period (PML). Pure
  * and unit-tested, so the numbers are reproducible. Losses are integer minor
  * units; rates are events-per-year (e.g. 0.01 = a 1-in-100 event).

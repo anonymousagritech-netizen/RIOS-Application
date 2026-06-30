@@ -1,5 +1,5 @@
 /**
- * CRM module (brief §9.11 — relationship activity & sales pipeline).
+ * CRM module (brief §9.11 - relationship activity & sales pipeline).
  *
  * Activities are touch-points on a party (calls/emails/meetings/notes/tasks);
  * opportunities track the sales pipeline by stage with a probability-weighted

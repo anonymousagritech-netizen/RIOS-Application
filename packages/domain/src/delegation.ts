@@ -1,9 +1,9 @@
 /**
- * Approval delegation (brief §3 — approval & delegation engine). Pure resolution
+ * Approval delegation (brief §3 - approval & delegation engine). Pure resolution
  * of who may act on whose behalf: a delegation grants a delegate the delegator's
  * approval authority for a time window, optionally scoped to one permission. The
  * server records delegations and asks this module, at decision time, whether a
- * delegate is currently entitled to act. Clock-free — `now` is passed in.
+ * delegate is currently entitled to act. Clock-free - `now` is passed in.
  */
 
 export interface Delegation {

@@ -4,7 +4,7 @@
  * Retrocession is outwards protection: the tenant (as retrocedent) cedes part of
  * its assumed book to a retrocessionaire. Contracts are direction='OUTWARDS'
  * (kind 'RETROCESSION'). The net-position view sums premium Financial Events on
- * inwards vs outwards contracts to show gross / ceded / net per currency — the
+ * inwards vs outwards contracts to show gross / ceded / net per currency - the
  * same party can appear as reinsurer on the way in and cedent on the way out
  * (§29.3). Money is summed with @rios/domain so currencies never mix.
  */

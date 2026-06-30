@@ -42,7 +42,7 @@ database:
   url: "postgres://rios:rios@rios-postgres:5432/rios"
   appUrl: "postgres://rios_app:rios_app@rios-postgres:5432/rios"
 
-# Secrets — supply via --set or a sealed secret in real environments.
+# Secrets - supply via --set or a sealed secret in real environments.
 secrets:
   jwtSecret: "change-me-in-production-at-least-32-characters"
   anthropicApiKey: ""

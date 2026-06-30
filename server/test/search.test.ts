@@ -38,7 +38,7 @@ describe('Global search', () => {
     expect(hit.url).toMatch(/^\/parties\//);
   });
 
-  it('respects per-entity permissions — a portal user sees no privileged entities', async () => {
+  it('respects per-entity permissions - a portal user sees no privileged entities', async () => {
     if (!dbUp) return;
     // broker@ holds only portal:read, so none of the search sources are allowed.
     const auth = { authorization: `Bearer ${await loginToken('broker@demo.rios')}` };
