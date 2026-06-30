@@ -11,10 +11,20 @@
 -- ---------------------------------------------------------------------------
 -- Application role
 -- ---------------------------------------------------------------------------
+-- The app role password is provided at migrate time via the GUC
+-- `rios.app_role_password` (set by the migrate runner from RIOS_APP_DB_PASSWORD)
+-- and falls back to a strong default. Managed providers (e.g. Neon) reject weak
+-- passwords, so this must never be a trivial literal. Keep the value in sync with
+-- the password in DATABASE_APP_URL.
 do $$
+declare
+  pw text := coalesce(nullif(current_setting('rios.app_role_password', true), ''),
+                      'Rios9Mqlym0Wq5kL3dOSM1ZE');
 begin
   if not exists (select 1 from pg_roles where rolname = 'rios_app') then
-    create role rios_app login password 'rios_app';
+    execute format('create role rios_app login password %L', pw);
+  else
+    execute format('alter role rios_app with login password %L', pw);
   end if;
 end$$;
 

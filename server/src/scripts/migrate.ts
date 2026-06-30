@@ -29,6 +29,14 @@ async function main(): Promise<void> {
     const client = await ownerPool.connect();
     try {
       await client.query('begin');
+      // Let 0008 pick up an externally-provided app-role password (managed
+      // providers reject weak ones); absent this, the migration's strong
+      // default is used. Transaction-local so it never leaks past this file.
+      if (process.env.RIOS_APP_DB_PASSWORD) {
+        await client.query(`select set_config('rios.app_role_password', $1, true)`, [
+          process.env.RIOS_APP_DB_PASSWORD,
+        ]);
+      }
       await client.query(sql);
       await client.query(`insert into schema_migrations (filename) values ($1)`, [file]);
       await client.query('commit');
