@@ -16,6 +16,7 @@ import { DefinitionList } from '../components/Feedback';
 import { formatMoney, formatDateTime, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
+import local from './RegulatoryReturnsPage.module.css';
 
 /* ---------------- Types (confirmed from server/src/modules/regulatoryAdvanced.ts) ---------------- */
 interface Ifrs17Group {
@@ -193,7 +194,7 @@ function Ifrs17Tab({ canRun }: { canRun: boolean }) {
       <div className={styles.stack}>
         <Card>
           <CardHeader title="Measurement group" subtitle="Pick an IFRS 17 group to measure." />
-          <div className={shared.grid2} style={{ display: 'grid' }}>
+          <div className={`${shared.grid2} ${local.formGrid}`}>
             <FormField label="Group" required>
               <Select value={groupId} onChange={(e) => setGroupId(e.target.value)} disabled={isLoading} aria-label="Select a group">
                 <option value="">{isLoading ? 'Loading groups…' : 'Select a group…'}</option>
@@ -246,8 +247,8 @@ function GmmCard({ group, canRun }: { group: Ifrs17Group; canRun: boolean }) {
     <Card>
       <CardHeader title="Measure GMM" subtitle="General Measurement Model - present values in major units." />
       {canRun ? (
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <div className={shared.grid3} style={{ display: 'grid' }}>
+        <form onSubmit={submit} className={local.formStack}>
+          <div className={`${shared.grid3} ${local.formGrid}`}>
             <FormField label="PV of premiums" hint={`Major units of ${group.currency}.`}>
               <Input type="number" step="any" value={pvPremiums} onChange={(e) => setPvPremiums(e.target.value)} placeholder="e.g. 1000000" />
             </FormField>
@@ -258,7 +259,7 @@ function GmmCard({ group, canRun }: { group: Ifrs17Group; canRun: boolean }) {
               <Input type="number" step="any" value={riskAdjustment} onChange={(e) => setRiskAdjustment(e.target.value)} placeholder="e.g. 50000" />
             </FormField>
           </div>
-          {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+          {error && <p className={local.error} role="alert">{error}</p>}
           <div>
             <Button variant="primary" onClick={submit} loading={measure.isPending}>Measure GMM</Button>
           </div>
@@ -268,7 +269,7 @@ function GmmCard({ group, canRun }: { group: Ifrs17Group; canRun: boolean }) {
       )}
 
       {result && (
-        <div style={{ marginTop: 'var(--space-5)' }}>
+        <div className={local.resultBlock}>
           <CardHeader
             title="GMM result"
             actions={result.onerous ? <StatusPill status="ONEROUS" label="Onerous" metaColors={{ ONEROUS: 'red' }} /> : <Badge color="green">Not onerous</Badge>}
@@ -325,8 +326,8 @@ function RollforwardCard({ group, canRun }: { group: Ifrs17Group; canRun: boolea
     <Card>
       <CardHeader title="CSM roll-forward" subtitle="Accrete interest, recognise changes and release CSM for the period." />
       {canRun ? (
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <div className={shared.grid2} style={{ display: 'grid' }}>
+        <form onSubmit={submit} className={local.formStack}>
+          <div className={`${shared.grid2} ${local.formGrid}`}>
             <FormField label="Opening CSM" hint={`Major units of ${group.currency}.`}>
               <Input type="number" step="any" value={openingCsm} onChange={(e) => setOpeningCsm(e.target.value)} placeholder="e.g. 500000" />
             </FormField>
@@ -346,7 +347,7 @@ function RollforwardCard({ group, canRun }: { group: Ifrs17Group; canRun: boolea
               <Input type="number" step="any" value={coverageRemaining} onChange={(e) => setCoverageRemaining(e.target.value)} placeholder="900" />
             </FormField>
           </div>
-          {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+          {error && <p className={local.error} role="alert">{error}</p>}
           <div>
             <Button variant="primary" onClick={submit} loading={roll.isPending}>Run roll-forward</Button>
           </div>
@@ -356,7 +357,7 @@ function RollforwardCard({ group, canRun }: { group: Ifrs17Group; canRun: boolea
       )}
 
       {result && (
-        <div style={{ marginTop: 'var(--space-5)' }}>
+        <div className={local.resultBlock}>
           <CardHeader title="Roll-forward result" />
           <DefinitionList
             items={[
@@ -386,7 +387,7 @@ function MeasurementsCard({ group }: { group: Ifrs17Group }) {
 
   return (
     <Card padded={false}>
-      <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+      <div className={local.cardPad}>
         <CardHeader title="Measurement history" subtitle="GMM, VFA and roll-forward measurements for this group." />
       </div>
       <Table
@@ -441,7 +442,7 @@ function ReturnsTab({ canRun }: { canRun: boolean }) {
     {
       key: 'action', header: '', align: 'right',
       render: (r) => (
-        <div className={shared.rowGap} style={{ display: 'inline-flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+        <div className={`${shared.rowGap} ${local.actionRow}`}>
           <Button size="sm" variant="ghost" onClick={() => setViewId(r.id)}>View</Button>
           {canRun && r.status !== 'approved' && (
             <Button size="sm" variant="secondary" onClick={() => onApprove(r.id)} loading={approve.isPending}>Approve</Button>
@@ -457,7 +458,7 @@ function ReturnsTab({ canRun }: { canRun: boolean }) {
         <Card>
           <CardHeader title="Generate return" subtitle="Prepare a governed regulatory pack from your tenant data. Packs start prepared and must be approved." />
           {canRun ? (
-            <div className={shared.rowGap} style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-3)' }}>
+            <div className={`${shared.rowGap} ${local.generateRow}`}>
               <FormField label="Return kind">
                 <Select value={genKind} onChange={(e) => setGenKind(e.target.value as ReturnKind)}>
                   {RETURN_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
@@ -474,7 +475,7 @@ function ReturnsTab({ canRun }: { canRun: boolean }) {
         </Card>
 
         <Card padded={false}>
-          <div style={{ padding: 'var(--space-4) var(--space-5) 0' }} className={shared.toolbar}>
+          <div className={`${local.cardPad} ${shared.toolbar}`}>
             <CardHeader title="Prepared returns" subtitle="Regulatory return packs and their approval status." />
             <div className={shared.spacer} />
             <div className={shared.filter}>
@@ -533,20 +534,8 @@ function ReturnModal({ id, canRun, onApprove, approving, onClose }: {
               { term: 'Prepared', value: formatDateTime(data.createdAt) },
             ]}
           />
-          <div style={{ marginTop: 'var(--space-4)' }}>
-            <pre
-              style={{
-                margin: 0,
-                padding: 'var(--space-4)',
-                background: 'var(--surface-2)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                fontSize: 'var(--text-xs)',
-                fontFamily: 'var(--font-mono)',
-                overflow: 'auto',
-                maxHeight: '360px',
-              }}
-            >
+          <div className={local.preWrap}>
+            <pre className={local.jsonPre}>
               {JSON.stringify(data.data ?? {}, null, 2)}
             </pre>
           </div>

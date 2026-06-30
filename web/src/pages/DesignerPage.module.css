@@ -1,0 +1,21 @@
+.tabBody { padding: var(--space-5); }
+
+.stack5 { display: grid; gap: var(--space-5); }
+
+.introText { margin-bottom: var(--space-3); }
+
+.detailBody { padding: var(--space-5); display: grid; gap: var(--space-5); }
+.sectionHeading { margin-bottom: var(--space-2); }
+.badgeRow { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+.simulator { border-top: 1px solid var(--border); padding-top: var(--space-4); }
+.simHeading { margin-bottom: var(--space-3); }
+.toolbar { display: flex; gap: var(--space-4); align-items: flex-end; flex-wrap: wrap; }
+.field { min-width: 180px; }
+.simResult { margin-top: var(--space-3); }
+
+.contextMono { font-family: var(--font-mono); }
+.evaluateRow { margin-top: var(--space-3); }
+.outcome { margin-top: var(--space-4); display: grid; gap: var(--space-2); }
+.errorText { color: var(--c-red); }
+.warningText { color: var(--c-amber); }

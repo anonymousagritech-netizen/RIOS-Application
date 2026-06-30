@@ -15,6 +15,7 @@ import { PageLoader } from '../components/Feedback';
 import { formatMoney, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
 import shared from './shared.module.css';
+import styles from './ProcurementPage.module.css';
 
 /* ---------------- Types ---------------- */
 interface Vendor {
@@ -163,10 +164,10 @@ export function ProcurementPage() {
       />
 
       <Card padded={false}>
-        <div style={{ padding: '0 var(--space-4)' }}>
+        <div className={styles.tabBar}>
           <Tabs tabs={TABS} active={tab} onChange={setTab} />
         </div>
-        <div style={{ padding: 'var(--space-5)' }}>
+        <div className={styles.tabBody}>
           {tab === 'orders' && <OrdersTab canWrite={canWrite} />}
           {tab === 'requisitions' && <RequisitionsTab canWrite={canWrite} />}
           {tab === 'vendors' && <VendorsTab canWrite={canWrite} />}
@@ -217,7 +218,7 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
         const next = PO_TRANSITIONS[o.status] ?? [];
         if (!canWrite || next.length === 0) return <span className={shared.cellSub}>-</span>;
         return (
-          <div className={shared.toolbar} style={{ justifyContent: 'flex-end' }}>
+          <div className={`${shared.toolbar} ${styles.toolbarEnd}`}>
             {next.map((to) => (
               <Button
                 key={to}
@@ -237,7 +238,7 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <>
-      <div className={shared.toolbar} style={{ marginBottom: 'var(--space-4)' }}>
+      <div className={`${shared.toolbar} ${styles.toolbarBottom}`}>
         <div className={shared.filter}>
           <span className={shared.filterLabel}>Status</span>
           <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
@@ -262,7 +263,7 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
       />
 
       {selectedId && (
-        <div style={{ marginTop: 'var(--space-5)' }}>
+        <div className={styles.linesSection}>
           <OrderLines id={selectedId} />
         </div>
       )}
@@ -384,8 +385,8 @@ function NewOrderModal({ open, onClose }: { open: boolean; onClose: () => void }
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} className={styles.form}>
+        <div className={shared.grid2}>
           <FormField label="Vendor" required>
             <Select value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
               <option value="">Select a vendor…</option>
@@ -400,9 +401,9 @@ function NewOrderModal({ open, onClose }: { open: boolean; onClose: () => void }
         </div>
 
         <FormField label="Lines">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <div className={styles.lineList}>
             {lines.map((l, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 0.7fr 1fr auto', gap: 'var(--space-2)', alignItems: 'center' }}>
+              <div key={i} className={styles.lineRow}>
                 <Input
                   placeholder="Description"
                   value={l.description}
@@ -438,13 +439,13 @@ function NewOrderModal({ open, onClose }: { open: boolean; onClose: () => void }
               <Button variant="subtle" size="sm" onClick={addLine} icon={<span aria-hidden>+</span>}>Add line</Button>
               <div className={shared.spacer} />
               <span className={shared.cellSub}>Total</span>
-              <span className={shared.money} style={{ fontWeight: 'var(--weight-semibold)' }}>
+              <span className={`${shared.money} ${styles.totalValue}`}>
                 {formatMoney(Math.round(totalMajor * 100), currency)}
               </span>
             </div>
           </div>
         </FormField>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -488,7 +489,7 @@ function RequisitionsTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <>
-      <div className={shared.toolbar} style={{ marginBottom: 'var(--space-4)' }}>
+      <div className={`${shared.toolbar} ${styles.toolbarBottom}`}>
         <div className={shared.filter}>
           <span className={shared.filterLabel}>Status</span>
           <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
@@ -555,11 +556,11 @@ function NewRequisitionModal({ open, onClose }: { open: boolean; onClose: () => 
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <form onSubmit={submit} className={styles.form}>
         <FormField label="Description" required>
           <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Office laptops for the underwriting team" rows={3} />
         </FormField>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        <div className={shared.grid2}>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -569,7 +570,7 @@ function NewRequisitionModal({ open, onClose }: { open: boolean; onClose: () => 
             <Input type="number" min="0" step="any" value={total} onChange={(e) => setTotal(e.target.value)} placeholder="e.g. 12000" />
           </FormField>
         </div>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -591,7 +592,7 @@ function VendorsTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <>
-      <div className={shared.toolbar} style={{ marginBottom: 'var(--space-4)' }}>
+      <div className={`${shared.toolbar} ${styles.toolbarBottom}`}>
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} vendor{rows.length === 1 ? '' : 's'}</span>
         {canWrite && (
@@ -655,14 +656,14 @@ function NewVendorModal({ open, onClose }: { open: boolean; onClose: () => void 
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} className={styles.form}>
+        <div className={shared.grid2}>
           <TextField label="Code" value={code} onChange={setCode} required placeholder="e.g. ACME" />
           <TextField label="Category" value={category} onChange={setCategory} placeholder="e.g. IT services" />
         </div>
         <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. Acme Supplies Ltd" />
         <TextField label="Email" value={email} onChange={setEmail} type="email" placeholder="contact@acme.example" />
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );

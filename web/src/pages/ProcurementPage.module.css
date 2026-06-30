@@ -1,0 +1,18 @@
+.tabBar { padding: 0 var(--space-4); }
+.tabBody { padding: var(--space-5); }
+
+.toolbarBottom { margin-bottom: var(--space-4); }
+.toolbarEnd { justify-content: flex-end; }
+
+.linesSection { margin-top: var(--space-5); }
+
+.form { display: flex; flex-direction: column; gap: var(--space-4); }
+.lineList { display: flex; flex-direction: column; gap: var(--space-2); }
+.lineRow {
+  display: grid;
+  grid-template-columns: 2fr 0.7fr 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+.totalValue { font-weight: var(--weight-semibold); }
+.error { color: var(--danger); font-size: var(--text-sm); }

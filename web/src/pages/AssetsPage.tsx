@@ -15,6 +15,7 @@ import { FormField, Input, Select, TextField } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
+import css from './AssetsPage.module.css';
 
 /* ---------------- Types ---------------- */
 interface Asset {
@@ -206,7 +207,7 @@ function AssetsTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <>
-      <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
+      <div className={`${shared.toolbar} ${css.toolbarPad}`}>
         <div className={shared.filter}>
           <span className={shared.filterLabel}>Status</span>
           <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
@@ -282,16 +283,16 @@ function NewAssetModal({ open, onClose }: { open: boolean; onClose: () => void }
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} className={css.form}>
+        <div className={shared.grid2}>
           <TextField label="Tag" value={tag} onChange={setTag} required placeholder="e.g. LAP-0012" />
           <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. MacBook Pro 16" />
         </div>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        <div className={shared.grid2}>
           <TextField label="Category" value={category} onChange={setCategory} placeholder="e.g. laptop" />
           <TextField label="Purchase date" type="date" value={purchaseDate} onChange={setPurchaseDate} />
         </div>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        <div className={shared.grid2}>
           <FormField label="Value" hint="Major units (optional)">
             <Input type="number" min="0" step="any" value={value} onChange={(e) => setValue(e.target.value)} placeholder="e.g. 2500" />
           </FormField>
@@ -299,7 +300,7 @@ function NewAssetModal({ open, onClose }: { open: boolean; onClose: () => void }
             <Input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={3} placeholder="USD" />
           </FormField>
         </div>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={css.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -343,7 +344,7 @@ function AssignModal({ asset, onClose }: { asset: Asset | null; onClose: () => v
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <form onSubmit={submit} className={css.form}>
         <FormField label="Employee" required hint={isLoading ? 'Loading employees…' : undefined}>
           <Select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} disabled={isLoading}>
             <option value="">Select an employee…</option>
@@ -354,7 +355,7 @@ function AssignModal({ asset, onClose }: { asset: Asset | null; onClose: () => v
             ))}
           </Select>
         </FormField>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={css.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -374,7 +375,7 @@ function LicensesTab({ canWrite }: { canWrite: boolean }) {
     {
       key: 'expiry', header: 'Expiry', sortValue: (l) => l.expiryDate ?? '',
       render: (l) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <span className={css.expiryCell}>
           {formatDate(l.expiryDate)}
           {l.expiringSoon && <Badge color="amber">Expiring soon</Badge>}
         </span>
@@ -384,7 +385,7 @@ function LicensesTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <>
-      <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
+      <div className={`${shared.toolbar} ${css.toolbarPad}`}>
         <CardHeader title="Software licenses" subtitle="Seat utilisation and renewal windows." />
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} license{rows.length === 1 ? '' : 's'}</span>
@@ -459,18 +460,18 @@ function NewLicenseModal({ open, onClose }: { open: boolean; onClose: () => void
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} className={css.form}>
+        <div className={shared.grid2}>
           <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. Figma Enterprise" />
           <TextField label="Vendor" value={vendor} onChange={setVendor} placeholder="e.g. Figma Inc." />
         </div>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        <div className={shared.grid2}>
           <FormField label="Seats" required>
             <Input type="number" min="0" step="1" value={seatsTotal} onChange={(e) => setSeatsTotal(e.target.value)} placeholder="e.g. 50" />
           </FormField>
           <TextField label="Expiry date" type="date" value={expiryDate} onChange={setExpiryDate} />
         </div>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        <div className={shared.grid2}>
           <FormField label="Cost" hint="Major units (optional)">
             <Input type="number" min="0" step="any" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="e.g. 12000" />
           </FormField>
@@ -478,7 +479,7 @@ function NewLicenseModal({ open, onClose }: { open: boolean; onClose: () => void
             <Input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={3} placeholder="USD" />
           </FormField>
         </div>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={css.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -542,7 +543,7 @@ function EntitlementsTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <>
-      <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
+      <div className={`${shared.toolbar} ${css.toolbarPad}`}>
         <CardHeader title="Feature entitlements" subtitle="Toggle a feature per tenant instantly - no deployment required." />
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} feature{rows.length === 1 ? '' : 's'}</span>
@@ -597,7 +598,7 @@ function AddEntitlementModal({ open, onClose }: { open: boolean; onClose: () => 
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <form onSubmit={submit} className={css.form}>
         <TextField label="Feature key" value={featureKey} onChange={setFeatureKey} required placeholder="e.g. advanced_analytics" />
         <FormField label="Initial state">
           <Select value={enabled} onChange={(e) => setEnabled(e.target.value)}>
@@ -605,7 +606,7 @@ function AddEntitlementModal({ open, onClose }: { open: boolean; onClose: () => 
             <option value="false">Disabled</option>
           </Select>
         </FormField>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={css.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );

@@ -13,6 +13,7 @@ import { FormField, Input, Select } from '../components/Form';
 import { DefinitionList } from '../components/Feedback';
 import { formatMoney, formatPercent, formatDateTime, titleCase } from '../lib/format';
 import shared from './shared.module.css';
+import styles from './PricingPage.module.css';
 
 interface Money { amount: number; currency: string }
 
@@ -84,19 +85,19 @@ export function PricingPage() {
 
       {!canWrite && (
         <Card>
-          <p className={shared.cellSub} style={{ margin: 0 }}>
+          <p className={`${shared.cellSub} ${styles.noMargin}`}>
             You have read-only access. Rating runs require the <code>pricing:write</code> permission.
           </p>
         </Card>
       )}
 
-      <div className={shared.grid2} style={{ display: 'grid', marginBottom: 'var(--space-5)' }}>
+      <div className={`${shared.grid2} ${styles.cardsGrid}`}>
         <BurningCostCard canWrite={canWrite} />
         <ExposureCard canWrite={canWrite} />
       </div>
 
       <Card padded={false}>
-        <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+        <div className={styles.runsHeader}>
           <CardHeader title="Recent rating runs" subtitle="Saved burning-cost and exposure runs across the portfolio." />
         </div>
         <Table
@@ -173,8 +174,8 @@ function BurningCostCard({ canWrite }: { canWrite: boolean }) {
   return (
     <Card>
       <CardHeader title="Burning cost" subtitle="Rate a layer from historical loss experience. Amounts are in major units." />
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} className={styles.form}>
+        <div className={`${shared.grid2} ${styles.fieldsGrid}`}>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
@@ -203,14 +204,14 @@ function BurningCostCard({ canWrite }: { canWrite: boolean }) {
         </FormField>
 
         <div>
-          <div className={shared.toolbar} style={{ marginBottom: 'var(--space-2)' }}>
+          <div className={`${shared.toolbar} ${styles.yearsToolbar}`}>
             <span className={shared.filterLabel}>Experience years</span>
             <div className={shared.spacer} />
             <Button type="button" size="sm" variant="subtle" onClick={addYear} icon={<span aria-hidden>+</span>}>Add year</Button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <div className={styles.rows}>
             {years.map((y, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 2fr auto', gap: 'var(--space-2)', alignItems: 'center' }}>
+              <div key={i} className={styles.yearRow}>
                 <Input type="number" step="1" value={y.year} onChange={(e) => setYear(i, { year: e.target.value })} placeholder="Year" aria-label="Year" />
                 <Input type="number" step="any" value={y.subjectPremium} onChange={(e) => setYear(i, { subjectPremium: e.target.value })} placeholder="Subject premium" aria-label="Subject premium" />
                 <Input type="text" value={y.losses} onChange={(e) => setYear(i, { losses: e.target.value })} placeholder="Losses, comma-separated" aria-label="Losses" />
@@ -220,14 +221,14 @@ function BurningCostCard({ canWrite }: { canWrite: boolean }) {
           </div>
         </div>
 
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)', margin: 0 }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
         <div>
           <Button variant="primary" onClick={submit} loading={rate.isPending} disabled={!canWrite}>Run burning cost</Button>
         </div>
       </form>
 
       {result && (
-        <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)' }}>
+        <div className={styles.resultBlock}>
           <DefinitionList
             items={[
               { term: 'Technical premium', value: <strong>{formatMoney(result.technicalPremium.amount, result.technicalPremium.currency)}</strong> },
@@ -296,8 +297,8 @@ function ExposureCard({ canWrite }: { canWrite: boolean }) {
   return (
     <Card>
       <CardHeader title="Exposure rating" subtitle="Rate a layer from an exposure curve and risk-profile bands. Amounts are in major units." />
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} className={styles.form}>
+        <div className={`${shared.grid2} ${styles.fieldsGrid}`}>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
@@ -320,14 +321,14 @@ function ExposureCard({ canWrite }: { canWrite: boolean }) {
         </div>
 
         <div>
-          <div className={shared.toolbar} style={{ marginBottom: 'var(--space-2)' }}>
+          <div className={`${shared.toolbar} ${styles.yearsToolbar}`}>
             <span className={shared.filterLabel}>Exposure bands</span>
             <div className={shared.spacer} />
             <Button type="button" size="sm" variant="subtle" onClick={addBand} icon={<span aria-hidden>+</span>}>Add band</Button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <div className={styles.rows}>
             {bands.map((b, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.4fr 1fr auto', gap: 'var(--space-2)', alignItems: 'center' }}>
+              <div key={i} className={styles.bandRow}>
                 <Input type="number" step="any" value={b.bandLimit} onChange={(e) => setBand(i, { bandLimit: e.target.value })} placeholder="Band limit" aria-label="Band limit" />
                 <Input type="number" step="any" value={b.premium} onChange={(e) => setBand(i, { premium: e.target.value })} placeholder="Premium" aria-label="Premium" />
                 <Input type="number" step="any" value={b.lossRatio} onChange={(e) => setBand(i, { lossRatio: e.target.value })} placeholder="Loss ratio" aria-label="Loss ratio" />
@@ -337,14 +338,14 @@ function ExposureCard({ canWrite }: { canWrite: boolean }) {
           </div>
         </div>
 
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)', margin: 0 }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
         <div>
           <Button variant="primary" onClick={submit} loading={rate.isPending} disabled={!canWrite}>Run exposure rating</Button>
         </div>
       </form>
 
       {result && (
-        <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)' }}>
+        <div className={styles.resultBlock}>
           <DefinitionList
             items={[
               { term: 'Expected loss', value: formatMoney(result.expectedLoss.amount, result.expectedLoss.currency) },

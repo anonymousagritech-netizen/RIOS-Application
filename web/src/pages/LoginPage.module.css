@@ -24,7 +24,7 @@
   width: 42px; height: 42px;
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--primary), var(--accent-violet));
-  color: #fff;
+  color: var(--primary-fg);
   font-weight: var(--weight-bold);
   font-size: var(--text-lg);
   box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 36%, transparent);

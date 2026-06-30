@@ -13,6 +13,7 @@ import { FormField, Input, Select, Textarea } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
 import { SlidersHorizontal, DollarSign } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './TreatyAdjustmentsPage.module.css';
 
 /* ---------------- Types ---------------- */
 interface TreatyOption {
@@ -90,7 +91,7 @@ export function TreatyAdjustmentsPage() {
 
       <Card>
         <CardHeader title="Select a treaty" subtitle="Adjustments apply in the treaty's own currency." />
-        <div style={{ marginTop: 'var(--space-4)', maxWidth: 520 }}>
+        <div className={styles.treatySelect}>
           <FormField label="Treaty" required>
             <Select value={treatyId} onChange={(e) => setTreatyId(e.target.value)} disabled={isLoading}>
               <option value="">{isLoading ? 'Loading treaties…' : 'Select a treaty…'}</option>
@@ -100,7 +101,7 @@ export function TreatyAdjustmentsPage() {
             </Select>
           </FormField>
           {selected && (
-            <div className={shared.toolbar} style={{ marginTop: 'var(--space-3)' }}>
+            <div className={`${shared.toolbar} ${styles.selectedToolbar}`}>
               <span className={shared.cellSub}>Currency {selected.currency}</span>
               <div className={shared.spacer} />
               <StatusPill status={selected.status} />
@@ -114,7 +115,7 @@ export function TreatyAdjustmentsPage() {
           <EmptyState title="No treaty selected" message="Choose a treaty above to run adjustments." icon={<SlidersHorizontal size={16} />} />
         </Card>
       ) : (
-        <div className={shared.cols} style={{ marginTop: 'var(--space-5)' }}>
+        <div className={`${shared.cols} ${styles.colsGrid}`}>
           <ProfitCommissionCard treaty={selected} canWrite={canWrite} />
           <PortfolioTransferCard treaty={selected} canWrite={canWrite} />
           <EndorseCard treaty={selected} canWrite={canWrite} />
@@ -181,8 +182,8 @@ function ProfitCommissionCard({ treaty, canWrite }: { treaty: TreatyOption; canW
   return (
     <Card>
       <CardHeader title="Profit commission" subtitle={`Amounts in major units of ${treaty.currency}.`} />
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} className={styles.form}>
+        <div className={`${shared.grid2} ${styles.formGrid}`}>
           <FormField label="Ceded premium">
             <Input type="number" step="any" value={cededPremium} onChange={(e) => setCededPremium(e.target.value)} placeholder="e.g. 1000000" disabled={!canWrite} />
           </FormField>
@@ -199,21 +200,21 @@ function ProfitCommissionCard({ treaty, canWrite }: { treaty: TreatyOption; canW
             <Input type="number" step="any" value={ratePct} onChange={(e) => setRatePct(e.target.value)} placeholder="e.g. 20" disabled={!canWrite} />
           </FormField>
         </div>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
         <div>
           <Button type="submit" variant="primary" size="sm" loading={run.isPending} disabled={!canWrite}>Run</Button>
         </div>
       </form>
 
       {result && (
-        <div className={shared.toolbar} style={{ marginTop: 'var(--space-3)' }}>
+        <div className={`${shared.toolbar} ${styles.resultToolbar}`}>
           <span className={shared.cellSub}>Profit {formatMoney(result.profitMinor, result.currency)}</span>
           <div className={shared.spacer} />
           <span className={shared.cellMain}>{formatMoney(result.profitCommissionMinor, result.currency)}</span>
         </div>
       )}
 
-      <div style={{ marginTop: 'var(--space-4)' }}>
+      <div className={styles.tableWrap}>
         <Table
           columns={columns}
           rows={data?.runs}
@@ -268,14 +269,14 @@ function PortfolioTransferCard({ treaty, canWrite }: { treaty: TreatyOption; can
   return (
     <Card>
       <CardHeader title="Portfolio transfer" subtitle={`Entry or withdrawal in major units of ${treaty.currency}.`} />
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
+      <form onSubmit={submit} className={styles.form}>
         <FormField label="Direction" required>
           <Select value={direction} onChange={(e) => setDirection(e.target.value as 'entry' | 'withdrawal')} disabled={!canWrite}>
             <option value="entry">Entry</option>
             <option value="withdrawal">Withdrawal</option>
           </Select>
         </FormField>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        <div className={`${shared.grid2} ${styles.formGrid}`}>
           <FormField label="Unearned premium">
             <Input type="number" step="any" value={unearnedPremium} onChange={(e) => setUnearnedPremium(e.target.value)} placeholder="e.g. 800000" disabled={!canWrite} />
           </FormField>
@@ -289,14 +290,14 @@ function PortfolioTransferCard({ treaty, canWrite }: { treaty: TreatyOption; can
             <Input type="number" step="any" value={lossPct} onChange={(e) => setLossPct(e.target.value)} placeholder="e.g. 100" disabled={!canWrite} />
           </FormField>
         </div>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
         <div>
           <Button type="submit" variant="primary" size="sm" loading={run.isPending} disabled={!canWrite}>Run</Button>
         </div>
       </form>
 
       {result && (
-        <div style={{ marginTop: 'var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <div className={styles.resultStack}>
           <div className={shared.toolbar}>
             <span className={shared.cellSub}>Premium transfer</span>
             <div className={shared.spacer} />
@@ -369,7 +370,7 @@ function EndorseCard({ treaty, canWrite }: { treaty: TreatyOption; canWrite: boo
   return (
     <Card>
       <CardHeader title="Endorse" subtitle="Record a versioned amendment to the treaty." />
-      <form onSubmit={(e) => { e.preventDefault(); openConfirm(); }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
+      <form onSubmit={(e) => { e.preventDefault(); openConfirm(); }} className={styles.form}>
         <FormField label="Effective date">
           <Input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} disabled={!canWrite} />
         </FormField>
@@ -379,7 +380,7 @@ function EndorseCard({ treaty, canWrite }: { treaty: TreatyOption; canWrite: boo
         <FormField label="Changes (JSON)" hint='A JSON object. terms.* are merged into a new term set, e.g. {"terms": {"cession": 0.3}}'>
           <Textarea value={changesText} onChange={(e) => setChangesText(e.target.value)} rows={5} disabled={!canWrite} spellCheck={false} />
         </FormField>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
         <div>
           <Button type="submit" variant="primary" size="sm" disabled={!canWrite}>Endorse</Button>
         </div>
@@ -441,7 +442,7 @@ function CommuteCard({ treaty, canWrite }: { treaty: TreatyOption; canWrite: boo
   return (
     <Card>
       <CardHeader title="Commute" subtitle="Settle and close the treaty. This is irreversible." />
-      <form onSubmit={(e) => { e.preventDefault(); openConfirm(); }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
+      <form onSubmit={(e) => { e.preventDefault(); openConfirm(); }} className={styles.form}>
         <FormField label="Settlement amount" required hint={`Major units of ${treaty.currency}.`}>
           <Input type="number" min="0" step="any" value={settlementAmount} onChange={(e) => setSettlementAmount(e.target.value)} placeholder="e.g. 500000" disabled={!canWrite || alreadyCommuted} />
         </FormField>
@@ -449,7 +450,7 @@ function CommuteCard({ treaty, canWrite }: { treaty: TreatyOption; canWrite: boo
           <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Optional note" disabled={!canWrite || alreadyCommuted} />
         </FormField>
         {alreadyCommuted && <p className={shared.cellSub}>This treaty is already commuted.</p>}
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
         <div>
           <Button type="submit" variant="danger" size="sm" disabled={!canWrite || alreadyCommuted}>Commute treaty</Button>
         </div>

@@ -50,7 +50,7 @@
 
 .danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--primary-fg);
 }
 .danger:hover:not(:disabled) { filter: brightness(0.94); }
 

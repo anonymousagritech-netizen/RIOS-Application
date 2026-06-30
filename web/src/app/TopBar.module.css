@@ -71,7 +71,7 @@
   display: grid; place-items: center;
   border-radius: var(--radius-full);
   background: linear-gradient(135deg, var(--primary), var(--accent-violet));
-  color: #fff;
+  color: var(--primary-fg);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
 }

@@ -1,0 +1,17 @@
+.claimGrid { display: grid; }
+
+.kpiGrid { margin-bottom: var(--space-5); }
+
+.sectionHeader { padding: var(--space-4) var(--space-5) 0; }
+
+.modalForm { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.form { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.fieldsGrid { display: grid; }
+
+.error { color: var(--danger); font-size: var(--text-sm); }
+
+.resultBlock { margin-top: var(--space-5); }
+
+.chargesSummary { margin-top: var(--space-4); }

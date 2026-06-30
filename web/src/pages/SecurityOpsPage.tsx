@@ -21,6 +21,7 @@ import { PageLoader } from '../components/Feedback';
 import { formatDateTime, formatNumber, titleCase } from '../lib/format';
 import { Shield } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './SecurityOpsPage.module.css';
 
 export function SecurityOpsPage() {
   const [tab, setTab] = useState('soc');
@@ -33,7 +34,7 @@ export function SecurityOpsPage() {
           active={tab}
           onChange={setTab}
         />
-        <div style={{ padding: 'var(--space-5)' }}>
+        <div className={styles.tabBody}>
           {tab === 'soc' && <Soc />}
           {tab === 'kms' && <Kms />}
           {tab === 'backup' && <Backup />}
@@ -50,7 +51,7 @@ function Soc() {
   const q = useQuery({ queryKey: ['soc-events'], queryFn: () => api<{ events: SocEvent[]; byAction: { action: string; n: number }[] }>('/api/soc/events') });
   if (q.isLoading) return <PageLoader label="Loading security feed…" />;
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+    <div className={styles.section}>
       <div className={shared.kpiGrid}>
         {(q.data?.byAction ?? []).slice(0, 4).map((a) => <KpiCard key={a.action} label={titleCase(a.action.replace(/_/g, ' '))} value={formatNumber(a.n)} icon={<Shield size={20} />} />)}
       </div>
@@ -89,7 +90,7 @@ function Kms() {
   if (q.isLoading) return <PageLoader label="Loading keys…" />;
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+    <div className={styles.sectionWide}>
       <Table
         columns={[
           { key: 'alias', header: 'Alias', render: (k: KmsKey) => <span className={shared.cellMain}>{k.alias}</span> },
@@ -103,17 +104,17 @@ function Kms() {
       />
       <Card>
         <CardHeader title="Envelope crypto demo" subtitle="Encrypt then decrypt with an alias's data key (AES-256-GCM)." />
-        <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-3)', maxWidth: 560 }}>
-          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}><FormField label="Alias"><Input value={alias} onChange={(e) => setAlias(e.target.value)} /></FormField></div>
+        <div className={styles.cryptoForm}>
+          <div className={styles.rowEnd}>
+            <div className={styles.grow}><FormField label="Alias"><Input value={alias} onChange={(e) => setAlias(e.target.value)} /></FormField></div>
             <Button variant="ghost" onClick={() => create.mutate()} loading={create.isPending}>Create key</Button>
           </div>
           <FormField label="Plaintext"><Input value={plain} onChange={(e) => setPlain(e.target.value)} /></FormField>
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <div className={styles.btnRow}>
             <Button variant="primary" onClick={() => enc.mutate()} loading={enc.isPending}>Encrypt</Button>
             <Button variant="ghost" onClick={() => dec.mutate()} loading={dec.isPending} disabled={!cipher}>Decrypt</Button>
           </div>
-          {cipher && <p className={shared.cellSub} style={{ fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>cipher: {cipher}</p>}
+          {cipher && <p className={`${shared.cellSub} ${styles.cipherText}`}>cipher: {cipher}</p>}
           {round && <p className={shared.cellSub}>decrypted: <strong>{round}</strong></p>}
         </div>
       </Card>
@@ -131,7 +132,7 @@ function Backup() {
   const run = useMutation({ mutationFn: (kind: string) => api('/api/backup/runs', { body: { kind } }), onSuccess: () => { toast.success('Backup recorded'); qc.invalidateQueries({ queryKey: ['backup-runs'] }); }, onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Failed') });
   if (q.isLoading) return <PageLoader label="Loading backups…" />;
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+    <div className={styles.section}>
       {canWrite && <div><Button variant="primary" onClick={() => run.mutate('snapshot')} loading={run.isPending}>Take snapshot</Button></div>}
       <Table
         columns={[
@@ -156,9 +157,9 @@ function I18n() {
   const bundle = useQuery({ queryKey: ['i18n-bundle', locale], queryFn: () => api<{ direction: string; bundle: Record<string, string> }>(`/api/i18n/bundle${qs({ locale })}`) });
   if (locales.isLoading) return <PageLoader label="Loading locales…" />;
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-      <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end' }}>
-        <div style={{ minWidth: 200 }}>
+    <div className={styles.section}>
+      <div className={styles.localeToolbar}>
+        <div className={styles.localeField}>
           <FormField label="Locale">
             <Select value={locale} onChange={(e) => setLocale(e.target.value)}>
               {locales.data?.locales.map((l) => <option key={l.locale} value={l.locale}>{l.locale} ({l.direction})</option>)}
@@ -186,7 +187,7 @@ function Saml() {
   const admin = hasPermission('admin:manage');
   const providers = useQuery({ queryKey: ['saml-providers'], queryFn: () => api<{ providers: SamlProvider[] }>('/api/auth/saml/providers'), enabled: admin });
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+    <div className={styles.section}>
       <p className={shared.cellSub}>
         Register RIOS with your IdP using the SP metadata at <span className={shared.cellRef}>/api/auth/saml/metadata</span>. Provider config is managed via SSO settings.
       </p>

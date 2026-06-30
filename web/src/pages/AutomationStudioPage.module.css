@@ -1,0 +1,14 @@
+.tabBody { padding: var(--space-5); }
+
+.section { display: grid; gap: var(--space-4); }
+.sectionWide { display: grid; gap: var(--space-5); }
+
+.runForm {
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+  max-width: 560px;
+}
+.monoInput { font-family: var(--font-mono); }
+.resultStack { display: grid; gap: var(--space-2); }
+.errorText { color: var(--c-red); }

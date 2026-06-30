@@ -14,6 +14,7 @@ import { formatDate, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
 import { FileText, Lock, Clock, FolderOpen } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './DocumentsPage.module.css';
 
 const DOC_TYPES = ['SLIP', 'COVER_NOTE', 'ENDORSEMENT', 'STATEMENT', 'LETTER', 'CONTRACT', 'OTHER'];
 
@@ -109,7 +110,7 @@ function TemplatesTab({ canWrite }: { canWrite: boolean }) {
   return (
     <>
       <Card padded={false}>
-        <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+        <div className={styles.cardHead}>
           <CardHeader
             title="Templates"
             subtitle="Bodies may contain {{ dotted.path }} placeholders merged from the generation context."
@@ -182,8 +183,8 @@ function NewTemplateModal({ open, onClose }: { open: boolean; onClose: () => voi
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} className={styles.form}>
+        <div className={shared.grid2}>
           <TextField label="Key" value={key} onChange={setKey} required placeholder="e.g. cover_note" />
           <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. Cover note" />
         </div>
@@ -199,10 +200,10 @@ function NewTemplateModal({ open, onClose }: { open: boolean; onClose: () => voi
             onChange={(e) => setBody(e.target.value)}
             rows={10}
             placeholder={'Cover note for {{ contract.reference }}\nCedent: {{ cedent.legalName }}\nPeriod: {{ contract.periodStart }}'}
-            style={{ fontFamily: 'var(--font-mono)' }}
+            className={styles.mono}
           />
         </FormField>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -260,10 +261,10 @@ function GenerateTab({ canWrite }: { canWrite: boolean }) {
   }
 
   return (
-    <div className={shared.cols} style={{ display: 'grid' }}>
+    <div className={shared.cols}>
       <Card>
         <CardHeader title="Generate a document" subtitle="Merge a template body with a context object." />
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <form onSubmit={submit} className={styles.form}>
           <FormField label="Template" required>
             <Select value={templateKey} onChange={(e) => setTemplateKey(e.target.value)}>
               <option value="">Select a template…</option>
@@ -277,11 +278,11 @@ function GenerateTab({ canWrite }: { canWrite: boolean }) {
               onChange={(e) => setContext(e.target.value)}
               rows={10}
               spellCheck={false}
-              style={{ fontFamily: 'var(--font-mono)' }}
+              className={styles.mono}
               placeholder={'{\n  "contract": { "reference": "C-0001" }\n}'}
             />
           </FormField>
-          {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+          {error && <p className={styles.error} role="alert">{error}</p>}
           <div>
             <Button variant="primary" onClick={submit} loading={generate.isPending} disabled={!templateKey || !title.trim()}>
               Generate
@@ -293,18 +294,7 @@ function GenerateTab({ canWrite }: { canWrite: boolean }) {
       <Card>
         <CardHeader title="Rendered output" subtitle="Result of the merge." />
         {rendered != null ? (
-          <pre
-            style={{
-              margin: 0,
-              padding: 'var(--space-4)',
-              background: 'var(--surface-2)',
-              borderRadius: 'var(--radius-md)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 'var(--text-sm)',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-            }}
-          >
+          <pre className={styles.preview}>
             {rendered}
           </pre>
         ) : (
@@ -331,7 +321,7 @@ function DocumentsTab() {
   return (
     <>
       <Card padded={false}>
-        <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
+        <div className={`${shared.toolbar} ${styles.toolbarPad}`}>
           <div className={shared.filter}>
             <span className={shared.filterLabel}>Type</span>
             <Select value={docType} onChange={(e) => setDocType(e.target.value)} aria-label="Filter by document type">
@@ -372,22 +362,9 @@ function DocumentModal({ id, onClose }: { id: string | null; onClose: () => void
       footer={<Button variant="ghost" onClick={onClose}>Close</Button>}
     >
       {isLoading && <p className={shared.cellSub}>Loading…</p>}
-      {isError && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">Could not load the document.</p>}
+      {isError && <p className={styles.error} role="alert">Could not load the document.</p>}
       {data && (
-        <pre
-          style={{
-            margin: 0,
-            padding: 'var(--space-4)',
-            background: 'var(--surface-2)',
-            borderRadius: 'var(--radius-md)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--text-sm)',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            maxHeight: '60vh',
-            overflow: 'auto',
-          }}
-        >
+        <pre className={`${styles.preview} ${styles.previewScroll}`}>
           {data.content}
         </pre>
       )}

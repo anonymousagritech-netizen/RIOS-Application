@@ -1,0 +1,33 @@
+.tabBar { padding: 0 var(--space-4); }
+
+.actionsEnd { justify-content: flex-end; }
+
+.toolbarPad { padding: var(--space-4); }
+
+.modalForm { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.fieldsGrid { display: grid; }
+
+.error { color: var(--danger); font-size: var(--text-sm); }
+
+.fxBody {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.fxForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.readonlyNote { margin-top: var(--space-2); }
+
+.balanceRows { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.balanceInput { flex: 1; }
+
+.resultValue { font-weight: var(--weight-medium); }

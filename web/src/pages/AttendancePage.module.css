@@ -52,15 +52,15 @@
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   font-weight: var(--weight-semibold);
-  color: #fff;
+  color: var(--primary-fg);
   cursor: pointer;
   transition: filter var(--motion-fast), transform var(--motion-fast);
 }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .btn:not(:disabled):hover { filter: brightness(1.07); transform: translateY(-1px); }
-.btnIn { background: linear-gradient(135deg, var(--accent-emerald), #16a34a); }
-.btnOut { background: linear-gradient(135deg, var(--accent-rose), #e11d48); }
-.btnBreak { background: linear-gradient(135deg, var(--accent-orange), #f59e0b); }
+.btnIn { background: linear-gradient(135deg, var(--accent-emerald), color-mix(in srgb, var(--accent-emerald) 78%, black)); }
+.btnOut { background: linear-gradient(135deg, var(--accent-rose), color-mix(in srgb, var(--accent-rose) 82%, black)); }
+.btnBreak { background: linear-gradient(135deg, var(--accent-orange), color-mix(in srgb, var(--accent-orange) 80%, black)); }
 .btnResume { background: linear-gradient(135deg, var(--primary), var(--accent-violet)); }
 
 .statCol {

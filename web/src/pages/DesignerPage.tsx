@@ -20,6 +20,7 @@ import { FormField, Select, Textarea } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatDate, titleCase } from '../lib/format';
 import shared from './shared.module.css';
+import styles from './DesignerPage.module.css';
 
 interface DefSummary { key: string; version: number; status: string; name?: string | null; createdAt?: string | null }
 interface Transition { event: string; from: string; to: string; permission?: string; label?: string }
@@ -48,7 +49,7 @@ export function DesignerPage() {
           active={tab}
           onChange={setTab}
         />
-        <div style={{ padding: 'var(--space-5)' }}>
+        <div className={styles.tabBody}>
           {tab === 'workflows' ? <Workflows canWrite={canWrite} /> : <Rules canWrite={canWrite} />}
         </div>
       </Card>
@@ -70,9 +71,9 @@ function Workflows({ canWrite }: { canWrite: boolean }) {
   ];
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+    <div className={styles.stack5}>
       <div>
-        <p className={shared.cellSub} style={{ marginBottom: 'var(--space-3)' }}>
+        <p className={`${shared.cellSub} ${styles.introText}`}>
           {canWrite ? 'Select a workflow to inspect its state machine and simulate transitions.' : 'You can view and simulate workflows. Authoring requires the config:write permission.'}
         </p>
         {list.isLoading ? <PageLoader label="Loading workflows…" /> : (
@@ -118,10 +119,10 @@ function WorkflowDetail({ wfKey }: { wfKey: string }) {
   return (
     <Card>
       <CardHeader title={body.name ?? body.key} subtitle={`Initial: ${body.initial} · ${body.states.length} states · ${body.transitions.length} transitions`} />
-      <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-5)' }}>
+      <div className={styles.detailBody}>
         <div>
-          <h4 className={shared.cellMain} style={{ marginBottom: 'var(--space-2)' }}>States</h4>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <h4 className={`${shared.cellMain} ${styles.sectionHeading}`}>States</h4>
+          <div className={styles.badgeRow}>
             {body.states.map((st) => (
               <Badge key={st} color={st === activeState ? 'blue' : (body.finalStates ?? []).includes(st) ? 'gray' : 'slate'}>{st}</Badge>
             ))}
@@ -129,7 +130,7 @@ function WorkflowDetail({ wfKey }: { wfKey: string }) {
         </div>
 
         <div>
-          <h4 className={shared.cellMain} style={{ marginBottom: 'var(--space-2)' }}>Transitions</h4>
+          <h4 className={`${shared.cellMain} ${styles.sectionHeading}`}>Transitions</h4>
           <Table
             columns={[
               { key: 'event', header: 'Event', render: (t: Transition) => <span className={shared.cellRef}>{t.event}</span> },
@@ -142,17 +143,17 @@ function WorkflowDetail({ wfKey }: { wfKey: string }) {
           />
         </div>
 
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--space-4)' }}>
-          <h4 className={shared.cellMain} style={{ marginBottom: 'var(--space-3)' }}>Simulator</h4>
-          <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ minWidth: 180 }}>
+        <div className={styles.simulator}>
+          <h4 className={`${shared.cellMain} ${styles.simHeading}`}>Simulator</h4>
+          <div className={styles.toolbar}>
+            <div className={styles.field}>
               <FormField label="Current state">
                 <Select value={activeState} onChange={(e) => { setState(e.target.value); setEvent(''); setResult(null); }}>
                   {body.states.map((st) => <option key={st} value={st}>{st}</option>)}
                 </Select>
               </FormField>
             </div>
-            <div style={{ minWidth: 180 }}>
+            <div className={styles.field}>
               <FormField label="Event">
                 <Select value={event || events[0] || ''} onChange={(e) => setEvent(e.target.value)}>
                   {events.length === 0 ? <option value="">- terminal -</option> : events.map((ev) => <option key={ev} value={ev}>{ev}</option>)}
@@ -162,7 +163,7 @@ function WorkflowDetail({ wfKey }: { wfKey: string }) {
             <Button variant="primary" onClick={simulate} loading={busy} disabled={events.length === 0}>Fire event</Button>
           </div>
           {result && (
-            <p className={shared.cellSub} style={{ marginTop: 'var(--space-3)' }}>
+            <p className={`${shared.cellSub} ${styles.simResult}`}>
               {result.ok
                 ? <>✓ Transitioned to <strong>{result.state}</strong>. Next available: {result.available?.join(', ') || 'none (terminal)'}.</>
                 : <>✗ Rejected: {result.reason}</>}
@@ -188,9 +189,9 @@ function Rules({ canWrite }: { canWrite: boolean }) {
   ];
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+    <div className={styles.stack5}>
       <div>
-        <p className={shared.cellSub} style={{ marginBottom: 'var(--space-3)' }}>
+        <p className={`${shared.cellSub} ${styles.introText}`}>
           {canWrite ? 'Select a rule set to inspect its rules and test it against a sample context.' : 'You can view and test rule sets. Authoring requires the config:write permission.'}
         </p>
         {list.isLoading ? <PageLoader label="Loading rules…" /> : (
@@ -234,7 +235,7 @@ function RuleDetail({ ruleKey }: { ruleKey: string }) {
   return (
     <Card>
       <CardHeader title={body.name ?? body.key} subtitle={`${body.rules.length} rules`} />
-      <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-5)' }}>
+      <div className={styles.detailBody}>
         <Table
           columns={[
             { key: 'id', header: 'Rule', render: (r: RuleBody['rules'][number]) => <span className={shared.cellRef}>{r.id}</span> },
@@ -244,20 +245,20 @@ function RuleDetail({ ruleKey }: { ruleKey: string }) {
           rowKey={(r) => r.id}
         />
 
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--space-4)' }}>
-          <h4 className={shared.cellMain} style={{ marginBottom: 'var(--space-3)' }}>Tester</h4>
+        <div className={styles.simulator}>
+          <h4 className={`${shared.cellMain} ${styles.simHeading}`}>Tester</h4>
           <FormField label="Context (JSON)" error={error ?? undefined}>
-            <Textarea rows={6} value={context} onChange={(e) => setContext(e.target.value)} style={{ fontFamily: 'var(--font-mono)' }} />
+            <Textarea rows={6} value={context} onChange={(e) => setContext(e.target.value)} className={styles.contextMono} />
           </FormField>
-          <div style={{ marginTop: 'var(--space-3)' }}>
+          <div className={styles.evaluateRow}>
             <Button variant="primary" onClick={evaluate} loading={busy}>Evaluate</Button>
           </div>
           {outcome && (
-            <div style={{ marginTop: 'var(--space-4)', display: 'grid', gap: 'var(--space-2)' }}>
+            <div className={styles.outcome}>
               <div><Badge color={outcome.ok ? 'green' : 'red'}>{outcome.ok ? 'Passes' : 'Blocked'}</Badge></div>
               {outcome.matched.length > 0 && <p className={shared.cellSub}>Matched: {outcome.matched.join(', ')}</p>}
-              {outcome.errors.map((e, i) => <p key={i} className={shared.cellSub} style={{ color: 'var(--c-red)' }}>Error: {e}</p>)}
-              {outcome.warnings.map((w, i) => <p key={i} className={shared.cellSub} style={{ color: 'var(--c-amber)' }}>Warning: {w}</p>)}
+              {outcome.errors.map((e, i) => <p key={i} className={`${shared.cellSub} ${styles.errorText}`}>Error: {e}</p>)}
+              {outcome.warnings.map((w, i) => <p key={i} className={`${shared.cellSub} ${styles.warningText}`}>Warning: {w}</p>)}
               {outcome.routes.length > 0 && <p className={shared.cellSub}>Routes: {outcome.routes.join(', ')}</p>}
               {outcome.flags.length > 0 && <p className={shared.cellSub}>Flags: {outcome.flags.join(', ')}</p>}
               {Object.keys(outcome.set).length > 0 && <p className={shared.cellSub}>Defaults: {JSON.stringify(outcome.set)}</p>}

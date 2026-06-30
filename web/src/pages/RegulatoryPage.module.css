@@ -1,0 +1,18 @@
+.cardPad { padding: var(--space-4) var(--space-5) 0; }
+
+.formGrid { display: grid; }
+
+.fullSpan { grid-column: 1 / -1; }
+
+.error { color: var(--danger); font-size: var(--text-sm); }
+.errorSpan { grid-column: 1 / -1; color: var(--danger); font-size: var(--text-sm); }
+
+.resultBlock { margin-top: var(--space-5); }
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.moduleRow { display: flex; gap: var(--space-2); }

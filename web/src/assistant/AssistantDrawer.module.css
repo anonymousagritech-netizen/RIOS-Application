@@ -118,7 +118,7 @@
 .micActive {
   background: var(--primary);
   border-color: var(--primary);
-  color: #fff;
+  color: var(--primary-fg);
   animation: micPulse 1.2s ease-in-out infinite;
 }
 @keyframes micPulse {

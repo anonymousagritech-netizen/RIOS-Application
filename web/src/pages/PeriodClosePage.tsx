@@ -14,6 +14,7 @@ import { FormField, Input, Select } from '../components/Form';
 import { formatMoney, formatDate, formatDateTime, titleCase } from '../lib/format';
 import { CalendarCheck, DollarSign } from 'lucide-react';
 import shared from './shared.module.css';
+import styles from './PeriodClosePage.module.css';
 
 /* ---------------- Types ---------------- */
 interface AccountingPeriod {
@@ -111,7 +112,7 @@ export function PeriodClosePage() {
       />
 
       <Card padded={false}>
-        <div style={{ padding: '0 var(--space-4)' }}>
+        <div className={styles.tabBar}>
           <Tabs tabs={TABS} active={tab} onChange={setTab} />
         </div>
         {tab === 'periods' && <PeriodsTab canPost={canPost} />}
@@ -162,7 +163,7 @@ function PeriodsTab({ canPost }: { canPost: boolean }) {
       align: 'right',
       render: (p) =>
         canPost ? (
-          <div className={shared.toolbar} style={{ justifyContent: 'flex-end' }}>
+          <div className={`${shared.toolbar} ${styles.actionsEnd}`}>
             {p.status !== 'closed' && (
               <Button size="sm" variant="secondary" onClick={() => setCloseTarget(p)}>Close</Button>
             )}
@@ -185,7 +186,7 @@ function PeriodsTab({ canPost }: { canPost: boolean }) {
 
   return (
     <>
-      <div className={shared.toolbar} style={{ padding: 'var(--space-4)' }}>
+      <div className={`${shared.toolbar} ${styles.toolbarPad}`}>
         <div className={shared.spacer} />
         <span className={shared.cellSub}>{rows.length} period{rows.length === 1 ? '' : 's'}</span>
         {canPost && (
@@ -253,11 +254,11 @@ function NewPeriodModal({ open, onClose }: { open: boolean; onClose: () => void 
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <form onSubmit={submit} className={styles.modalForm}>
         <FormField label="Code" required hint="e.g. 2026-06 or 2026-Q2">
           <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="2026-06" />
         </FormField>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        <div className={`${shared.grid2} ${styles.fieldsGrid}`}>
           <FormField label="Start date" required>
             <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </FormField>
@@ -265,7 +266,7 @@ function NewPeriodModal({ open, onClose }: { open: boolean; onClose: () => void 
             <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </FormField>
         </div>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -335,12 +336,12 @@ function FxTab({ canPost }: { canPost: boolean }) {
   ];
 
   return (
-    <div style={{ padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+    <div className={styles.fxBody}>
       <div>
         <CardHeader title="FX revaluation" subtitle="Restate non-base-currency balances at current rates and book the net gain or loss." />
-        {!canPost && <p className={shared.cellSub} style={{ marginTop: 'var(--space-2)' }}>You need finance:post to run a revaluation.</p>}
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
-          <div className={shared.grid2} style={{ display: 'grid' }}>
+        {!canPost && <p className={`${shared.cellSub} ${styles.readonlyNote}`}>You need finance:post to run a revaluation.</p>}
+        <form onSubmit={submit} className={styles.fxForm}>
+          <div className={`${shared.grid2} ${styles.fieldsGrid}`}>
             <FormField label="Base currency" required>
               <Select value={baseCurrency} onChange={(e) => setBaseCurrency(e.target.value)} disabled={!canPost}>
                 {FX_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -352,15 +353,15 @@ function FxTab({ canPost }: { canPost: boolean }) {
           </div>
 
           <FormField label="Balances" hint="Amounts in major units. Non-base-currency balances only; matching-base rows are ignored.">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <div className={styles.balanceRows}>
               {balances.map((b, i) => (
                 <div key={i} className={shared.toolbar}>
                   <Select value={b.currency} onChange={(e) => setBalance(i, 'currency', e.target.value)} disabled={!canPost} aria-label={`Balance ${i + 1} currency`}>
                     {FX_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </Select>
-                  <Input type="number" step="any" value={b.amount} onChange={(e) => setBalance(i, 'amount', e.target.value)} placeholder="Amount" aria-label={`Balance ${i + 1} amount`} style={{ flex: 1 }} disabled={!canPost} />
-                  <Input type="number" min="0" step="any" value={b.bookedRate} onChange={(e) => setBalance(i, 'bookedRate', e.target.value)} placeholder="Booked rate" aria-label={`Balance ${i + 1} booked rate`} style={{ flex: 1 }} disabled={!canPost} />
-                  <Input type="number" min="0" step="any" value={b.currentRate} onChange={(e) => setBalance(i, 'currentRate', e.target.value)} placeholder="Current rate" aria-label={`Balance ${i + 1} current rate`} style={{ flex: 1 }} disabled={!canPost} />
+                  <Input type="number" step="any" value={b.amount} onChange={(e) => setBalance(i, 'amount', e.target.value)} placeholder="Amount" aria-label={`Balance ${i + 1} amount`} className={styles.balanceInput} disabled={!canPost} />
+                  <Input type="number" min="0" step="any" value={b.bookedRate} onChange={(e) => setBalance(i, 'bookedRate', e.target.value)} placeholder="Booked rate" aria-label={`Balance ${i + 1} booked rate`} className={styles.balanceInput} disabled={!canPost} />
+                  <Input type="number" min="0" step="any" value={b.currentRate} onChange={(e) => setBalance(i, 'currentRate', e.target.value)} placeholder="Current rate" aria-label={`Balance ${i + 1} current rate`} className={styles.balanceInput} disabled={!canPost} />
                   <Button type="button" size="sm" variant="ghost" onClick={() => removeBalance(i)} disabled={!canPost || balances.length <= 1}>Remove</Button>
                 </div>
               ))}
@@ -370,7 +371,7 @@ function FxTab({ canPost }: { canPost: boolean }) {
             </div>
           </FormField>
 
-          {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+          {error && <p className={styles.error} role="alert">{error}</p>}
           <div>
             <Button type="submit" variant="primary" loading={revalue.isPending} disabled={!canPost}>Run revaluation</Button>
           </div>
@@ -381,7 +382,7 @@ function FxTab({ canPost }: { canPost: boolean }) {
             <CardHeader
               title="Result"
               subtitle="Net gain or loss in the base currency."
-              actions={<span className={shared.money} style={{ fontWeight: 'var(--weight-medium)' }}>{formatMoney(result.gainLossMinor, baseCurrency)}</span>}
+              actions={<span className={`${shared.money} ${styles.resultValue}`}>{formatMoney(result.gainLossMinor, baseCurrency)}</span>}
             />
             <Table
               columns={detailColumns}

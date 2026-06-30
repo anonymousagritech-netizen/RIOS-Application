@@ -18,6 +18,7 @@ import { FormField, Select, Textarea, Input } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatPercent } from '../lib/format';
 import shared from './shared.module.css';
+import styles from './IntelligencePage.module.css';
 
 export function IntelligencePage() {
   const [tab, setTab] = useState('insights');
@@ -26,7 +27,7 @@ export function IntelligencePage() {
       <PageHeader title="Intelligence" description="Predictive insights, narrative generation, document extraction and the voice assistant." />
       <Card>
         <Tabs tabs={[{ id: 'insights', label: 'Insights' }, { id: 'generate', label: 'Generate' }, { id: 'ocr', label: 'Document OCR' }, { id: 'voice', label: 'Voice' }]} active={tab} onChange={setTab} />
-        <div style={{ padding: 'var(--space-5)' }}>
+        <div className={styles.tabBody}>
           {tab === 'insights' && <Insights />}
           {tab === 'generate' && <Generate />}
           {tab === 'ocr' && <Ocr />}
@@ -62,10 +63,10 @@ function Generate() {
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Generation failed'),
   });
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 720 }}>
+    <div className={styles.console}>
       <p className={shared.cellSub}>Generate a plain-language executive summary from the live portfolio KPIs.</p>
-      <Button variant="primary" onClick={() => gen.mutate()} loading={gen.isPending} style={{ justifySelf: 'start' }}>Generate summary</Button>
-      {text && <Card><div style={{ padding: 'var(--space-5)', lineHeight: 1.7 }}>{text}</div></Card>}
+      <Button variant="primary" onClick={() => gen.mutate()} loading={gen.isPending} className={styles.startButton}>Generate summary</Button>
+      {text && <Card><div className={styles.narrative}>{text}</div></Card>}
     </div>
   );
 }
@@ -81,9 +82,9 @@ function Ocr() {
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Extraction failed'),
   });
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 720 }}>
+    <div className={styles.console}>
       <p className={shared.cellSub}>Paste document text (image/PDF → text is an external OCR step). Fields are extracted deterministically.</p>
-      <div style={{ width: 220 }}>
+      <div className={styles.docTypeField}>
         <FormField label="Document type">
           <Select value={docType} onChange={(e) => setDocType(e.target.value)}>
             <option value="cover_note">Cover note</option>
@@ -91,16 +92,16 @@ function Ocr() {
           </Select>
         </FormField>
       </div>
-      <FormField label="Document text"><Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} style={{ fontFamily: 'var(--font-mono)' }} /></FormField>
-      <Button variant="primary" onClick={() => extract.mutate()} loading={extract.isPending} style={{ justifySelf: 'start' }}>Extract fields</Button>
+      <FormField label="Document text"><Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} className={styles.contextMono} /></FormField>
+      <Button variant="primary" onClick={() => extract.mutate()} loading={extract.isPending} className={styles.startButton}>Extract fields</Button>
       {result && (
         <Card>
           <CardHeader title="Extracted fields" actions={<Badge color={result.confidence >= 0.6 ? 'green' : 'amber'}>{formatPercent(result.confidence)} confidence</Badge>} />
-          <div style={{ padding: 'var(--space-4)' }}>
+          <div className={styles.cardBody}>
             {Object.entries(result.fields).map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-2) 0', borderBottom: '1px solid var(--border)' }}>
+              <div key={k} className={styles.fieldRow}>
                 <span className={shared.cellSub}>{k}</span>
-                <span className={shared.cellMain}>{v ?? <span style={{ color: 'var(--c-red)' }}>not found</span>}</span>
+                <span className={shared.cellMain}>{v ?? <span className={styles.notFound}>not found</span>}</span>
               </div>
             ))}
           </div>
@@ -120,13 +121,13 @@ function Voice() {
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Voice failed'),
   });
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 720 }}>
+    <div className={styles.console}>
       <p className={shared.cellSub}>Speech→text is captured on-device; the transcript is normalised here and routed through the assistant.</p>
       <FormField label="Transcript"><Input value={transcript} onChange={(e) => setTranscript(e.target.value)} /></FormField>
-      <Button variant="primary" onClick={() => run.mutate()} loading={run.isPending} style={{ justifySelf: 'start' }}>Interpret</Button>
+      <Button variant="primary" onClick={() => run.mutate()} loading={run.isPending} className={styles.startButton}>Interpret</Button>
       {result && (
         <Card>
-          <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-2)' }}>
+          <div className={styles.voiceBody}>
             <p className={shared.cellSub}>Heard: <em>{result.normalized}</em></p>
             {result.response.reply && <p className={shared.cellMain}>{result.response.reply}</p>}
             {(result.response.actions ?? []).map((a, i) => <Badge key={i} color="blue">{a.label}</Badge>)}

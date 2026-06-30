@@ -17,6 +17,7 @@ import { DefinitionList } from '../components/Feedback';
 import { formatMoney, formatNumber, formatPercent, formatDate, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
+import local from './RegulatoryPage.module.css';
 
 /* ---------------- Types ---------------- */
 interface Measurement {
@@ -180,7 +181,7 @@ function Ifrs17Tab({ canRun }: { canRun: boolean }) {
 
   return (
     <>
-      <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+      <div className={local.cardPad}>
         <CardHeader
           title="Groups of insurance contracts"
           subtitle="IFRS 17 measurement groups and their latest liability."
@@ -250,8 +251,8 @@ function NewGroupModal({ open, onClose }: { open: boolean; onClose: () => void }
         </>
       }
     >
-      <form onSubmit={submit} className={shared.grid2} style={{ display: 'grid' }}>
-        <div style={{ gridColumn: '1 / -1' }}>
+      <form onSubmit={submit} className={`${shared.grid2} ${local.formGrid}`}>
+        <div className={local.fullSpan}>
           <TextField label="Group name" value={name} onChange={setName} required placeholder="e.g. Property QS 2026 - Onerous" />
         </div>
         <FormField label="Measurement model">
@@ -275,7 +276,7 @@ function NewGroupModal({ open, onClose }: { open: boolean; onClose: () => void }
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </Select>
         </FormField>
-        {error && <p style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={local.errorSpan} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -336,7 +337,7 @@ function MeasureModal({ group, onClose }: { group: Ifrs17Group | null; onClose: 
         </>
       }
     >
-      <form onSubmit={submit} className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} className={`${shared.grid2} ${local.formGrid}`}>
         <FormField label="Premium received" hint={`Major units of ${ccy}.`}>
           <Input type="number" step="any" value={premiumReceived} onChange={(e) => setPremiumReceived(e.target.value)} placeholder="e.g. 1000000" />
         </FormField>
@@ -355,11 +356,11 @@ function MeasureModal({ group, onClose }: { group: Ifrs17Group | null; onClose: 
         <FormField label="Risk adjustment %" hint="e.g. 5">
           <Input type="number" step="any" value={riskAdjustmentPct} onChange={(e) => setRiskAdjustmentPct(e.target.value)} />
         </FormField>
-        {error && <p style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={local.errorSpan} role="alert">{error}</p>}
       </form>
 
       {result && (
-        <div style={{ marginTop: 'var(--space-5)' }}>
+        <div className={local.resultBlock}>
           <CardHeader
             title="Measurement result"
             actions={result.onerous ? <StatusPill status="ONEROUS" label="Onerous" metaColors={{ ONEROUS: 'red' }} /> : undefined}
@@ -444,8 +445,8 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
         <Card>
           <CardHeader title="Run SCR" subtitle="Standard formula - values in major units. Correlation defaults to identity." />
           {canRun ? (
-            <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-              <div className={shared.grid2} style={{ display: 'grid' }}>
+            <form onSubmit={submit} className={local.formStack}>
+              <div className={`${shared.grid2} ${local.formGrid}`}>
                 <FormField label="Currency" required>
                   <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
                     {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -454,7 +455,7 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
                 <div />
                 {modules.map((m, i) => (
                   <FormField key={i} label={`Module ${i + 1}`} hint="Name and SCR (major)">
-                    <div className={shared.rowGap} style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                    <div className={`${shared.rowGap} ${local.moduleRow}`}>
                       <Input value={m.name} onChange={(e) => setModule(i, { name: e.target.value })} placeholder="Module name" />
                       <Input type="number" step="any" value={m.scr} onChange={(e) => setModule(i, { scr: e.target.value })} placeholder="SCR" />
                     </div>
@@ -473,7 +474,7 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
                   <Input type="number" step="any" value={absoluteFloor} onChange={(e) => setAbsoluteFloor(e.target.value)} />
                 </FormField>
               </div>
-              {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+              {error && <p className={local.error} role="alert">{error}</p>}
               <div>
                 <Button variant="primary" onClick={submit} loading={run.isPending}>Run SCR</Button>
               </div>
@@ -483,7 +484,7 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
           )}
 
           {result && (
-            <div className={styles.measureGrid} style={{ marginTop: 'var(--space-5)' }}>
+            <div className={`${styles.measureGrid} ${local.resultBlock}`}>
               <KpiCard label="SCR" value={fmtMajor(result.scr)} hint={`Basic SCR ${fmtMajor(result.basicScr)}`} icon={<Sigma size={20} />} />
               <KpiCard label="MCR" value={fmtMajor(result.mcr)} icon={<Coins size={20} />} accent="var(--c-amber)" />
               <KpiCard label="Solvency ratio" value={formatPercent(result.solvencyRatio)} icon={<Percent size={20} />} accent="var(--c-green)" />
@@ -492,7 +493,7 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
         </Card>
 
         <Card padded={false}>
-          <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+          <div className={local.cardPad}>
             <CardHeader title="Past runs" subtitle="Historical Solvency II calculations." />
           </div>
           <Table

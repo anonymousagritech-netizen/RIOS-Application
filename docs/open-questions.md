@@ -189,6 +189,42 @@ With this, every §26 catalog item is delivered as a working, tested slice or ha
 its external boundary documented above; nothing in the catalog is silently
 omitted.
 
+## 15. HR / Attendance depth (§9.14)
+
+Delivered as a working, tested slice:
+
+- **Employee depth** - employment type (full-time/contract/intern), an audited
+  status lifecycle (active/on-leave/suspended/exited) with a hash-chained
+  `employee_status_history`, and an org-chart rollup (direct + indirect reports
+  via a recursive CTE). System role(s) from the Permission Engine are surfaced
+  on the employee detail alongside the HR designation.
+- **Attendance command center** - an enumerated, auditable day status
+  (present/absent/on-leave/holiday/regularized/OD/WFH; see
+  `attendanceStatus.ts`), a monthly grid, OD/WFH/regularization requests routed
+  to the employee's **manager resolved from the org hierarchy** (not flat
+  `hr:write`), manager approval that applies the effect (regularization keeps
+  the original system-captured punches alongside the corrected value), and a
+  who's-on-leave widget sourced from the existing leave table (not duplicated).
+  Pure domain logic decides whether OD/WFH count as worked days for payroll.
+
+Documented gaps / designed-for:
+
+- **Configurable escalation to skip-level** - approvals currently resolve a
+  single approver (the direct manager; falling back to HR review when no manager
+  is on file). **Time-based auto-escalation to the skip-level manager** (e.g. "if
+  not actioned in N hours, escalate one level up") is **designed-for, not yet
+  wired**: it should reuse the existing Scheduler (`scheduler.ts`) and
+  Notification engine rather than introduce a parallel mechanism. The org
+  hierarchy needed to find the skip-level (manager's manager) is already
+  available via the recursive reports query.
+- **Employee↔user account linking** - manager-as-approver resolves the manager's
+  `app_user` via `employee.user_id`. Employees created through the HR API are not
+  auto-provisioned a login, so their requests fall back to HR review until an
+  account is linked. Self-service provisioning is designed-for.
+- **Payslip self-service** - the attendance command center links to the Payroll
+  page (gated by `hr:read`); a per-employee "my payslip" self-service endpoint is
+  designed-for.
+
 ## Assumptions
 
 - This is a **foundation/vertical-slice**, intended to prove correctness, security, audit, and the

@@ -1,0 +1,23 @@
+.tabBody { padding: var(--space-5); }
+
+.stack5 { display: grid; gap: var(--space-5); }
+.stack4 { display: grid; gap: var(--space-4); }
+
+.toolbar { display: flex; gap: var(--space-4); align-items: flex-end; flex-wrap: wrap; }
+.field { min-width: 180px; }
+
+.cardBody { padding: var(--space-4); }
+
+.forecastForm { display: grid; gap: var(--space-4); max-width: 680px; }
+.fieldNarrow { width: 140px; }
+
+.reportField { min-width: 200px; }
+.reportFieldSm { min-width: 160px; }
+.reportForm { padding: var(--space-5); display: flex; gap: var(--space-4); align-items: flex-end; flex-wrap: wrap; }
+
+.dashForm { padding: var(--space-5); display: grid; gap: var(--space-3); }
+.dashNameField { max-width: 320px; }
+.chipRow { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.chipButton { cursor: pointer; border: none; background: transparent; padding: 0; }
+
+.rateInput { width: 90px; text-align: right; }

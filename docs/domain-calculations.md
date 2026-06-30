@@ -375,6 +375,18 @@ hand-worked examples (run `npm test --workspace packages/domain`).
   `/api/products/evaluate-parametric` and `/api/products/evaluate-ilw`.
 - **Geofence** (`geofence.ts`): haversine distance and a radius+buffer geofence
   check, used by attendance punch validation.
+- **Attendance status** (`attendanceStatus.ts`): the enumerated, auditable
+  attendance day status (`present`/`checked_out`/`od`/`wfh`/`regularized`/
+  `on_break`/`on_leave`/`holiday`/`weekend`/`absent`) replaces contradictory
+  booleans. `countsAsWorked(status)` is the single source of truth for which
+  states count as a worked day for payroll - **OD (On-Duty, off-site business)
+  and WFH both count as worked**, distinct from each other and from a normal
+  office day; leave/holiday/weekend/absent do not. `summariseMonth(statuses[])`
+  rolls a month into worked vs non-worked buckets, and
+  `attendancePayFactor(workedDays, workingDaysInPeriod)` returns the proportion
+  of the period worked, clamped to `[0,1]` and guarding divide-by-zero (returns
+  `1` when there are no working days, so fixed salary is unaffected). Surfaced
+  via `/api/attendance/month`.
 
 > The earlier note that swing/burning-cost and exposure rating "are not yet in
 > the domain library" is superseded - both exist (`pricing.ts`, `rating.ts`).

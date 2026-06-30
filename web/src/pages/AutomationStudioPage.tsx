@@ -20,6 +20,7 @@ import { FormField, Select, Textarea } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatPercent } from '../lib/format';
 import shared from './shared.module.css';
+import styles from './AutomationStudioPage.module.css';
 
 export function AutomationStudioPage() {
   const [tab, setTab] = useState('flows');
@@ -28,7 +29,7 @@ export function AutomationStudioPage() {
       <PageHeader title="Automation Studio" description="Trigger→rule→action flows, and the assistant evaluation suite." />
       <Card>
         <Tabs tabs={[{ id: 'flows', label: 'Automation flows' }, { id: 'eval', label: 'Assistant eval' }]} active={tab} onChange={setTab} />
-        <div style={{ padding: 'var(--space-5)' }}>
+        <div className={styles.tabBody}>
           {tab === 'flows' ? <Flows /> : <Eval />}
         </div>
       </Card>
@@ -63,22 +64,22 @@ function Flows() {
   ];
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+    <div className={styles.sectionWide}>
       <Table columns={cols} rows={q.data?.flows} rowKey={(f) => f.key} empty={<EmptyState title="No flows" message="No automation flows defined." />} />
       <Card>
         <CardHeader title="Run a flow" subtitle="Evaluate the rule set against a sample event context." />
-        <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-3)', maxWidth: 560 }}>
+        <div className={styles.runForm}>
           <FormField label="Flow">
             <Select value={active} onChange={(e) => setFlowKey(e.target.value)}>
               {q.data?.flows.map((f) => <option key={f.key} value={f.key}>{f.name}</option>)}
             </Select>
           </FormField>
-          <FormField label="Event context (JSON)"><Textarea rows={5} value={context} onChange={(e) => setContext(e.target.value)} style={{ fontFamily: 'var(--font-mono)' }} /></FormField>
+          <FormField label="Event context (JSON)"><Textarea rows={5} value={context} onChange={(e) => setContext(e.target.value)} className={styles.monoInput} /></FormField>
           <div><Button variant="primary" onClick={() => run.mutate(active)} loading={run.isPending} disabled={!active}>Run flow</Button></div>
           {result && (
-            <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+            <div className={styles.resultStack}>
               <Badge color={result.dispatched ? 'green' : 'red'}>{result.dispatched ? 'Dispatched' : 'Blocked'}</Badge>
-              {result.outcome.errors.map((e, i) => <p key={i} className={shared.cellSub} style={{ color: 'var(--c-red)' }}>{e}</p>)}
+              {result.outcome.errors.map((e, i) => <p key={i} className={`${shared.cellSub} ${styles.errorText}`}>{e}</p>)}
               {result.actions.map((a, i) => <Badge key={i} color="blue">{a.type}{a.target ? `: ${a.target}` : ''}</Badge>)}
             </div>
           )}
@@ -98,7 +99,7 @@ function Eval() {
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Eval failed'),
   });
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+    <div className={styles.section}>
       <p className={shared.cellSub}>Run a curated suite of prompts through the assistant and check each response contains the expected signal - a regression check on the intent engine.</p>
       <div><Button variant="primary" onClick={() => run.mutate()} loading={run.isPending}>Run evaluation</Button></div>
       {result && (

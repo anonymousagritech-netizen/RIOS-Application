@@ -35,7 +35,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--primary), var(--accent-violet));
-  color: #fff;
+  color: var(--primary-fg);
   font-weight: var(--weight-bold);
   font-size: var(--text-lg);
   box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 38%, transparent);
@@ -112,11 +112,11 @@
 .navLinkActive,
 .navLinkActive:hover {
   background: linear-gradient(135deg, var(--primary), var(--accent-violet));
-  color: #fff;
+  color: var(--primary-fg);
   font-weight: var(--weight-semibold);
   box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 32%, transparent);
 }
-.navLinkActive .navIcon { color: #fff; }
+.navLinkActive .navIcon { color: var(--primary-fg); }
 
 .navIcon { display: grid; place-items: center; flex-shrink: 0; width: 18px; height: 18px; color: var(--text-faint); transition: color var(--motion-fast); }
 .navLabel { flex: 1; overflow: hidden; text-overflow: ellipsis; }

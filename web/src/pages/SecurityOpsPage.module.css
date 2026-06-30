@@ -1,0 +1,18 @@
+.tabBody { padding: var(--space-5); }
+
+.section { display: grid; gap: var(--space-4); }
+.sectionWide { display: grid; gap: var(--space-5); }
+
+.cryptoForm {
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+  max-width: 560px;
+}
+.rowEnd { display: flex; gap: var(--space-3); align-items: flex-end; }
+.grow { flex: 1; }
+.btnRow { display: flex; gap: var(--space-2); }
+.cipherText { font-family: var(--font-mono); word-break: break-all; }
+
+.localeToolbar { display: flex; gap: var(--space-3); align-items: flex-end; }
+.localeField { min-width: 200px; }

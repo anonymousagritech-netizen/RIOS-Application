@@ -1,0 +1,38 @@
+.formGrid { display: grid; }
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.error { color: var(--danger); font-size: var(--text-sm); }
+
+.resultBlock { margin-top: var(--space-5); }
+
+.cardPad { padding: var(--space-4) var(--space-5) 0; }
+
+.generateRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.actionRow {
+  display: inline-flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.jsonPre {
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  overflow: auto;
+  max-height: 360px;
+}
+.preWrap { margin-top: var(--space-4); }

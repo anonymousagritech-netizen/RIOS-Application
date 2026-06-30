@@ -1,0 +1,21 @@
+.cardHead { padding: var(--space-4) var(--space-5) 0; }
+.toolbarPad { padding: var(--space-4); }
+
+.form { display: flex; flex-direction: column; gap: var(--space-4); }
+.mono { font-family: var(--font-mono); }
+.error { color: var(--danger); font-size: var(--text-sm); }
+
+.preview {
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.previewScroll {
+  max-height: 60vh;
+  overflow: auto;
+}

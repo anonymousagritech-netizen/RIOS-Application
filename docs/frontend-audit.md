@@ -12,6 +12,30 @@ Token adoption is **strong**, contrary to a first impression of inconsistency:
 
 So the genuine remediation is **(a)** migrating the heaviest inline-`style` pages to dedicated `.module.css` files for maintainability, and **(b)** replacing the 11 raw px values with tokens or CSS. There is no hard-coded-colour or font problem to fix. Dark-mode parity is inherited from the semantic tokens and shared components.
 
+## Remediation status (post-audit)
+
+- **Hard-coded colours: now zero across the whole of `web/src`** (previously the
+  audit counted hex only inside `pages/`; a follow-up sweep of components,
+  `app/`, `assistant/` and page CSS modules found 11 stray `#fff` / gradient
+  end-stops in CSS modules). All replaced with `var(--primary-fg)` and
+  token-derived `color-mix(... black)` darkening. Verify:
+  `grep -rn "#[0-9a-fA-F]\{3,6\}" web/src --include=*.tsx --include=*.css | grep -v tokens.css` → no matches.
+- **Heavy-inline pages → `.module.css`:** the medium-severity pages (≥13
+  token-based inline-style declarations) were migrated to co-located CSS modules
+  (Analytics, Designer, Intelligence, Procurement, Assets, Documents, Pricing,
+  PeriodClose, ClaimsRecoveries, TreatyAdjustments, RegulatoryReturns,
+  Regulatory, SecurityOps, AutomationStudio). Pure style relocation - identical
+  token values, no visual change, dark-mode unaffected.
+- **Raw px:** the remaining `px` occurrences are idiomatic layout constraints
+  (`1px solid var(--border)`, `minmax(300px, 1fr)`, `maxHeight: 360px`) - not
+  spacing/typography that belongs in a token. Left as-is by design.
+- **Part B pages** (Attendance command center, HR employee detail) were built to
+  this standard from the start: token-only, dedicated CSS module, dark-mode
+  parity, status colours derived from `--accent-*` tokens via `data-status`.
+- **Verification:** light + dark screenshots of the rebuilt Attendance (Today /
+  Calendar / Team) and HR detail surfaces confirmed token-correct rendering in
+  both themes; `npm run build` (web) and `tsc --noEmit` pass clean.
+
 ## Per-page findings
 
 | Page | .module.css | Token adoption | Issues | Severity |

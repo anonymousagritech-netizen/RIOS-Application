@@ -17,6 +17,7 @@ import { DefinitionList } from '../components/Feedback';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
+import local from './ClaimsRecoveriesPage.module.css';
 
 /* ---------------- Types (shapes confirmed from server/src/modules/claimsAdvanced.ts) ---------------- */
 interface ClaimPickItem {
@@ -192,7 +193,7 @@ export function ClaimsRecoveriesPage() {
 
       <Card>
         <CardHeader title="Claim" subtitle="Pick a claim to view and act on its recoveries." />
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        <div className={`${shared.grid2} ${local.claimGrid}`}>
           <FormField label="Claim" required>
             <Select
               value={selectedId}
@@ -232,7 +233,7 @@ function NetPositionKpis({ claimId, fallbackCurrency }: { claimId: string; fallb
   const { data, isLoading } = useNetPosition(claimId);
   const ccy = data?.currency ?? fallbackCurrency;
   return (
-    <div className={shared.kpiGrid} style={{ marginBottom: 'var(--space-5)' }}>
+    <div className={`${shared.kpiGrid} ${local.kpiGrid}`}>
       <KpiCard label="Gross loss" value={formatMoney(data?.grossLossMinor, ccy)} loading={isLoading} icon={<ShieldAlert size={20} />} />
       <KpiCard label="Paid" value={formatMoney(data?.paidMinor, ccy)} loading={isLoading} icon={<ArrowRight size={20} />} accent="var(--c-amber)" />
       <KpiCard label="Recovered" value={formatMoney(data?.recoveredMinor, ccy)} loading={isLoading} icon={<Undo2 size={20} />} accent="var(--c-green)" />
@@ -257,7 +258,7 @@ function RecoveriesTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite: bo
 
   return (
     <>
-      <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+      <div className={local.sectionHeader}>
         <CardHeader
           title="Recoveries"
           subtitle="Reinsurance, salvage and subrogation recoveries booked against the claim."
@@ -319,7 +320,7 @@ function AddRecoveryModal({ claim, open, onClose }: { claim: ClaimPickItem; open
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <form onSubmit={submit} className={local.modalForm}>
         <FormField label="Recovery type" required>
           <Select value={recoveryType} onChange={(e) => setRecoveryType(e.target.value as RecoveryType)}>
             {RECOVERY_TYPES.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
@@ -336,7 +337,7 @@ function AddRecoveryModal({ claim, open, onClose }: { claim: ClaimPickItem; open
             ))}
           </Select>
         </FormField>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={local.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -374,7 +375,7 @@ function CashCallsTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite: boo
 
   return (
     <>
-      <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+      <div className={local.sectionHeader}>
         <CardHeader
           title="Cash calls"
           subtitle="Advances requested against the loss. Calls raised in this session appear below."
@@ -438,11 +439,11 @@ function RaiseCashCallModal({ claim, open, onClose, onRaise, pending }: {
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <form onSubmit={submit} className={local.modalForm}>
         <FormField label={`Amount (major units of ${claim.currency})`} required>
           <Input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 100000" />
         </FormField>
-        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+        {error && <p className={local.error} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -506,8 +507,8 @@ function ReinstatementTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite:
         <Card>
           <CardHeader title="Reinstatement premium" subtitle="Reinstate a layer after losses. Premiums and recoveries are in major units." />
           {canWrite ? (
-            <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-              <div className={shared.grid2} style={{ display: 'grid' }}>
+            <form onSubmit={submit} className={local.modalForm}>
+              <div className={`${shared.grid2} ${local.fieldsGrid}`}>
                 <FormField label="Layer" required>
                   <Select value={layerId} onChange={(e) => setLayerId(e.target.value)} disabled={layersLoading}>
                     <option value="">{layersLoading ? 'Loading layers…' : 'Select a layer…'}</option>
@@ -526,7 +527,7 @@ function ReinstatementTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite:
                   <Input value={timeFractions} onChange={(e) => setTimeFractions(e.target.value)} placeholder="0.5, 1" />
                 </FormField>
               </div>
-              {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+              {error && <p className={local.error} role="alert">{error}</p>}
               <div>
                 <Button variant="primary" onClick={submit} loading={run.isPending} disabled={!layerId}>Calculate</Button>
               </div>
@@ -536,7 +537,7 @@ function ReinstatementTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite:
           )}
 
           {result && (
-            <div style={{ marginTop: 'var(--space-5)' }}>
+            <div className={local.resultBlock}>
               <CardHeader title="Reinstatement charges" />
               <Table
                 columns={chargeColumns}
@@ -544,7 +545,7 @@ function ReinstatementTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite:
                 rowKey={(c) => String(c.idx)}
                 empty={<EmptyState title="No charges" message="No reinstatement charges were generated." icon={<ReceiptText size={16} />} />}
               />
-              <div style={{ marginTop: 'var(--space-4)' }}>
+              <div className={local.chargesSummary}>
                 <DefinitionList
                   items={[
                     { term: 'Limit reinstated', value: <span className={shared.money}>{formatMoney(result.limitReinstatedMinor, ccy)}</span> },

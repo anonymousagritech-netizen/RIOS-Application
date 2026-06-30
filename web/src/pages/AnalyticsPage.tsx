@@ -23,6 +23,7 @@ import { FormField, Select, Input, Textarea } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatNumber, formatPercent, titleCase } from '../lib/format';
 import shared from './shared.module.css';
+import styles from './AnalyticsPage.module.css';
 
 interface SourceMeta { key: string; label: string; dimensions: { key: string; label: string }[]; measures: { field: string; label: string }[] }
 interface PivotCell { key: Record<string, unknown>; values: Record<string, number>; count: number }
@@ -39,7 +40,7 @@ export function AnalyticsPage() {
           active={tab}
           onChange={setTab}
         />
-        <div style={{ padding: 'var(--space-5)' }}>
+        <div className={styles.tabBody}>
           {tab === 'pivot' && <PivotBuilder />}
           {tab === 'reports' && <ReportsConsole />}
           {tab === 'dashboards' && <DashboardsConsole />}
@@ -92,23 +93,23 @@ function PivotBuilder() {
   ];
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
-      <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <div style={{ minWidth: 180 }}>
+    <div className={styles.stack5}>
+      <div className={styles.toolbar}>
+        <div className={styles.field}>
           <FormField label="Fact source">
             <Select value={sourceKey} onChange={(e) => { setSourceKey(e.target.value); setDimension(''); setMeasureField(''); setResult(null); }}>
               {sources.data?.sources.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
             </Select>
           </FormField>
         </div>
-        <div style={{ minWidth: 180 }}>
+        <div className={styles.field}>
           <FormField label="Group by">
             <Select value={activeDim} onChange={(e) => setDimension(e.target.value)}>
               {dims.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
             </Select>
           </FormField>
         </div>
-        <div style={{ minWidth: 180 }}>
+        <div className={styles.field}>
           <FormField label="Measure (sum)">
             <Select value={activeMeasure} onChange={(e) => setMeasureField(e.target.value)}>
               {measures.map((m) => <option key={m.field} value={m.field}>{m.label}</option>)}
@@ -175,7 +176,7 @@ function CatConsole() {
       key: 'rate', header: 'Annual rate λ', align: 'right',
       render: (e) => (
         <Input
-          type="number" step="0.01" min="0" style={{ width: 90, textAlign: 'right' }}
+          type="number" step="0.01" min="0" className={styles.rateInput}
           value={rates[e.id] ?? '0.04'}
           onChange={(ev) => setRates((r) => ({ ...r, [e.id]: ev.target.value }))}
           disabled={e.grossLossMinor === 0}
@@ -185,7 +186,7 @@ function CatConsole() {
   ];
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+    <div className={styles.stack5}>
       <p className={shared.cellSub}>
         Per-event losses are aggregated from real claims. Assign each event an annual occurrence rate (λ - e.g. 0.04 for a 1-in-25-year event)
         to compute the Average Annual Loss, exceedance-probability curve and PML profile. Rates are your modelling assumptions.
@@ -207,7 +208,7 @@ function CatConsole() {
 
           <Card>
             <CardHeader title="Exceedance probability (OEP) curve" subtitle="Annual probability and return period at each modelled loss level." />
-            <div style={{ padding: 'var(--space-4)' }}>
+            <div className={styles.cardBody}>
               <Table
                 columns={[
                   { key: 'loss', header: 'Loss level', align: 'right', render: (p: EpPoint) => formatMoney(p.lossMinor) },
@@ -254,13 +255,13 @@ function ForecastConsole() {
   };
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 680 }}>
+    <div className={styles.forecastForm}>
       <p className={shared.cellSub}>Project a metric forward from a historical series (e.g. monthly premium). Linear fits an OLS trend; smoothing uses exponential smoothing.</p>
       <FormField label="Historical series" error={error ?? undefined}>
         <Textarea rows={3} value={series} onChange={(e) => setSeries(e.target.value)} />
       </FormField>
-      <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <div style={{ minWidth: 180 }}>
+      <div className={styles.toolbar}>
+        <div className={styles.field}>
           <FormField label="Method">
             <Select value={method} onChange={(e) => setMethod(e.target.value)}>
               <option value="linear">Linear trend</option>
@@ -268,7 +269,7 @@ function ForecastConsole() {
             </Select>
           </FormField>
         </div>
-        <div style={{ width: 140 }}>
+        <div className={styles.fieldNarrow}>
           <FormField label="Periods ahead">
             <Input type="number" min="1" max="60" value={periods} onChange={(e) => setPeriods(e.target.value)} />
           </FormField>
@@ -336,10 +337,10 @@ function ReportsConsole() {
   if (sources.isLoading || reports.isLoading) return <PageLoader label="Loading reports…" />;
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+    <div className={styles.stack5}>
       <Card>
         <CardHeader title="Saved reports" subtitle="Named definitions over the fact sources - run on demand." />
-        <div style={{ padding: 'var(--space-4)' }}>
+        <div className={styles.cardBody}>
           <Table
             columns={[
               { key: 'name', header: 'Report', render: (r: SavedReport) => <span className={shared.cellMain}>{r.name}</span> },
@@ -357,7 +358,7 @@ function ReportsConsole() {
       {result && (
         <Card>
           <CardHeader title="Result" actions={<Badge color="slate">{result.factCount} facts</Badge>} />
-          <div style={{ padding: 'var(--space-4)' }}>
+          <div className={styles.cardBody}>
             <Table
               columns={[
                 { key: 'k', header: 'Group', render: (c: PivotCell) => <span className={shared.cellMain}>{Object.values(c.key).map(String).join(' · ') || 'All'}</span> },
@@ -374,23 +375,23 @@ function ReportsConsole() {
       {canWrite && (
         <Card>
           <CardHeader title="Design a report" subtitle="Pick a source, a grouping and a measure, then save it by name." />
-          <div style={{ padding: 'var(--space-5)', display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ minWidth: 200 }}><FormField label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Claims by status" /></FormField></div>
-            <div style={{ minWidth: 160 }}>
+          <div className={styles.reportForm}>
+            <div className={styles.reportField}><FormField label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Claims by status" /></FormField></div>
+            <div className={styles.reportFieldSm}>
               <FormField label="Source">
                 <Select value={sourceKey} onChange={(e) => { setSourceKey(e.target.value); setDimension(''); setMeasureField(''); }}>
                   {sources.data?.sources.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
                 </Select>
               </FormField>
             </div>
-            <div style={{ minWidth: 160 }}>
+            <div className={styles.reportFieldSm}>
               <FormField label="Group by">
                 <Select value={activeDim} onChange={(e) => setDimension(e.target.value)}>
                   {dims.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
                 </Select>
               </FormField>
             </div>
-            <div style={{ minWidth: 160 }}>
+            <div className={styles.reportFieldSm}>
               <FormField label="Measure (sum)">
                 <Select value={activeMeasure} onChange={(e) => setMeasureField(e.target.value)}>
                   {measures.map((m) => <option key={m.field} value={m.field}>{m.label}</option>)}
@@ -442,10 +443,10 @@ function DashboardsConsole() {
   if (dashboards.isLoading) return <PageLoader label="Loading dashboards…" />;
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+    <div className={styles.stack5}>
       <Card>
         <CardHeader title="Dashboards" subtitle="Composed of saved-report widget tiles." />
-        <div style={{ padding: 'var(--space-4)' }}>
+        <div className={styles.cardBody}>
           <Table
             columns={[
               { key: 'name', header: 'Dashboard', render: (d: DashboardDef) => <span className={shared.cellMain}>{d.name}</span> },
@@ -462,7 +463,7 @@ function DashboardsConsole() {
       {rendered && (
         <Card>
           <CardHeader title={rendered.name} />
-          <div className={shared.kpiGrid} style={{ padding: 'var(--space-4)' }}>
+          <div className={`${shared.kpiGrid} ${styles.cardBody}`}>
             {rendered.widgets.map((w) => (
               <KpiCard key={w.title} label={w.title} value={w.error ? '-' : formatMoney(w.total)} hint={w.error ?? `${w.groups} groups · ${w.factCount} facts`} icon={<Grid2x2 size={20} />} />
             ))}
@@ -473,14 +474,14 @@ function DashboardsConsole() {
       {canWrite && (
         <Card>
           <CardHeader title="Compose a dashboard" subtitle="Name it and pick the saved reports to show as tiles." />
-          <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-3)' }}>
-            <div style={{ maxWidth: 320 }}><FormField label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Claims overview" /></FormField></div>
-            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <div className={styles.dashForm}>
+            <div className={styles.dashNameField}><FormField label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Claims overview" /></FormField></div>
+            <div className={styles.chipRow}>
               {(reports.data?.reports ?? []).map((r) => {
                 const on = picked.includes(r.key);
                 return (
                   <button key={r.key} type="button" onClick={() => setPicked((p) => on ? p.filter((k) => k !== r.key) : [...p, r.key])}
-                    style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }}>
+                    className={styles.chipButton}>
                     <Badge color={on ? 'green' : 'slate'}>{r.name}</Badge>
                   </button>
                 );
