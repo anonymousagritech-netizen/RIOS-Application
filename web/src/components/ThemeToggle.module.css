@@ -1,0 +1,13 @@
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.toggle:hover { background: var(--surface-2); color: var(--text); }
+.icon { font-size: 1rem; }

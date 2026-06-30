@@ -1,0 +1,98 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  backdrop-filter: blur(2px);
+  z-index: 920;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  animation: fadeIn var(--motion-fast);
+}
+.panel {
+  width: min(600px, calc(100vw - 2rem));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: slideUp var(--motion-base);
+}
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.icon { font-size: 1.2rem; color: var(--text-muted); }
+.input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-md);
+  outline: none;
+}
+.input::placeholder { color: var(--text-faint); }
+
+.results {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+.empty { padding: var(--space-5); text-align: center; color: var(--text-muted); font-size: var(--text-sm); }
+
+.group { margin-bottom: var(--space-2); }
+.groupLabel {
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  padding: var(--space-2) var(--space-3);
+}
+.item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--text);
+}
+.itemActive { background: var(--primary-soft); }
+.itemIcon {
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+}
+.itemActive .itemIcon { color: var(--primary); }
+.itemText { display: flex; flex-direction: column; min-width: 0; }
+.itemLabel { font-size: var(--text-base); font-weight: var(--weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.itemSub { font-size: var(--text-xs); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.footer {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.footer kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  margin-right: 2px;
+}

@@ -1,0 +1,138 @@
+/* RIOS design tokens. Semantic custom properties only — components must never
+   hard-code colours. Light is the default; [data-theme="dark"] overrides. */
+
+:root {
+  /* Typography */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+
+  /* Spacing scale (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 2.5rem;
+  --space-8: 3rem;
+  --space-10: 4rem;
+
+  /* Radii */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 999px;
+
+  /* Motion */
+  --motion-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-slow: 320ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Layout */
+  --nav-width: 244px;
+  --topbar-height: 56px;
+  --content-max: 1320px;
+
+  /* ---- Light palette ---- */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f6;
+  --surface-3: #e8ebf0;
+  --border: #e3e6ec;
+  --border-strong: #d2d7e0;
+  --text: #1a1f29;
+  --text-muted: #5d6675;
+  --text-faint: #8a93a3;
+
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-fg: #ffffff;
+  --primary-soft: #eef0fe;
+
+  --focus-ring: color-mix(in srgb, var(--primary) 45%, transparent);
+  --overlay: rgba(17, 21, 28, 0.42);
+
+  --shadow-sm: 0 1px 2px rgba(16, 22, 36, 0.06);
+  --shadow-md: 0 4px 14px rgba(16, 22, 36, 0.08);
+  --shadow-lg: 0 12px 38px rgba(16, 22, 36, 0.14);
+  --shadow-popover: 0 8px 30px rgba(16, 22, 36, 0.18);
+
+  /* Status / accent tokens (paired fg/bg/border). Names map to code-list meta.color */
+  --c-green: #15803d;        --c-green-bg: #e7f6ec;
+  --c-blue: #1d4ed8;         --c-blue-bg: #e6edfd;
+  --c-amber: #b45309;        --c-amber-bg: #fcf0db;
+  --c-violet: #6d28d9;       --c-violet-bg: #f0e9fd;
+  --c-slate: #475569;        --c-slate-bg: #eceff3;
+  --c-red: #b91c1c;          --c-red-bg: #fde8e8;
+  --c-teal: #0f766e;         --c-teal-bg: #defaf4;
+  --c-indigo: #4338ca;       --c-indigo-bg: #e9e9fc;
+  --c-orange: #c2410c;       --c-orange-bg: #fdeada;
+  --c-rose: #be123c;         --c-rose-bg: #fde7ee;
+  --c-gray: #475569;         --c-gray-bg: #eceff3;
+
+  --success: var(--c-green);
+  --danger: var(--c-red);
+  --warning: var(--c-amber);
+}
+
+[data-theme="dark"] {
+  --bg: #0c0e13;
+  --surface: #14171f;
+  --surface-2: #1b1f29;
+  --surface-3: #232834;
+  --border: #262b36;
+  --border-strong: #333a48;
+  --text: #e7eaf0;
+  --text-muted: #9aa3b2;
+  --text-faint: #69727f;
+
+  --primary: #7c74f6;
+  --primary-hover: #8c84ff;
+  --primary-fg: #0c0e13;
+  --primary-soft: #1e1f3a;
+
+  --focus-ring: color-mix(in srgb, var(--primary) 55%, transparent);
+  --overlay: rgba(0, 0, 0, 0.6);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 14px 42px rgba(0, 0, 0, 0.6);
+  --shadow-popover: 0 8px 30px rgba(0, 0, 0, 0.6);
+
+  --c-green: #4ade80;        --c-green-bg: #11291b;
+  --c-blue: #7da6ff;         --c-blue-bg: #14213f;
+  --c-amber: #fbbf52;        --c-amber-bg: #2e2310;
+  --c-violet: #b69bff;       --c-violet-bg: #221a3a;
+  --c-slate: #aab4c2;        --c-slate-bg: #20262f;
+  --c-red: #fb7676;          --c-red-bg: #321617;
+  --c-teal: #45d6c2;         --c-teal-bg: #0d2a28;
+  --c-indigo: #9b94ff;       --c-indigo-bg: #1b1c3a;
+  --c-orange: #fb9a5a;       --c-orange-bg: #2c1c10;
+  --c-rose: #f9789e;         --c-rose-bg: #2f1620;
+  --c-gray: #aab4c2;         --c-gray-bg: #20262f;
+
+  --success: var(--c-green);
+  --danger: var(--c-red);
+  --warning: var(--c-amber);
+}

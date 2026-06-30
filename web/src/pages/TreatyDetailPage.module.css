@@ -1,0 +1,35 @@
+.subline { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.dot { color: var(--text-faint); }
+.headerActions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+.tabBar { padding: 0 var(--space-4); }
+.tabBody { padding: var(--space-5); }
+.stack { display: flex; flex-direction: column; gap: var(--space-6); }
+
+.statementGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+.statementMetric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.metricLabel { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.metricValue { font-size: var(--text-xl); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+
+.statementFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding-top: var(--space-2);
+}
+.recOk { color: var(--success); font-weight: var(--weight-semibold); }
+.recBad { color: var(--danger); font-weight: var(--weight-semibold); }

@@ -1,0 +1,46 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.filter { display: flex; align-items: center; gap: var(--space-2); }
+.filterLabel { font-size: var(--text-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.searchInput { min-width: 240px; }
+.spacer { flex: 1; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+.cols { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-5); align-items: start; }
+
+.cellMain { font-weight: var(--weight-medium); color: var(--text); }
+.cellSub { font-size: var(--text-xs); color: var(--text-muted); }
+.cellRef { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); }
+.money { font-variant-numeric: tabular-nums; }
+.linkCell { color: var(--primary); font-weight: var(--weight-medium); }
+
+.checkGroup { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+.check:hover { background: var(--surface-2); }
+.checkActive { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.check input { accent-color: var(--primary); }
+
+@media (max-width: 900px) {
+  .cols, .grid2, .grid3 { grid-template-columns: 1fr; }
+}
