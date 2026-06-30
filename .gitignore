@@ -13,3 +13,4 @@ pgdata/
 test-results/
 playwright-report/
 .last-run.json
+scratchpad/

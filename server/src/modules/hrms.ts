@@ -26,6 +26,7 @@ const createEmployeeSchema = z.object({
   departmentId: z.string().uuid().optional(),
   position: z.string().optional(),
   managerId: z.string().uuid().optional(),
+  employmentType: z.enum(['full_time', 'contract', 'intern']).optional(),
   hireDate: z.string().optional(),
   baseSalary: z.number().nonnegative().optional(),
   currency: z.string().length(3).optional(),
@@ -177,11 +178,12 @@ export async function hrmsModule(app: FastifyInstance): Promise<void> {
       const { rows } = await db.query<{ id: string }>(
         `insert into employee
            (tenant_id, employee_no, first_name, last_name, email, department_id, position, manager_id,
-            hire_date, base_salary_minor, currency)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
+            hire_date, base_salary_minor, currency, employment_type)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
         [
           ctx.tenantId, employeeNo, b.firstName, b.lastName, b.email ?? null, b.departmentId ?? null,
           b.position ?? null, b.managerId ?? null, b.hireDate ?? null, salaryMinor, b.currency ?? null,
+          b.employmentType ?? 'full_time',
         ],
       );
       const id = rows[0]!.id;

@@ -38,8 +38,18 @@ interface Employee {
   baseSalaryMinor: number | null;
   currency: string | null;
   status: string;
+  employmentType: string | null;
   departmentName: string | null;
 }
+interface SystemRole { code: string; name: string }
+interface StatusHistoryRow { fromStatus: string | null; toStatus: string; reason: string | null; changedAt: string }
+interface EmployeeDetail extends Employee {
+  leaveRequests: LeaveRequest[];
+  systemRoles: SystemRole[];
+  statusHistory: StatusHistoryRow[];
+}
+interface ReportRow { id: string; name: string; position: string | null; status: string; depth: number; directReport: boolean }
+interface ReportsResponse { reports: ReportRow[]; direct: number; total: number }
 interface LeaveRequest {
   id: string;
   employeeId: string;
@@ -86,7 +96,7 @@ function useCreateEmployee() {
   return useMutation({
     mutationFn: (body: {
       firstName: string; lastName: string; email?: string; departmentId?: string;
-      position?: string; hireDate?: string; baseSalary?: number; currency?: string;
+      position?: string; employmentType?: string; hireDate?: string; baseSalary?: number; currency?: string;
     }) => api<{ id: string; employeeNo: string }>('/api/hr/employees', { body }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['hr', 'employees'] });
@@ -115,6 +125,32 @@ function useDecideLeave() {
   });
 }
 
+function useEmployeeDetail(id: string | null) {
+  return useQuery({
+    queryKey: ['hr', 'employee', id],
+    queryFn: () => api<EmployeeDetail>(`/api/hr/employees/${id}`),
+    enabled: !!id,
+  });
+}
+function useEmployeeReports(id: string | null) {
+  return useQuery({
+    queryKey: ['hr', 'employee', id, 'reports'],
+    queryFn: () => api<ReportsResponse>(`/api/hr/employees/${id}/reports`),
+    enabled: !!id,
+  });
+}
+function useChangeStatus(id: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { status: string; reason?: string }) =>
+      api<{ id: string; from: string; to: string }>(`/api/hr/employees/${id}/status`, { body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['hr', 'employee', id] });
+      qc.invalidateQueries({ queryKey: ['hr', 'employees'] });
+    },
+  });
+}
+
 const TABS = [
   { id: 'people', label: 'People' },
   { id: 'departments', label: 'Departments' },
@@ -123,6 +159,10 @@ const TABS = [
 
 const LEAVE_KINDS = ['annual', 'sick', 'unpaid', 'parental', 'other'];
 const LEAVE_STATUSES = ['pending', 'approved', 'rejected'];
+const EMPLOYMENT_TYPES = ['full_time', 'contract', 'intern'];
+// Lifecycle states an employee can be moved to (audited). 'on_leave' is driven
+// by the leave-approval flow, so it is not offered as a manual transition here.
+const EMPLOYEE_STATUSES = ['active', 'suspended', 'exited', 'terminated'];
 
 export function HrmsPage() {
   const { hasPermission } = useAuth();
@@ -165,6 +205,7 @@ export function HrmsPage() {
 function PeopleTab({ canWrite }: { canWrite: boolean }) {
   const [departmentId, setDepartmentId] = useState('');
   const [showNew, setShowNew] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const { data, isLoading } = useEmployees({ departmentId: departmentId || undefined });
   const { data: depts } = useDepartments();
   const departments = depts?.departments ?? [];
@@ -184,6 +225,7 @@ function PeopleTab({ canWrite }: { canWrite: boolean }) {
     },
     { key: 'department', header: 'Department', sortValue: (e) => e.departmentName ?? '', render: (e) => e.departmentName ?? '-' },
     { key: 'position', header: 'Position', sortValue: (e) => e.position ?? '', render: (e) => e.position ?? '-' },
+    { key: 'employmentType', header: 'Type', sortValue: (e) => e.employmentType ?? '', render: (e) => titleCase((e.employmentType ?? 'full_time').replace('_', ' ')) },
     { key: 'status', header: 'Status', align: 'right', sortValue: (e) => e.status, render: (e) => <StatusPill status={e.status} /> },
   ];
 
@@ -209,11 +251,146 @@ function PeopleTab({ canWrite }: { canWrite: boolean }) {
         rows={data?.employees}
         loading={isLoading}
         rowKey={(e) => e.id}
+        onRowClick={(e) => setDetailId(e.id)}
         empty={<EmptyState title="No employees" message="No employees match the current filter." icon={<UserRound size={16} />} />}
       />
 
       <NewEmployeeModal open={showNew} onClose={() => setShowNew(false)} departments={departments} />
+      <EmployeeDetailModal id={detailId} canWrite={canWrite} onClose={() => setDetailId(null)} />
     </>
+  );
+}
+
+/* ---------------- Employee detail (depth, roles, lifecycle, org chart) ---------------- */
+function EmployeeDetailModal({ id, canWrite, onClose }: { id: string | null; canWrite: boolean; onClose: () => void }) {
+  const toast = useToast();
+  const { data: emp, isLoading } = useEmployeeDetail(id);
+  const { data: reports } = useEmployeeReports(id);
+  const changeStatus = useChangeStatus(id);
+  const [target, setTarget] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
+
+  const runChange = async () => {
+    if (!target) return;
+    try {
+      const res = await changeStatus.mutateAsync({ status: target, reason: reason || undefined });
+      toast.success(`Status changed ${titleCase(res.from)} → ${titleCase(res.to)}`);
+      setTarget(null); setReason('');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not change status.');
+      setTarget(null);
+    }
+  };
+
+  return (
+    <>
+      <Modal
+        open={!!id}
+        onClose={onClose}
+        size="lg"
+        title={emp ? `${emp.firstName} ${emp.lastName}` : 'Employee'}
+        description={emp ? `${emp.employeeNo}${emp.position ? ' · ' + emp.position : ''}` : undefined}
+      >
+        {isLoading || !emp ? (
+          <p className={shared.cellSub}>Loading…</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+            {/* Profile facts */}
+            <div className={shared.grid2} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+              <Fact label="Department" value={emp.departmentName ?? '—'} />
+              <Fact label="Employment type" value={titleCase((emp.employmentType ?? 'full_time').replace('_', ' '))} />
+              <Fact label="Hire date" value={emp.hireDate ? formatDate(emp.hireDate) : '—'} />
+              <Fact label="Status" value={<StatusPill status={emp.status} />} />
+            </div>
+
+            {/* System roles from the Permission Engine, alongside HR designation */}
+            <Section title="System access" subtitle="Roles from the Permission Engine">
+              {emp.systemRoles.length ? (
+                <div className={shared.toolbar} style={{ flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                  {emp.systemRoles.map((r) => <StatusPill key={r.code} status={r.name} />)}
+                </div>
+              ) : <p className={shared.cellSub}>No system account is linked to this employee.</p>}
+            </Section>
+
+            {/* Org chart rollup */}
+            <Section title="Org chart" subtitle={reports ? `${reports.direct} direct · ${reports.total} total reports` : 'Direct + indirect reports'}>
+              {reports?.reports.length ? (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  {reports.reports.map((r) => (
+                    <li key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', paddingLeft: `calc(var(--space-4) * ${r.depth - 1})` }}>
+                      <span className={shared.cellMain}>{r.name}</span>
+                      {r.directReport && <StatusPill status="direct" />}
+                      <span className={shared.cellSub}>{r.position ?? ''}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className={shared.cellSub}>No reports.</p>}
+            </Section>
+
+            {/* Audited status-change history */}
+            <Section title="Status history" subtitle="Audited lifecycle changes">
+              {emp.statusHistory.length ? (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  {emp.statusHistory.map((h, i) => (
+                    <li key={i} className={shared.toolbar} style={{ justifyContent: 'space-between' }}>
+                      <span className={shared.cellSub}>{h.fromStatus ? `${titleCase(h.fromStatus)} → ` : ''}{titleCase(h.toStatus)}{h.reason ? ` · ${h.reason}` : ''}</span>
+                      <span className={shared.cellSub}>{formatDate(h.changedAt)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className={shared.cellSub}>No status changes recorded.</p>}
+            </Section>
+
+            {/* Lifecycle controls — explicit confirmation per transition */}
+            {canWrite && (
+              <Section title="Change status" subtitle="Each change is audited">
+                <div className={shared.toolbar} style={{ flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                  {EMPLOYEE_STATUSES.filter((s) => s !== emp.status).map((s) => (
+                    <Button key={s} size="sm" variant={s === 'active' ? 'secondary' : 'danger'} onClick={() => setTarget(s)}>
+                      {titleCase(s)}
+                    </Button>
+                  ))}
+                </div>
+              </Section>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={!!target}
+        onClose={() => setTarget(null)}
+        onConfirm={runChange}
+        loading={changeStatus.isPending}
+        destructive={target !== 'active'}
+        title={`Change status to ${target ? titleCase(target) : ''}?`}
+        confirmLabel="Change status"
+        message={`This records an audited transition for ${emp?.firstName} ${emp?.lastName}.`}
+      >
+        <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" rows={2} />
+      </ConfirmDialog>
+    </>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+      <span className={shared.cellSub} style={{ textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 'var(--text-xs)' }}>{label}</span>
+      <span className={shared.cellMain}>{value}</span>
+    </div>
+  );
+}
+
+function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      <div>
+        <div className={shared.cellMain} style={{ fontWeight: 'var(--weight-semibold)' }}>{title}</div>
+        {subtitle && <div className={shared.cellSub}>{subtitle}</div>}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -225,6 +402,7 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
   const [email, setEmail] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [position, setPosition] = useState('');
+  const [employmentType, setEmploymentType] = useState('full_time');
   const [hireDate, setHireDate] = useState('');
   const [baseSalary, setBaseSalary] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -232,7 +410,7 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
 
   const reset = () => {
     setFirstName(''); setLastName(''); setEmail(''); setDepartmentId('');
-    setPosition(''); setHireDate(''); setBaseSalary(''); setCurrency('USD'); setError(null);
+    setPosition(''); setEmploymentType('full_time'); setHireDate(''); setBaseSalary(''); setCurrency('USD'); setError(null);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -248,6 +426,7 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
         email: email || undefined,
         departmentId: departmentId || undefined,
         position: position || undefined,
+        employmentType,
         hireDate: hireDate || undefined,
         baseSalary: salary,
         currency: salary !== undefined ? currency : undefined,
@@ -289,6 +468,11 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
           <TextField label="Position" value={position} onChange={setPosition} placeholder="e.g. Underwriter" />
         </div>
         <div className={shared.grid2} style={{ display: 'grid' }}>
+          <FormField label="Employment type">
+            <Select value={employmentType} onChange={(e) => setEmploymentType(e.target.value)}>
+              {EMPLOYMENT_TYPES.map((t) => <option key={t} value={t}>{titleCase(t.replace('_', ' '))}</option>)}
+            </Select>
+          </FormField>
           <TextField label="Hire date" value={hireDate} onChange={setHireDate} type="date" />
           <FormField label="Base salary (major units)">
             <div className={shared.toolbar}>
