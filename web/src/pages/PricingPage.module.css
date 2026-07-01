@@ -33,6 +33,14 @@
 
 .error { color: var(--danger); font-size: var(--text-sm); margin: 0; }
 
+.calcRow {
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+
 .resultBlock {
   margin-top: var(--space-5);
   padding: var(--space-4);

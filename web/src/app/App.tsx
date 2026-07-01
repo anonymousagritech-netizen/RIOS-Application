@@ -84,6 +84,7 @@ import { IntelligencePage } from '../pages/IntelligencePage';
 import { MobilePage } from '../pages/MobilePage';
 import { MarketplacePage } from '../pages/MarketplacePage';
 import { AutomationStudioPage } from '../pages/AutomationStudioPage';
+import { FormulaManagementPage } from '../pages/FormulaManagementPage';
 
 export function App() {
   const { status } = useAuth();
@@ -194,6 +195,7 @@ export function App() {
         <Route path="/marketplace" element={<MarketplacePage />} />
         <Route path="/automation-studio" element={<AutomationStudioPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/formulas" element={<FormulaManagementPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AppShell>
