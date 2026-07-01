@@ -169,6 +169,21 @@
 .similarTitle { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .similarMeta { display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
 
+/* Data room */
+.docAddRow { display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-2); margin-bottom: var(--space-3); }
+.docList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.docItem { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.docItem:last-child { border-bottom: none; }
+.docSuperseded { opacity: 0.55; }
+.docMain { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.docTop { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.docName { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.docVersion { font-size: var(--text-2xs); font-weight: var(--weight-bold); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.docMeta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); font-size: var(--text-2xs); color: var(--text-muted); }
+.docExtract { display: inline-flex; align-items: center; gap: 3px; color: var(--accent-violet); }
+.docSig { display: inline-flex; align-items: center; gap: 3px; color: var(--accent-emerald); font-variant-numeric: tabular-nums; }
+.docActions { display: flex; gap: var(--space-1); flex-shrink: 0; }
+
 /* Activity */
 .noteRow { display: flex; gap: var(--space-2); margin-bottom: var(--space-3); }
 .activity { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }

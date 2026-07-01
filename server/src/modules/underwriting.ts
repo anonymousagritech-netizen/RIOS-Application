@@ -17,7 +17,8 @@ import {
   modelCatalog, validateTerms,
   requiredApproval, levelCovers, LEVEL_PERMISSION,
   recommendedClauses, missingInformation, attentionFlags, executiveSummary,
-  type UwStage, type RiskFactorInput, type RiskBand, type ApprovalLevel, type AdvisorInput,
+  extractDocument, inferKind, nextVersion, signatureDigest,
+  type UwStage, type RiskFactorInput, type RiskBand, type ApprovalLevel, type AdvisorInput, type DocumentKind,
 } from '@rios/domain';
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
@@ -413,6 +414,91 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
         sensitivity: sensitivity({ basePremiumMinor: basePremium, expectedLossMinor: expectedLoss, expenseRatio, rateChanges, lossShocks }),
         rateChanges, lossShocks,
       };
+    });
+  });
+
+  // ---- Data room: register a document (runs extraction) --------------------
+  app.post<{ Params: { id: string } }>('/api/underwriting/submissions/:id/documents', { preHandler: requirePermission('treaty:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const b = (req.body ?? {}) as { name?: string; kind?: string; mime?: string; sizeBytes?: number; storageRef?: string };
+    const name = b.name?.trim();
+    if (!name) { reply.code(400); return { error: 'Document name is required' }; }
+    const kind = (b.kind as DocumentKind) || inferKind(name);
+    const extraction = extractDocument(kind, name);
+    return runAs(ctx, async (db) => {
+      const cur = await db.query(`select 1 from submission where id = $1`, [req.params.id]);
+      if (!cur.rows[0]) { reply.code(404); return { error: 'Submission not found' }; }
+      const ins = await db.query<{ id: string }>(
+        `insert into submission_document (tenant_id, submission_id, name, kind, version, mime, size_bytes, storage_ref, status, extraction, uploaded_by)
+         values ($1,$2,$3,$4,1,$5,$6,$7,'EXTRACTED',$8,$9) returning id`,
+        [ctx.tenantId, req.params.id, name, kind, b.mime ?? null, b.sizeBytes ?? null, b.storageRef ?? null, JSON.stringify(extraction), ctx.userId],
+      );
+      await logActivity(db, ctx.tenantId, req.params.id, ctx.userId, 'DOCUMENT', { note: `Added ${kind} “${name}” (extraction ${Math.round(extraction.confidence * 100)}%)` });
+      await writeAudit(db, ctx, { action: 'document_add', entityType: 'submission', entityId: req.params.id, after: { document: name, kind } });
+      return { id: ins.rows[0]!.id, kind, extraction };
+    });
+  });
+
+  // ---- Data room: list documents (current versions first) ------------------
+  app.get<{ Params: { id: string } }>('/api/underwriting/submissions/:id/documents', { preHandler: requirePermission('treaty:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query(
+        `select d.id, d.name, d.kind, d.version, d.mime, d.size_bytes as "sizeBytes", d.status,
+                d.extraction, d.supersedes_id as "supersedesId", d.signature, d.signed_at as "signedAt",
+                d.created_at as "createdAt", u.display_name as "uploadedBy"
+           from submission_document d
+           left join app_user u on u.id = d.uploaded_by
+          where d.submission_id = $1
+          order by d.created_at desc`,
+        [req.params.id],
+      );
+      return { documents: rows };
+    });
+  });
+
+  // ---- Data room: supersede with a new version -----------------------------
+  app.post<{ Params: { id: string } }>('/api/underwriting/documents/:id/supersede', { preHandler: requirePermission('treaty:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const b = (req.body ?? {}) as { name?: string; storageRef?: string };
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ submission_id: string; name: string; kind: DocumentKind; version: number }>(
+        `select submission_id, name, kind, version from submission_document where id = $1`, [req.params.id],
+      );
+      const old = rows[0];
+      if (!old) { reply.code(404); return { error: 'Document not found' }; }
+      const name = b.name?.trim() || old.name;
+      const version = nextVersion(old.version);
+      const extraction = extractDocument(old.kind, name);
+      await db.query(`update submission_document set status = 'SUPERSEDED' where id = $1`, [req.params.id]);
+      const ins = await db.query<{ id: string }>(
+        `insert into submission_document (tenant_id, submission_id, name, kind, version, status, extraction, supersedes_id, storage_ref, uploaded_by)
+         values ($1,$2,$3,$4,$5,'EXTRACTED',$6,$7,$8,$9) returning id`,
+        [ctx.tenantId, old.submission_id, name, old.kind, version, JSON.stringify(extraction), req.params.id, b.storageRef ?? null, ctx.userId],
+      );
+      await logActivity(db, ctx.tenantId, old.submission_id, ctx.userId, 'DOCUMENT', { note: `Superseded ${old.kind} “${name}” → v${version}` });
+      return { id: ins.rows[0]!.id, version, supersedesId: req.params.id };
+    });
+  });
+
+  // ---- Data room: sign / seal a document -----------------------------------
+  app.post<{ Params: { id: string } }>('/api/underwriting/documents/:id/sign', { preHandler: requirePermission('treaty:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ submission_id: string; name: string; version: number; status: string }>(
+        `select submission_id, name, version, status from submission_document where id = $1`, [req.params.id],
+      );
+      const d = rows[0];
+      if (!d) { reply.code(404); return { error: 'Document not found' }; }
+      if (d.status === 'SUPERSEDED') { reply.code(409); return { error: 'Cannot sign a superseded document' }; }
+      const digest = signatureDigest([d.submission_id, d.name, d.version, ctx.userId]);
+      await db.query(
+        `update submission_document set status = 'SIGNED', signature = $2, signed_by = $3, signed_at = now() where id = $1`,
+        [req.params.id, digest, ctx.userId],
+      );
+      await logActivity(db, ctx.tenantId, d.submission_id, ctx.userId, 'DOCUMENT', { note: `Signed “${d.name}” v${d.version} (${digest})` });
+      await writeAudit(db, ctx, { action: 'document_sign', entityType: 'submission', entityId: d.submission_id, after: { document: d.name, signature: digest } });
+      return { id: req.params.id, signature: digest, status: 'SIGNED' };
     });
   });
 

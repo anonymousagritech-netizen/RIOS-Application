@@ -173,6 +173,46 @@ describe('Underwriting: analytics, scenarios & approval matrix', () => {
     expect(Array.isArray(body.similar)).toBe(true);
   });
 
+  it('manages the submission data room: register, extract, version, sign', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    const create = await app.inject({
+      method: 'POST', url: '/api/underwriting/submissions', headers: auth,
+      payload: { title: 'Data room test', structure: 'CAT_XL', lineOfBusiness: 'PROPERTY' },
+    });
+    const id = create.json().id as string;
+
+    // Register a document — kind inferred from the name, extraction runs.
+    const add = await app.inject({
+      method: 'POST', url: `/api/underwriting/submissions/${id}/documents`, headers: auth,
+      payload: { name: 'Acme_SOV_2026.xlsx' },
+    });
+    expect(add.statusCode).toBe(200);
+    expect(add.json().kind).toBe('SOV');
+    expect(add.json().extraction).toHaveProperty('confidence');
+    const docId = add.json().id as string;
+
+    // List shows it.
+    const list = await app.inject({ method: 'GET', url: `/api/underwriting/submissions/${id}/documents`, headers: auth });
+    expect(list.json().documents.length).toBe(1);
+
+    // Supersede → new version, old marked SUPERSEDED.
+    const sup = await app.inject({ method: 'POST', url: `/api/underwriting/documents/${docId}/supersede`, headers: auth, payload: { name: 'Acme_SOV_2026_rev.xlsx' } });
+    expect(sup.statusCode).toBe(200);
+    expect(sup.json().version).toBe(2);
+    const newId = sup.json().id as string;
+
+    // Sign the new version.
+    const sign = await app.inject({ method: 'POST', url: `/api/underwriting/documents/${newId}/sign`, headers: auth, payload: {} });
+    expect(sign.statusCode).toBe(200);
+    expect(sign.json().signature).toMatch(/^sha-/);
+    expect(sign.json().status).toBe('SIGNED');
+
+    // Signing a superseded document is rejected.
+    const badSign = await app.inject({ method: 'POST', url: `/api/underwriting/documents/${docId}/sign`, headers: auth, payload: {} });
+    expect(badSign.statusCode).toBe(409);
+  });
+
   it('exports the pipeline as CSV', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };

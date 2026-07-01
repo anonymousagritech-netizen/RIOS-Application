@@ -6,6 +6,7 @@ import {
   Download, Printer, FileSignature, FileBarChart,
   ShieldCheck, Clock, ThumbsUp, ThumbsDown, ArrowUpCircle,
   Sparkles, AlertTriangle, ScrollText, ClipboardCheck, GitCompareArrows,
+  FolderOpen, FilePlus2, PenTool, History, ScanText,
 } from 'lucide-react';
 import { api, ApiError, downloadFile } from '../lib/api';
 import { printReport } from '../lib/uwReports';
@@ -64,6 +65,12 @@ interface SimilarRisk {
   lossRatioPct: number | null; estPremiumMinor: number | null; targetPremiumMinor: number | null;
 }
 interface Advisor { clauses: Clause[]; missingInfo: InfoGap[]; flags: AttentionFlag[]; executiveSummary: string; similar: SimilarRisk[]; }
+interface Extraction { kind: string; confidence: number; fields: { key: string; value: string; confidence: number }[]; unresolved: string[]; provider: string; }
+interface SubmissionDoc {
+  id: string; name: string; kind: string; version: number; status: string;
+  extraction: Extraction | null; supersedesId: string | null; signature: string | null;
+  signedAt: string | null; createdAt: string; uploadedBy: string | null;
+}
 
 /* ---------------- Types ---------------- */
 interface SubmissionRow {
@@ -117,6 +124,10 @@ function useSubmission(id: string | null) {
 function useAdvisor(id: string | null) {
   return useQuery({ queryKey: ['uw', 'advisor', id], queryFn: () => api<Advisor>(`/api/underwriting/submissions/${id}/advisor`), enabled: !!id });
 }
+function useDocuments(id: string | null) {
+  return useQuery({ queryKey: ['uw', 'documents', id], queryFn: () => api<{ documents: SubmissionDoc[] }>(`/api/underwriting/submissions/${id}/documents`), enabled: !!id });
+}
+const DOC_KINDS = ['SLIP', 'SOV', 'LOSS_RUN', 'WORDING', 'FINANCIALS', 'BORDEREAU', 'EMAIL', 'OTHER'] as const;
 
 export function UnderwritingPage() {
   const [stage, setStage] = useState('');
@@ -407,6 +418,7 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
   const { data: s, isLoading } = useSubmission(id);
   const { data: catalog } = useModelCatalog();
   const { data: advisor, isLoading: advisorLoading } = useAdvisor(id);
+  const { data: docsData } = useDocuments(id);
   const { hasPermission } = useAuth();
   const canApprove = hasPermission('underwriting:approve');
   const [note, setNote] = useState('');
@@ -429,6 +441,19 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
   const rescore = useMutation({ mutationFn: () => act(`score`, {}, 'Risk re-scored') });
   const addNote = useMutation({ mutationFn: (n: string) => act(`note`, { note: n }, 'Note added').then(() => setNote('')) });
   const raiseReferral = useMutation({ mutationFn: () => act<{ referralRequired: boolean; level: string }>(`approvals`, {}, 'Referral raised') });
+  const addDoc = useMutation({
+    mutationFn: (body: { name: string; kind: string }) => act(`documents`, body, `Added ${body.name}`),
+  });
+  const supersedeDoc = useMutation({
+    mutationFn: (docId: string) => api(`/api/underwriting/documents/${docId}/supersede`, { body: {} })
+      .then((r) => { invalidate(); toast.success('New version created'); return r; })
+      .catch((e) => { toast.error(e instanceof ApiError ? e.message : 'Failed'); throw e; }),
+  });
+  const signDoc = useMutation({
+    mutationFn: (docId: string) => api(`/api/underwriting/documents/${docId}/sign`, { body: {} })
+      .then((r) => { invalidate(); toast.success('Document signed'); return r; })
+      .catch((e) => { toast.error(e instanceof ApiError ? e.message : 'Failed'); throw e; }),
+  });
   const decide = useMutation({
     mutationFn: ({ approvalId, decision }: { approvalId: string; decision: 'APPROVED' | 'REJECTED' }) =>
       api(`/api/underwriting/approvals/${approvalId}/decision`, { body: { decision } })
@@ -539,6 +564,16 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
               <Button size="sm" variant="secondary" icon={<FileBarChart size={14} />} onClick={() => printReport('summary', s, catalog, scenario)}>UW summary</Button>
             </div>
           </Card>
+
+          {/* Data room — versioned documents with extraction + signature */}
+          <DataRoomCard
+            documents={docsData?.documents ?? []}
+            onAdd={(name, kind) => addDoc.mutate({ name, kind })}
+            adding={addDoc.isPending}
+            onSupersede={(docId) => supersedeDoc.mutate(docId)}
+            onSign={(docId) => signDoc.mutate(docId)}
+            busy={supersedeDoc.isPending || signDoc.isPending}
+          />
 
           {/* Pricing scenarios (what-if) */}
           <Card padded>
@@ -691,6 +726,69 @@ function AdvisorCard({ advisor, loading, currency }: { advisor?: Advisor; loadin
             </div>
           )}
         </div>
+      )}
+    </Card>
+  );
+}
+
+/* The submission data room: a versioned document register with OCR/AI extraction
+ * and a lightweight digital-signature seal. */
+const DOC_KIND_LABEL: Record<string, string> = {
+  SLIP: 'Slip', SOV: 'SOV', LOSS_RUN: 'Loss run', WORDING: 'Wording', FINANCIALS: 'Financials', BORDEREAU: 'Bordereau', EMAIL: 'Email', OTHER: 'Other',
+};
+const DOC_STATUS_COLOR: Record<string, 'blue' | 'violet' | 'green' | 'gray' | 'teal'> = {
+  RECEIVED: 'blue', EXTRACTED: 'violet', REVIEWED: 'teal', SIGNED: 'green', SUPERSEDED: 'gray',
+};
+
+function DataRoomCard({ documents, onAdd, adding, onSupersede, onSign, busy }: {
+  documents: SubmissionDoc[]; onAdd: (name: string, kind: string) => void; adding: boolean;
+  onSupersede: (docId: string) => void; onSign: (docId: string) => void; busy: boolean;
+}) {
+  const [name, setName] = useState('');
+  const [kind, setKind] = useState('');
+  const submit = () => { if (name.trim()) { onAdd(name.trim(), kind || 'OTHER'); setName(''); setKind(''); } };
+
+  return (
+    <Card padded>
+      <CardHeader title={<span className={styles.drawerTitle}><FolderOpen size={15} /> Data room</span>} subtitle="Versioned documents · OCR/AI extraction · e-signature" />
+      <div className={styles.docAddRow}>
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Document name, e.g. Acme_SOV_2026.xlsx" />
+        <Select value={kind} onChange={(e) => setKind(e.target.value)}>
+          <option value="">Auto-detect</option>
+          {DOC_KINDS.map((k) => <option key={k} value={k}>{DOC_KIND_LABEL[k]}</option>)}
+        </Select>
+        <Button size="sm" variant="secondary" icon={<FilePlus2 size={14} />} disabled={!name.trim()} loading={adding} onClick={submit}>Add</Button>
+      </div>
+      {documents.length === 0 ? (
+        <p className={styles.cellSub}>No documents yet. Register the slip, SOV, loss run and wordings — each is extracted and versioned.</p>
+      ) : (
+        <ul className={styles.docList}>
+          {documents.map((d) => (
+            <li key={d.id} className={`${styles.docItem} ${d.status === 'SUPERSEDED' ? styles.docSuperseded : ''}`}>
+              <div className={styles.docMain}>
+                <div className={styles.docTop}>
+                  <Badge color="indigo">{DOC_KIND_LABEL[d.kind] ?? d.kind}</Badge>
+                  <span className={styles.docName}>{d.name}</span>
+                  <span className={styles.docVersion}>v{d.version}</span>
+                  <Badge color={DOC_STATUS_COLOR[d.status] ?? 'gray'}>{titleCase(d.status)}</Badge>
+                </div>
+                <div className={styles.docMeta}>
+                  {d.extraction && (
+                    <span className={styles.docExtract}><ScanText size={12} /> {Math.round(d.extraction.confidence * 100)}% · {d.extraction.fields.length} field(s){d.extraction.unresolved.length ? `, ${d.extraction.unresolved.length} to verify` : ''}</span>
+                  )}
+                  {d.signature && <span className={styles.docSig}><PenTool size={12} /> {d.signature}</span>}
+                  {d.uploadedBy && <span className={styles.cellSub}>{d.uploadedBy}</span>}
+                </div>
+              </div>
+              {d.status !== 'SUPERSEDED' && (
+                <div className={styles.docActions}>
+                  <Button size="sm" variant="ghost" icon={<History size={13} />} loading={busy} onClick={() => onSupersede(d.id)} title="New version">v+</Button>
+                  {d.status !== 'SIGNED' && <Button size="sm" variant="ghost" icon={<PenTool size={13} />} loading={busy} onClick={() => onSign(d.id)} title="Sign">Sign</Button>}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </Card>
   );
