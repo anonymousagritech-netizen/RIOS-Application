@@ -55,9 +55,14 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 
 ## 3. Claims & recoveries
 
-- **Reinstatement processing**, **recoveries collection**, **salvage & subrogation**, **inuring application
-  order**, **event aggregation** to programme/portfolio - schema present (`recovery`, `cat_event`); flows
-  designed-for. (§7.7)
+- **Reinstatement processing** is delivered (`reinstatementPremium` in `@rios/domain/nonproportional`, wired
+  at `POST /api/claims/:id/reinstatement`). **Recoveries collection, salvage & subrogation, inuring
+  application order and event aggregation** are now delivered as a pure engine
+  (`@rios/domain/claimsRecovery`): `recoveryPosition` nets a claim through its recovery ledger (received vs
+  expected, by-type, floored net incurred/paid/outstanding) and backs `GET /api/claims/:id/net-position`;
+  `applyInuring` nets inuring reinsurance before the protected layer; `aggregateByEvent` rolls claim losses
+  to the occurrence level to feed `programmeRecovery`. What remains designed-for is the portfolio/programme
+  rollup UI and the full reference-data-driven claim state machine. (§7.7)
 - The implemented claim flow covers notify → reserve movement → paid-loss event; the full state machine is
   reference-data-driven but only partially wired.
 
