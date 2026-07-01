@@ -52,7 +52,7 @@ export function LoginPage() {
     if (!m) return;
     window.history.replaceState(null, '', window.location.pathname);
     applySession(decodeURIComponent(m[1]!))
-      .then(() => navigate('/home', { replace: true }))
+      .then(() => navigate('/dashboard', { replace: true }))
       .catch(() => setError('SSO sign-in could not be completed.'));
   }, [applySession, navigate]);
 
@@ -65,7 +65,7 @@ export function LoginPage() {
       if (outcome.status === 'mfa') {
         setMfaToken(outcome.mfaToken);
       } else {
-        navigate('/home', { replace: true });
+        navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to sign in. Check your credentials.');
@@ -81,7 +81,7 @@ export function LoginPage() {
     setBusy(true);
     try {
       await completeMfa(mfaToken, code.trim());
-      navigate('/home', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Invalid authentication code.');
     } finally {
