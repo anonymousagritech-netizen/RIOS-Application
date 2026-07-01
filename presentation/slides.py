@@ -2,7 +2,7 @@
 """Slide content for the RIOS product-walkthrough deck.
 
 Grounded in what the application actually does. RIOS today is a FOUNDATION /
-vertical slice — the reinsurance core (place → bind → account → reconcile → claims)
+vertical slice, the reinsurance core (place → bind → account → reconcile → claims)
 is proven end to end; enterprise breadth is designed-for and named honestly, per
 docs/phases.md and docs/open-questions.md. No invented metrics; no black-box AI
 claims (the assistant is a deterministic, grounded, confirmation-gated engine)."""
@@ -62,10 +62,10 @@ def cover():
 # ============================================================== 2. ABOUT
 def about():
     s = slide(BG); accent_bar(s); kicker(s, 'About RIOS'); title(s, 'One platform. One data model. One source of truth.')
-    text(s, 0.9, 1.72, 11.4, 1.3, [[('RIOS unifies the reinsurance value chain — placement, underwriting, treaty & facultative administration, technical and general accounting, claims, analytics and the back office — into a single, metadata-driven, multi-tenant system, replacing the disconnected legacy tools and spreadsheets most reinsurers run today.', 13.5, SLATE, False)]], line_spacing=1.25)
-    cards = [('What it is', 'A foundation that proves the reinsurance core end to end — place → bind → account → reconcile → claims — correct, secure and audited.', BLUE),
-             ('How it is built', 'Metadata-driven configuration, integer-accurate money, hash-chained audit and role-based access — foundations, not add-ons.', INDIGO),
-             ('Why it matters', 'The technical → financial chain reconciles to zero and every material change is audited — correctness you can inspect.', GREEN)]
+    text(s, 0.9, 1.72, 11.4, 1.3, [[('RIOS unifies the reinsurance value chain, placement, underwriting, treaty & facultative administration, technical and general accounting, claims, analytics and the back office, into a single, metadata-driven, multi-tenant system, replacing the disconnected legacy tools and spreadsheets most reinsurers run today.', 13.5, SLATE, False)]], line_spacing=1.25)
+    cards = [('What it is', 'A foundation that proves the reinsurance core end to end, place → bind → account → reconcile → claims, correct, secure and audited.', BLUE),
+             ('How it is built', 'Metadata-driven configuration, integer-accurate money, hash-chained audit and role-based access, foundations, not add-ons.', INDIGO),
+             ('Why it matters', 'The technical → financial chain reconciles to zero and every material change is audited, correctness you can inspect.', GREEN)]
     for i, (h, b, c) in enumerate(cards):
         x = 0.9 + i*4.05
         rect(s, x, 3.35, 3.8, 3.15, fill=WHITE, line=LINE, radius=0.06)
@@ -152,7 +152,7 @@ def architecture():
 # ============================================================== 6. SECURITY
 def security():
     s = slide(BG); accent_bar(s); kicker(s, 'Security & Trust'); title(s, 'Secure and auditable by design')
-    items = [('Row-Level Security','Postgres RLS isolates every tenant — fail-closed.'),
+    items = [('Row-Level Security','Postgres RLS isolates every tenant, fail-closed.'),
              ('RBAC + permissions','Role-based, permission-bound; admin override is explicit.'),
              ('OIDC SSO + MFA','OIDC wired; TOTP / passkey ceremonies built; SAML at deployment.'),
              ('KMS encryption','Envelope encryption (AES-256-GCM); managed HSM/KMS in prod.'),
@@ -182,7 +182,10 @@ def section(num, ttl, sub, color=BLUE):
 # ============================================================== MODULE SLIDE
 def module_slide(kick, ttl, shot, purpose, features, inside, users, ai, addr, color=BLUE):
     s = slide(WHITE); accent_bar(s, color=color); kicker(s, kick, y=0.82, color=color)
-    text(s, 0.9, 1.1, 5.6, 0.7, [[(ttl, 22, INK, True)]], line_spacing=0.98)
+    ts = 22.0  # auto-fit the title to one line so it clears the accent rule below
+    while text_w(ttl, ts, True) > 5.5 and ts > 16:
+        ts -= 0.5
+    text(s, 0.9, 1.12, 5.65, 0.7, [[(ttl, ts, INK, True)]], line_spacing=0.98)
     rect(s, 0.92, 1.78, 0.62, 0.05, fill=color, rounded=False)
     text(s, 0.9, 1.96, 5.55, 1.15, [[(purpose, 11.5, SLATE, False)]], line_spacing=1.2)
     # screenshot
@@ -193,7 +196,7 @@ def module_slide(kick, ttl, shot, purpose, features, inside, users, ai, addr, co
     # what's inside
     label(s, 0.9, 4.95, 'WHAT’S INSIDE', INK)
     ib = chip_flow(s, 0.9, 5.28, 5.55, inside, color)
-    # primary users — placed below wherever the inside chips actually end
+    # primary users, placed below wherever the inside chips actually end
     uy = max(6.10, ib + 0.18)
     label(s, 0.9, uy, 'PRIMARY USERS', MUTE)
     chip_flow(s, 0.9, uy + 0.30, 5.55, users, SLATE, size=9)
@@ -207,20 +210,20 @@ def module_slide(kick, ttl, shot, purpose, features, inside, users, ai, addr, co
 # ============================================================== ASSISTANT
 def assistant():
     s = slide(WHITE); accent_bar(s, color=INDIGO); kicker(s, 'RIOS Assistant', y=0.82, color=INDIGO)
-    text(s, 0.9, 1.1, 5.6, 0.7, [[('Ask RIOS — a grounded, guardrailed assistant', 21, INK, True)]], line_spacing=1.0)
+    text(s, 0.9, 1.1, 5.6, 0.7, [[('Ask RIOS, a grounded, guardrailed assistant', 21, INK, True)]], line_spacing=1.0)
     rect(s, 0.92, 1.86, 0.62, 0.05, fill=INDIGO, rounded=False)
-    text(s, 0.9, 2.04, 5.55, 1.5, [[('A deterministic intent engine — not a black-box LLM. It answers from your own tenant data, can prepare an action, and always re-checks permissions and asks for explicit confirmation before it changes anything. The whole platform works fully with AI switched off.', 11.5, SLATE, False)]], line_spacing=1.22)
+    text(s, 0.9, 2.04, 5.55, 1.5, [[('A deterministic intent engine, not a black-box LLM. It answers from your own tenant data, can prepare an action, and always re-checks permissions and asks for explicit confirmation before it changes anything. The whole platform works fully with AI switched off.', 11.5, SLATE, False)]], line_spacing=1.22)
     browser_frame(s, 'ai-insights.png', 6.6, 1.1, 6.0, addr='app.rios.cloud/ai-insights')
     label(s, 0.9, 3.75, 'HOW IT WORKS', INDIGO)
     bullets(s, 0.9, 4.1, 5.55, 2.2, [
         'Grounded queries across every module',
-        'Answers explained from your data — no black box',
+        'Answers explained from your data, no black box',
         'Prepares actions, then confirms before committing',
-        'Re-checks permissions server-side — no backdoor',
-        'Optional LLM only narrates — it never invents numbers',
+        'Re-checks permissions server-side, no backdoor',
+        'Optional LLM only narrates, it never invents numbers',
     ], size=11.5, marker_color=INDIGO, gap=6)
     rect(s, 6.6, 5.25, 6.0, 1.35, fill=_mix(GREEN, WHITE, 0.08), radius=0.07)
-    text(s, 6.85, 5.4, 5.5, 1.1, [[('Guardrail: every mutating action is confirmation-gated and permission-checked. The assistant is a copilot, never an autopilot — and it never invents your numbers.', 11, SLATE, False)]], line_spacing=1.15)
+    text(s, 6.85, 5.4, 5.5, 1.1, [[('Guardrail: every mutating action is confirmation-gated and permission-checked. The assistant is a copilot, never an autopilot, and it never invents your numbers.', 11, SLATE, False)]], line_spacing=1.15)
     page_no(s, pn())
 
 # ============================================================== PRODUCT LIFECYCLE
@@ -244,7 +247,7 @@ def lifecycle():
         text(s, x+0.2, y+1.38, 1.85, 0.6, [[(b, 9.5, SLATE, False)]], line_spacing=1.1)
         if i < len(steps)-1:
             arrow(s, x+2.16, y+0.85, 0.26, 0.28, MUTE)
-    text(s, 0.9, 5.2, 11.5, 0.9, [[('This is the delivered vertical slice — integration-tested: a bound catastrophe XL treaty flows from placement through binding, statement, balanced general-ledger postings and reconciliation to zero, into claims. Every step is governed, audited and reconcilable.', 12.5, SLATE, False)]], line_spacing=1.25)
+    text(s, 0.9, 5.2, 11.5, 0.9, [[('This is the delivered vertical slice, integration-tested: a bound catastrophe XL treaty flows from placement through binding, statement, balanced general-ledger postings and reconciliation to zero, into claims. Every step is governed, audited and reconcilable.', 12.5, SLATE, False)]], line_spacing=1.25)
     page_no(s, pn())
 
 # ============================================================== TECHNOLOGY
@@ -261,18 +264,18 @@ def technology():
         rect(s, x, 2.0, 2.85, 0.7, fill=_mix([BLUE,INDIGO,GREEN,AMBER][i], WHITE, 0.12), radius=0.06)
         text(s, x+0.28, 2.16, 2.4, 0.4, [[(h, 15, INK, True)]])
         bullets(s, x+0.28, 2.98, 2.45, 3.2, items, size=11, marker_color=[BLUE,INDIGO,GREEN,AMBER][i], gap=9)
-    text(s, 0.9, 6.55, 11.5, 0.4, [[('The reinsurance mathematics lives in a pure, unit-tested domain core — the server orchestrates and persists; it never re-implements the formulas.', 11, SLATE, False)]])
+    text(s, 0.9, 6.55, 11.5, 0.4, [[('The reinsurance mathematics lives in a pure, unit-tested domain core, the server orchestrates and persists; it never re-implements the formulas.', 11, SLATE, False)]])
     page_no(s, pn())
 
 # ============================================================== BUSINESS VALUE
 def value():
     s = slide(BG); accent_bar(s, color=GREEN); kicker(s, 'Business Value', color=GREEN)
     title(s, 'Where RIOS creates value')
-    cards = [('One source of truth','Place, bind, account, reconcile and claims on a single data model — no swivel-chair rekeying between systems.',BLUE),
+    cards = [('One source of truth','Place, bind, account, reconcile and claims on a single data model, no swivel-chair rekeying between systems.',BLUE),
              ('Correct & reconcilable','Integer-accurate money and a technical → financial chain that reconciles to zero, by construction.',INDIGO),
-             ('Audited & inspection-ready','Hash-chained, append-only audit and a compliance surface built in — not bolted on.',GREEN),
+             ('Audited & inspection-ready','Hash-chained, append-only audit and a compliance surface built in, not bolted on.',GREEN),
              ('Real-time exposure','Capacity utilisation and accumulation monitored live, with breach detection before you bind.',AMBER),
-             ('Configurable without code','Statuses, lines of business and rules are metadata — change the business vocabulary with no deployment.',BLUE),
+             ('Configurable without code','Statuses, lines of business and rules are metadata, change the business vocabulary with no deployment.',BLUE),
              ('Less system sprawl','Reinsurance, finance, HR, documents and analytics in one platform instead of a dozen.',INDIGO)]
     for i, (h, b, c) in enumerate(cards):
         col = i % 3; row = i // 3
@@ -292,20 +295,20 @@ def maturity():
     # delivered column
     rect(s, 0.9, 2.35, 5.75, 4.35, fill=_mix(GREEN, WHITE, 0.07), line=LINE, radius=0.05)
     rect(s, 0.9, 2.35, 5.75, 0.55, fill=GREEN, radius=0.05)
-    text(s, 1.15, 2.35, 5.4, 0.55, [[('DELIVERED — built, working, tested', 12.5, WHITE, True)]], anchor=MSO_ANCHOR.MIDDLE)
+    text(s, 1.15, 2.35, 5.4, 0.55, [[('DELIVERED  ·  built, working, tested', 12.5, WHITE, True)]], anchor=MSO_ANCHOR.MIDDLE)
     bullets(s, 1.15, 3.12, 5.3, 3.4, [
-        'Reinsurance core, end to end — integration-tested',
+        'Reinsurance core, end to end, integration-tested',
         'Metadata-driven config: 8 structures × 13 lines of business',
         'Underwriting: stage machine, risk score, pricing, cat metrics',
         'Multi-tenant RLS, RBAC, hash-chained audit, integer money',
-        'Deterministic grounded assistant — works with AI off',
+        'Deterministic grounded assistant, works with AI off',
         'Broker / cedent, capacity, exposure, territory, tasks & SLA',
         'Unit + integration tests; Docker-compose deploy',
     ], size=10.5, color=INK, marker_color=GREEN, gap=10)
     # designed-for column
     rect(s, 6.85, 2.35, 5.75, 4.35, fill=BG, line=LINE, radius=0.05)
     rect(s, 6.85, 2.35, 5.75, 0.55, fill=AMBER, radius=0.05)
-    text(s, 7.1, 2.35, 5.4, 0.55, [[('DESIGNED-FOR — architected, not yet built', 12.5, WHITE, True)]], anchor=MSO_ANCHOR.MIDDLE)
+    text(s, 7.1, 2.35, 5.4, 0.55, [[('DESIGNED-FOR  ·  architected, not yet built', 12.5, WHITE, True)]], anchor=MSO_ANCHOR.MIDDLE)
     bullets(s, 7.1, 3.08, 5.3, 3.4, [
         'IFRS 17 & Solvency II measurement engines',
         'Full BI: drag-drop report / dashboard designers, pivots, scheduling',
@@ -322,11 +325,11 @@ def principles():
     s = slide(BG); accent_bar(s, color=INDIGO); kicker(s, 'Design Principles', color=INDIGO)
     title(s, 'The principles behind the build')
     cards = [('Correctness first','Reinsurance maths in a pure, unit-tested core; money never floats.',BLUE),
-             ('Metadata-driven','Business vocabulary is data, not code — change it without a release.',INDIGO),
+             ('Metadata-driven','Business vocabulary is data, not code, change it without a release.',INDIGO),
              ('Secure by default','Tenant isolation via RLS, permission-bound routes, least privilege.',GREEN),
              ('Auditable & reconcilable','Every material change hash-chained; the money chain nets to zero.',AMBER),
-             ('Grounded AI','Deterministic, explainable, confirmation-gated — never a black box.',BLUE),
-             ('Honest about scope','Delivered vs designed-for stated openly — no silent gaps.',INDIGO)]
+             ('Grounded AI','Deterministic, explainable, confirmation-gated, never a black box.',BLUE),
+             ('Honest about scope','Delivered vs designed-for stated openly, no silent gaps.',INDIGO)]
     for i, (h, b, c) in enumerate(cards):
         col = i % 3; row = i // 3
         x = 0.9 + col*4.05; y = 2.0 + row*2.4
@@ -351,7 +354,7 @@ def journey():
         text(s, x-0.55, y+0.62, 1.6, 0.7, [[(t, 11, INK, True)]], align=PP_ALIGN.CENTER, line_spacing=1.0)
         if i < len(steps)-1:
             rect(s, x+0.5, y+0.22, 1.22, 0.06, fill=LINE, rounded=False)
-    text(s, 0.9, 5.4, 11.5, 0.6, [[('Phased configuration, data migration and role-based training — de-risking the move to a unified platform, with a continuous-improvement roadmap after go-live.', 12.5, SLATE, False)]], line_spacing=1.2)
+    text(s, 0.9, 5.4, 11.5, 0.6, [[('Phased configuration, data migration and role-based training, de-risking the move to a unified platform, with a continuous-improvement roadmap after go-live.', 12.5, SLATE, False)]], line_spacing=1.2)
     page_no(s, pn())
 
 # ============================================================== ROADMAP
@@ -359,7 +362,7 @@ def roadmap():
     s = slide(INK); accent_bar(s, color=BLUE)
     text(s, 0.9, 0.7, 8, 0.4, [[('ROADMAP', 11, RGBColor(0x93,0xC5,0xFD), True)]])
     text(s, 0.9, 1.05, 11, 0.8, [[('From foundation to intelligent reinsurance', 28, WHITE, True)]])
-    ph = [('Now','Foundation','Unified platform, reinsurance core, audit & security — the delivered slice.',BLUE),
+    ph = [('Now','Foundation','Unified platform, reinsurance core, audit & security, the delivered slice.',BLUE),
           ('Next','Breadth','Statement lifecycle, bordereaux, richer claims & finance sub-ledgers.',INDIGO),
           ('Later','Regulatory','IFRS 17 & Solvency II engines; governed regulatory report packs.',GREEN),
           ('Future','Connected','Portals, live connectors, BI designers and marketplace.',AMBER),
@@ -372,7 +375,7 @@ def roadmap():
         text(s, x-0.4, 2.55, 1.2, 0.4, [[(yr, 15, WHITE, True)]], align=PP_ALIGN.CENTER)
         text(s, x-0.55, 3.75, 2.15, 0.5, [[(h, 13, c, True)]], line_spacing=1.0)
         text(s, x-0.55, 4.25, 2.15, 1.6, [[(b, 10.5, RGBColor(0xC7,0xD2,0xFE), False)]], line_spacing=1.15)
-    text(s, 0.9, 6.5, 11.5, 0.4, [[('Roadmap shown by horizon, not committed dates — capability direction, honestly staged.', 10.5, MUTE, False)]])
+    text(s, 0.9, 6.5, 11.5, 0.4, [[('Roadmap shown by horizon, not committed dates, capability direction, honestly staged.', 10.5, MUTE, False)]])
     page_no(s, pn())
 
 # ============================================================== THANK YOU
@@ -394,30 +397,30 @@ def thankyou():
 # (section_key, kicker, title, screenshot, purpose, [capabilities], [inside], [users], ai_line, addr, color)
 MODULES = [
   ('OVERVIEW','Overview','Dashboards, Executive & Intelligence','executive.png',
-   'The command center. Operational dashboards and executive-intelligence views aggregate live KPIs across every module — written premium, technical result, portfolio mix and pipeline — with drill-down to source, plus enterprise search and a mobile-ready experience.',
+   'The command center. Operational dashboards and executive-intelligence views aggregate live KPIs across every module, written premium, technical result, portfolio mix and pipeline, with drill-down to source, plus enterprise search and a mobile-ready experience.',
    ['Operational dashboard with live tiles and alerts','Executive-intelligence views by leadership persona',
     'Premium, technical-result and portfolio-mix trends','Enterprise search across the whole suite'],
    ['Dashboard','Executive','Intelligence','AI Insights','Search','Mobile'],
    ['Executives','Portfolio managers','Analysts'],
-   'AI Insights surfaces grounded, explainable observations per domain — transparent heuristics, not a black box, and fully functional with AI switched off.',
+   'AI Insights surfaces grounded, explainable observations per domain, transparent heuristics, not a black box, and fully functional with AI switched off.',
    'app.rios.cloud/executive', BLUE),
 
   ('UNDERWRITING','Underwriting','Underwriting Workspace','underwriting.png',
-   'The underwriting desk. A submission workbench triages risks, applies a transparent risk score and drives referrals and approvals through a guardrailed stage machine — with tasks, collaboration and audit on every action.',
+   'The underwriting desk. A submission workbench triages risks, applies a transparent risk score and drives referrals and approvals through a guardrailed stage machine, with tasks, collaboration and audit on every action.',
    ['Submission triage, risk scoring and pipeline','Referral routing and a maker-checker approval matrix',
-    'Stage machine — illegal transitions rejected','Tasks, collaboration and a full audit trail'],
+    'Stage machine, illegal transitions rejected','Tasks, collaboration and a full audit trail'],
    ['Submission Workbench','Referrals & Approvals','Analytics','Placement'],
    ['Underwriters','Chief Underwriter','Actuaries'],
-   'A deterministic advisor flags missing information, consistency issues and clause suggestions — grounded in the submission, never auto-deciding.',
+   'A deterministic advisor flags missing information, consistency issues and clause suggestions, grounded in the submission, never auto-deciding.',
    'app.rios.cloud/underwriting', INDIGO),
 
   ('UNDERWRITING','Treaty','Treaty Workspace','treaty.png',
    'The treaty lifecycle in one cockpit: register the treaty, build a priced layer tower, manage versions, clauses and wording, the tax schedule and endorsements, and view the technical account over an audit-stitched timeline.',
-   ['Priced layer tower — rate-on-line, reinstatements','Immutable versions and endorsements',
+   ['Priced layer tower, rate-on-line, reinstatements','Immutable versions and endorsements',
     'Special clauses, wording and tax schedule','Technical account that reconciles to zero'],
    ['Treaty Register','Layer Tower','Clauses & Wording','Endorsements','Technical Account'],
    ['Treaty underwriters','Contract admins','Actuaries'],
-   'Grounded clause and data-quality checks assist the drafter; every posting is confirmed — nothing is auto-committed.',
+   'Grounded clause and data-quality checks assist the drafter; every posting is confirmed, nothing is auto-committed.',
    'app.rios.cloud/w/treaty', INDIGO),
 
   ('UNDERWRITING','Facultative','Facultative Workspace','facultative.png',
@@ -426,16 +429,16 @@ MODULES = [
     'Engineering and inspection report capture','Placement timeline and completeness tracking'],
    ['Quotes','Placement Tower','Coinsurance','Engineering Reports'],
    ['Fac underwriters','Placement brokers'],
-   'Deterministic best-quote and placement-gap checks — transparent and explainable, not an opaque model.',
+   'Deterministic best-quote and placement-gap checks, transparent and explainable, not an opaque model.',
    'app.rios.cloud/w/facultative', INDIGO),
 
   ('UNDERWRITING','Pricing · Placement · Retro','Pricing, Placement, Retrocession & Adjustments','pricing.png',
-   'Actuarial pricing scenarios, placement management, outwards retrocession and treaty adjustments — with the gross / ceded / net position reconciled and linked to recoveries.',
+   'Actuarial pricing scenarios, placement management, outwards retrocession and treaty adjustments, with the gross / ceded / net position reconciled and linked to recoveries.',
    ['Technical / burning-cost pricing & sensitivity','Placement lines and signed-down orders',
     'Outwards retrocession and recovery linkage','Adjustments: profit commission, sliding scale'],
    ['Pricing','Placement','Retrocession','Adjustments'],
    ['Actuaries','Pricing analysts','Retro managers'],
-   'Scenario and sensitivity are computed in the pure domain core — auditable maths, not a black box.',
+   'Scenario and sensitivity are computed in the pure domain core, auditable maths, not a black box.',
    'app.rios.cloud/pricing', INDIGO),
 
   ('UNDERWRITING','Capacity & Exposure','Capacity & Exposure','capacity-exposure.png',
@@ -444,7 +447,7 @@ MODULES = [
     'Peril × geography accumulation heatmap','Straight-line breach forecast prior to binding'],
    ['Capacity','Exposure Management','Accumulation'],
    ['Exposure managers','Cat analysts','Underwriters'],
-   'Rule-based breach and concentration alerts — grounded in live limits, every factor explainable.',
+   'Rule-based breach and concentration alerts, grounded in live limits, every factor explainable.',
    'app.rios.cloud/w/capacity-exposure', INDIGO),
 
   ('UNDERWRITING','Territory','Territory Workspace','territory.png',
@@ -453,20 +456,20 @@ MODULES = [
     'Insured value and modelled PML per territory','Transparent, factor-based zone risk score'],
    ['Territory Hierarchy','Risk Zones','Exposure Link'],
    ['Exposure managers','Cat modellers'],
-   'Transparent zone risk scoring from your own exposure — every contributing factor is visible.',
+   'Transparent zone risk scoring from your own exposure, every contributing factor is visible.',
    'app.rios.cloud/w/territory', INDIGO),
 
   ('DISTRIBUTION','Distribution','Parties, Brokers, Cedents & CRM','parties.png',
-   'A single counterparty backbone. Parties, clients, brokers and cedents each carry a 360° profile — contracts, statements and claims — and a CRM manages pipeline, opportunities and communications.',
+   'A single counterparty backbone. Parties, clients, brokers and cedents each carry a 360° profile, contracts, statements and claims, and a CRM manages pipeline, opportunities and communications.',
    ['Party 360: contracts, statements, claims','Broker and cedent profiles, tiers and performance',
     'CRM pipeline, opportunities and activities','Contact directory and communication log'],
    ['Parties','Clients','Brokers','Cedents','CRM'],
    ['Relationship managers','Broker managers','Business development'],
-   'A transparent, unit-tested relationship & profitability score highlights where to focus — no black box.',
+   'A transparent, unit-tested relationship & profitability score highlights where to focus, no black box.',
    'app.rios.cloud/parties', GREEN),
 
   ('OPERATIONS','Claims','Claims, Bordereaux & Recoveries','claims.png',
-   'The claims flow — notify → reserve movement → paid loss — with bordereaux views, reserves and recoveries, connected to treaties, finance and the audit log.',
+   'The claims flow, notify → reserve movement → paid loss, with bordereaux views, reserves and recoveries, connected to treaties, finance and the audit log.',
    ['Claim flow with reserve movements and payments','Bordereaux views and reconciliation',
     'Recovery and cash-call tracking','Every movement audited and reconcilable'],
    ['Claims','Bordereaux','Recoveries'],
@@ -475,12 +478,12 @@ MODULES = [
    'app.rios.cloud/claims', AMBER),
 
   ('OPERATIONS','Operations & Workflow','Operations Center, Workflow & Audit','workflow-engine.png',
-   'The operational control tower. Live workflow instances, SLA-scored tasks, an escalation queue and an approval matrix — over a tamper-evident, hash-chained audit trail.',
+   'The operational control tower. Live workflow instances, SLA-scored tasks, an escalation queue and an approval matrix, over a tamper-evident, hash-chained audit trail.',
    ['Operations center with live work queues','SLA scoring with tiered escalation',
     'Approval matrix and delegation','Hash-chained, append-only audit log'],
    ['Operations Center','Workflow Center','Audit Log'],
    ['Operations','Team leads','Auditors'],
-   'Rule-based SLA and bottleneck signals over the live work queues — explainable, not predictive magic.',
+   'Rule-based SLA and bottleneck signals over the live work queues, explainable, not predictive magic.',
    'app.rios.cloud/workflow-engine', AMBER),
 
   ('FINANCE','Technical & General Accounting','Technical & General Accounting','accounting.png',
@@ -489,13 +492,13 @@ MODULES = [
     'Period-close checklist','Procurement and payables'],
    ['Accounting','Statements','Period Close','Procurement'],
    ['Accountants','Technical accountants','Controllers'],
-   'Grounded posting and reconciliation checks; the assistant proposes, you confirm — money is integer-exact.',
+   'Grounded posting and reconciliation checks; the assistant proposes, you confirm, money is integer-exact.',
    'app.rios.cloud/accounting', BLUE),
 
   ('FINANCE','Treasury & Investment','Treasury & Investment','finance.png',
-   'Treasury and investment views over the GL core. Cash and bank positions, settlements and an investment register — with a consolidated finance workspace. (Full sub-ledgers are designed-for.)',
+   'Treasury and investment views over the GL core. Cash and bank positions, settlements and an investment register, with a consolidated finance workspace. (Full sub-ledgers are designed-for.)',
    ['GL-linked cash and bank views','Investment register and positions',
-    'Consolidated finance workspace','Integer-accurate money — no floating point'],
+    'Consolidated finance workspace','Integer-accurate money, no floating point'],
    ['Finance','Treasury','Investments'],
    ['Treasury','Finance ops','Investment ops'],
    'Money is stored in integer minor units for exactness; liquidity signals are transparent and auditable.',
@@ -507,16 +510,16 @@ MODULES = [
     'Portfolio analytics and KPI dashboards','Drill-down from summary to source'],
    ['Reports','Scheduled Reports','Analytics'],
    ['Analysts','Executives','Actuaries'],
-   'Executive summaries are template-merged over live KPIs; an optional LLM may narrate — it never invents the numbers.',
+   'Executive summaries are template-merged over live KPIs; an optional LLM may narrate, it never invents the numbers.',
    'app.rios.cloud/reports', INDIGO),
 
   ('ANALYTICS','Risk & Capital','Risk & Capital','risk-capital.png',
    'Risk and capital views. Catastrophe metrics (AAL / PML / EP / TVaR) via a cat-model adapter, risk-appetite monitoring, reserving and loss-development. (Full IFRS 17 / Solvency II engines are designed-for.)',
-   ['Catastrophe metrics — AAL / PML / EP / TVaR','Risk-appetite and capital views',
+   ['Catastrophe metrics, AAL / PML / EP / TVaR','Risk-appetite and capital views',
     'Reserving & loss development (chain-ladder IBNR)','Scenario analysis'],
    ['Risk & Capital','Reserving','Scenarios'],
    ['Risk officers','Actuaries','Capital team'],
-   'Scenario maths runs in the pure domain core — transparent, unit-tested and auditable.',
+   'Scenario maths runs in the pure domain core, transparent, unit-tested and auditable.',
    'app.rios.cloud/risk-capital', INDIGO),
 
   ('ANALYTICS','Regulatory & Compliance','Regulatory, Compliance & Returns','compliance.png',
@@ -528,7 +531,7 @@ MODULES = [
    'The audit chain is cryptographically verified; compliance signals are rule-based and explainable.',
    'app.rios.cloud/compliance', INDIGO),
 
-  ('HRMS','Human Resources','Human Resources — People, Payroll & Org','attendance.png',
+  ('HRMS','Human Resources','Human Resources, People, Payroll & Org','attendance.png',
    'An integrated HR back office. People records with an audited status lifecycle, an attendance command center with manager approvals routed by the real org hierarchy, payroll, performance, assets and org structure.',
    ['People records with audited status lifecycle','Attendance command center; OD / WFH / regularization',
     'Manager approvals via the org hierarchy','Payroll, performance, assets and org structure'],
@@ -538,12 +541,12 @@ MODULES = [
    'app.rios.cloud/attendance', GREEN),
 
   ('PLATFORM','Master Data','Master Data & Products','products.png',
-   'The governed reference layer. Products and coverage definitions, lines of business, currencies, countries, clauses and code-lists are configured as metadata — new values are added without a deployment.',
+   'The governed reference layer. Products and coverage definitions, lines of business, currencies, countries, clauses and code-lists are configured as metadata, new values are added without a deployment.',
    ['Products and coverage definitions','Lines of business, currencies, countries',
-    'Code-lists as metadata — no hard-coded enums','New values added without a release'],
+    'Code-lists as metadata, no hard-coded enums','New values added without a release'],
    ['Products','Reference Data','Code Lists','Business Rules'],
    ['Data stewards','Config admins'],
-   'Deterministic validation keeps reference data clean — this is configuration, not code.',
+   'Deterministic validation keeps reference data clean, this is configuration, not code.',
    'app.rios.cloud/products', AMBER),
 
   ('PLATFORM','Documents','Documents & Knowledge','documents.png',
@@ -558,7 +561,7 @@ MODULES = [
   ('PLATFORM','Integration','Integration & Automation','integration-hub.png',
    'Open by design. REST / GraphQL APIs and webhooks, a transactional outbox + relay, a connector registry with one-time API keys, messaging, and an automation studio composing rules and events. (Live sinks wired per deployment.)',
    ['REST / GraphQL APIs and webhooks','Transactional outbox + relay; connector registry',
-    'Messaging queue (email / SMS) — sink at deployment','Automation studio, scheduler and portal'],
+    'Messaging queue (email / SMS), sink at deployment','Automation studio, scheduler and portal'],
    ['Integration Hub','Messaging','Automation Studio','Portal'],
    ['IT','Integration engineers','Ops'],
    'Config validation and mapping assistance; the outbox + relay move events reliably and transactionally.',
@@ -575,8 +578,8 @@ MODULES = [
 ]
 
 sec = {
-  'OVERVIEW':      ('01','Overview & Intelligence','Command center — dashboards, executive KPIs, AI insights, search and mobile.', BLUE),
-  'UNDERWRITING':  ('02','Underwriting — the Reinsurance Core','Treaty & facultative, placement, pricing, capacity, exposure, territory, retrocession and adjustments.', INDIGO),
+  'OVERVIEW':      ('01','Overview & Intelligence','Command center, dashboards, executive KPIs, AI insights, search and mobile.', BLUE),
+  'UNDERWRITING':  ('02','Underwriting: the Reinsurance Core','Treaty & facultative, placement, pricing, capacity, exposure, territory, retrocession and adjustments.', INDIGO),
   'DISTRIBUTION':  ('03','Distribution','Parties, clients, brokers, cedents and the CRM.', GREEN),
   'OPERATIONS':    ('04','Operations','Claims, bordereaux, recoveries, the operations & workflow control tower and audit.', AMBER),
   'FINANCE':       ('05','Finance & Accounting','Technical and general accounting, statements, treasury and investment, period close and procurement.', BLUE),
