@@ -44,6 +44,48 @@ support it; verification **DF**), observability (logging **D**; metrics/traces/S
 > premium) → statement → post → reconcile works end to end with correct, reconciled numbers, with the
 > illegal-transition guard, permission gate, and assistant confirmation gate proven by tests.
 
+## Underwriting Module (brief §7 / §28)
+
+**DELIVERED — a metadata-driven underwriting platform on the vertical-slice foundation.** All logic is unit-
+and integration-tested; the reinsurance math stays in `@rios/domain`; money is integer minor units; tenant
+queries run through `runAs`; mutations are audited.
+
+- **Submission lifecycle** — a submission moves Submission → Triage → Analysis → Pricing → Referral → Quoted →
+  Bound / Declined / Lapsed through the domain stage machine (illegal moves rejected like the treaty lifecycle),
+  with a transparent, factor-by-factor **risk score** (`@rios/domain/underwriting`). Server module +
+  Underwriting Workbench UI, full audited activity trail.
+- **All models (metadata-driven)** — `@rios/domain/underwritingModels`: 8 reinsurance structures (quota share,
+  surplus, per-risk XL, cat XL, aggregate XL, stop loss, facultative prop/XL) × 13 lines of business (property,
+  casualty, engineering, marine hull/cargo, aviation, energy, agriculture, cyber, financial lines, life, health,
+  motor), each with its own typed slip terms. Served by `/api/underwriting/models`; the slip renders and
+  validates against it — a new model is a data change, not a redeploy (ADR 0004).
+- **Pricing** — technical/burn-cost premium and combined-ratio what-if (`ratios`, `scenarioGrid`, `sensitivity`)
+  with a rate-change × loss-shock matrix in the drawer.
+- **CAT analytics** — AAL / PML / EP curve / TVaR via a `CatModelProvider` adapter (`MockCatModel`; RMS/AIR/
+  KatRisk plug in behind the interface) surfaced in per-zone accumulation and the CAT dashboard.
+- **Portfolio / risk dashboards** — Executive, Portfolio, Catastrophe and Risk tabs (UW Analytics page).
+- **AI advisor (deterministic, grounded)** — `@rios/domain/underwritingAdvisor`: clause recommendations,
+  missing-information detection, consistency/data-quality attention flags, an executive summary, plus
+  similar-risk benchmarking from the book. No LLM (ADR 0005).
+- **Approval / referral engine** — `@rios/domain/underwritingApproval`: an authority matrix (underwriter →
+  senior → chief → committee) by band + limit, with per-level SLA and escalation chain; maker/checker binding
+  (an underwriter binds only after an approver signs off the referral); an approver queue page.
+- **Data room** — `@rios/domain/underwritingDocuments`: versioned documents with a deterministic OCR/AI
+  **extraction** stub (real Textract/Doc-Intelligence plugs in behind the interface), supersede chains and a
+  lightweight e-signature seal.
+- **Reports & export** — printable slip / quote / UW-summary (browser print → PDF) and a pipeline CSV export.
+- **RBAC** — Chief/Senior Underwriter + Actuary roles and an `underwriting:{read,write,price,approve}`
+  permission vocabulary (migration 0038); `underwriting:approve` gates senior sign-off.
+
+Migrations 0037–0040; server modules `underwriting`, `underwritingAnalytics`; domain modules `underwriting`,
+`pricingScenarios`, `catModel`, `underwritingModels`, `underwritingApproval`, `underwritingAdvisor`,
+`underwritingDocuments`; integration tests in `server/test/underwriting.test.ts`.
+
+**DESIGNED-FOR (interfaces built, vendor/data to connect):** live commercial cat-model APIs (adapter present);
+real OCR/AI document extraction (stub interface present); blob storage for documents (`storage_ref` pointer);
+renewal-pipeline linkage and broker/cedent/renewal/capacity dashboards; per-level approval permissions (senior
+vs chief vs committee are distinct levels today but share `underwriting:approve`).
+
 ## Phase 12 - AI Integration
 
 **DELIVERED (guardrailed).** A **deterministic intent engine** assistant (`/api/assistant`,
@@ -58,10 +100,12 @@ Automation Studio; an assistant **evaluation / golden-task** suite (§12.4); LLM
 
 ## Phase 13 - Testing
 
-**DELIVERED:** unit tests for the domain core (**38 passing** - money, proportional, non-proportional,
-accounting/reconciliation) and **server integration tests (4)** proving the vertical slice, the
-illegal-transition guard (409), the permission gate (403), and the assistant confirmation gate. Run with
-`npm test`.
+**DELIVERED:** unit tests for the domain core (**274 passing** - money, proportional, non-proportional,
+accounting/reconciliation, pricing, cat, and the full underwriting suite: risk scoring, model catalog,
+approval matrix, advisor, documents) and **server integration tests (165 across 49 files)** proving the
+vertical slice, the illegal-transition guard (409), the permission gate (403), the assistant confirmation
+gate, and the underwriting lifecycle end to end (submission → score → price → referral/maker-checker → bind,
+plus analytics, scenarios, data room and CSV export). Run with `npm test`.
 
 **NOT yet (DF/DEF):** end-to-end (browser) tests; contract tests; performance/load tests against §20 budgets;
 security testing (SAST/DAST, dependency scan, penetration); accessibility (WCAG 2.2 AA) automation; a dedicated
