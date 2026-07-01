@@ -72,3 +72,4 @@ export * from './capacityMgmt.js';
 export * from './exposureMgmt.js';
 export * from './lossAnalytics.js';
 export * from './tasks.js';
+export * from './treatyLayer.js';

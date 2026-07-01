@@ -386,6 +386,37 @@ from contract c
 where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
 on conflict do nothing;
 
+-- Treaty Administration: special clauses / wording, tax schedule, initial version
+insert into treaty_clause (tenant_id, contract_id, code, title, category, body)
+select :'tenant_id'::uuid, c.id, v.code, v.title, v.category, v.body
+from contract c,
+(values
+ ('HRS-168','Hours Clause','CONDITION','A single loss occurrence for windstorm/flood is limited to 72 consecutive hours; 168 hours for earthquake.'),
+ ('NMA-2918','War & Terrorism Exclusion','EXCLUSION','This reinsurance excludes loss or damage directly or indirectly caused by war, invasion or hostilities (NMA 2918).'),
+ ('LSW-1001','Sanctions Limitation','SANCTIONS','No reinsurer shall provide cover or pay any claim where doing so would expose it to any sanction under UN, EU, UK or US regimes.'),
+ ('RIP-01','Reinstatement Provision','REINSTATEMENT','Each layer is subject to the number of reinstatements stated, payable additional premium pro rata as to amount and 100% as to time.'),
+ ('ULT-NET','Ultimate Net Loss','GENERAL','Ultimate net loss means the sum actually paid by the reinsured in settlement of losses, after deduction of all recoveries and salvages.'),
+ ('CBI-EXC','Cyber Exclusion (CL380)','EXCLUSION','Losses arising from the use or operation of any computer system or cyber act are excluded per LMA 5400 / CL 380.'))
+ as v(code,title,category,body)
+where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+insert into treaty_tax (tenant_id, contract_id, kind, rate_pct, note)
+select :'tenant_id'::uuid, c.id, v.kind, v.rate_pct, v.note
+from contract c,
+(values
+ ('FET', 1.0, 'US Federal Excise Tax on premium ceded to non-admitted reinsurer.'),
+ ('IPT', 0.0, 'Insurance Premium Tax - not applicable to this US-domiciled placement.'),
+ ('WHT', 0.0, 'Withholding tax - nil under applicable treaty.'))
+ as v(kind,rate_pct,note)
+where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
+insert into treaty_version (tenant_id, contract_id, version_no, note, snapshot, created_by)
+select :'tenant_id'::uuid, c.id, 1, 'Initial bound placement', row_to_json(c)::jsonb, null
+from contract c where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
+on conflict do nothing;
+
 -- Term set (deposit premium, reinstatement basis, brokerage)
 insert into term_set (tenant_id, contract_id, terms)
 select :'tenant_id'::uuid, c.id, jsonb_build_object(
@@ -494,6 +525,30 @@ from app_user acct, app_user uw
 where acct.tenant_id = :'tenant_id'::uuid and acct.email = 'acct@demo.rios'
   and uw.tenant_id = :'tenant_id'::uuid and uw.email = 'uw@demo.rios'
 on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Organization Management (§16): the corporate reporting structure as an
+-- org_unit tree - group -> companies -> branches / regional offices.
+-- ---------------------------------------------------------------------------
+insert into org_unit (tenant_id, code, name, kind, parent_id)
+values (:'tenant_id'::uuid,'GRP','ReNexis Group','group',null) on conflict (tenant_id,code) do nothing;
+
+insert into org_unit (tenant_id, code, name, kind, parent_id)
+select :'tenant_id'::uuid, v.code, v.name, 'company', g.id from org_unit g,
+ (values ('CO-RE','ReNexis Reinsurance Ltd'),('CO-SPEC','ReNexis Specialty Re'),('CO-LIFE','ReNexis Life & Health Re')) as v(code,name)
+where g.tenant_id=:'tenant_id'::uuid and g.code='GRP' on conflict (tenant_id,code) do nothing;
+
+insert into org_unit (tenant_id, code, name, kind, parent_id)
+select :'tenant_id'::uuid, v.code, v.name, 'branch', c.id from org_unit c
+ join (values
+   ('CO-RE','BR-BDA','Bermuda Head Office'),
+   ('CO-RE','BR-LON','London Branch'),
+   ('CO-RE','BR-SIN','Singapore Hub'),
+   ('CO-SPEC','BR-ZUR','Zurich Branch'),
+   ('CO-SPEC','BR-NYC','New York Office'),
+   ('CO-LIFE','BR-LON2','London Life Branch')) as v(parent_code,code,name)
+   on v.parent_code = c.code
+where c.tenant_id=:'tenant_id'::uuid on conflict (tenant_id,code) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- A couple of employees and a performance review (§14). The overall rating is

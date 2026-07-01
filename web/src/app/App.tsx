@@ -17,6 +17,8 @@ import { TasksPage } from '../pages/TasksPage';
 import { AuditLogPage } from '../pages/AuditLogPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
 import { ClientsPage } from '../pages/ClientsPage';
+import { TreatyAdminPage } from '../pages/TreatyAdminPage';
+import { OrganizationPage } from '../pages/OrganizationPage';
 import { TreatyDetailPage } from '../pages/TreatyDetailPage';
 import { PartiesPage } from '../pages/PartiesPage';
 import { PartyDetailPage } from '../pages/PartyDetailPage';
@@ -107,6 +109,8 @@ export function App() {
         <Route path="/audit" element={<AuditLogPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/clients" element={<ClientsPage />} />
+        <Route path="/treaty-admin" element={<TreatyAdminPage />} />
+        <Route path="/organization" element={<OrganizationPage />} />
         <Route path="/treaties" element={<TreatiesPage />} />
         <Route path="/treaties/:id" element={<TreatyDetailPage />} />
         <Route path="/parties" element={<PartiesPage />} />

@@ -29,11 +29,11 @@ export function BarChart({ data, metaColors, emptyLabel = 'No data yet' }: BarCh
   }
   return (
     <div className={styles.chart} role="img" aria-label="Bar chart">
-      {data.map((d) => {
+      {data.map((d, i) => {
         const color = COLOR_VAR[colorForStatus(d.status ?? d.label, metaColors)];
         const pct = (d.value / max) * 100;
         return (
-          <div key={d.label} className={styles.row}>
+          <div key={`${d.label}-${i}`} className={styles.row}>
             <span className={styles.label}>{titleCase(d.label)}</span>
             <div className={styles.track}>
               <div
