@@ -9,7 +9,7 @@ import {
   Clock, UserRound, Banknote, TrendingUp,
   ShoppingCart, Package,
   Activity, CalendarClock, Plug, Network, Store, Bot, Mail, PanelsTopLeft, Lock, Shield,
-  Archive, EyeOff, Building2, Flag, Gauge, Settings,
+  Archive, EyeOff, Building2, Flag, Gauge, Settings, Globe2,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -45,6 +45,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Approvals', to: '/underwriting/approvals', icon: ShieldCheck, permission: 'treaty:read' },
       { label: 'Capacity', to: '/capacity', icon: Gauge, permission: 'treaty:read' },
       { label: 'Exposure Mgmt', to: '/exposure-management', icon: Radar, permission: 'exposure:read' },
+      { label: 'Territories', to: '/territories', icon: Globe2, permission: 'exposure:read' },
       { label: 'Treaties', to: '/treaties', icon: FileText, permission: 'treaty:read' },
       { label: 'Facultative', to: '/facultative', icon: FileCheck2, permission: 'facultative:read' },
       { label: 'Retrocession', to: '/retrocession', icon: ArrowLeftRight, permission: 'retro:read' },

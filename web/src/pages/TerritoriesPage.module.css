@@ -1,0 +1,7 @@
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-5); }
+.chartBody { padding: var(--space-4) var(--space-5) var(--space-5); }
+.tableWrap { padding: 0 var(--space-2) var(--space-2); }
+.cellMain { font-weight: var(--weight-semibold); color: var(--text); }
+.cellSub { font-size: var(--text-sm); color: var(--text-muted); }
+.num { font-variant-numeric: tabular-nums; }
+:global(.card) + :global(.card) { margin-top: var(--space-5); }

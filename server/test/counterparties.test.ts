@@ -117,3 +117,17 @@ describe('CSV exports', () => {
     }
   });
 });
+
+describe('Territory management', () => {
+  it('rolls exposure + capacity into a territory view', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    const res = await app.inject({ method: 'GET', url: '/api/territories', headers: auth });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().totals).toHaveProperty('tivMinor');
+    expect(Array.isArray(res.json().territories)).toBe(true);
+    const csv = await app.inject({ method: 'GET', url: '/api/territories/export.csv', headers: auth });
+    expect(csv.statusCode).toBe(200);
+    expect((csv.body as string).split('\n')[0]).toContain('Territory');
+  });
+});
