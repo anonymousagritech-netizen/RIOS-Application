@@ -141,3 +141,23 @@ describe('formula.canEditField (governance)', () => {
     expect(calcAuth.requiresOverrideAudit).toBe(true);
   });
 });
+
+describe('formulaLibrary extended set', () => {
+  it('all formulas validate and key ones compute correctly', async () => {
+    const { DEFAULT_FORMULAS, getFormula } = await import('./formulaLibrary.js');
+    const { validateFormula, computeFormula } = await import('./formula.js');
+    for (const def of DEFAULT_FORMULAS) expect(validateFormula(def).ok, def.key).toBe(true);
+    // Net premium
+    expect(computeFormula(getFormula('treaty.net_premium')!, { grossPremium: 1000, cededPremium: 400 }).value).toBe(600);
+    // Recovery: excess of attachment capped at limit
+    expect(computeFormula(getFormula('claims.recovery')!, { grossLoss: 5000, attachment: 1000, limit: 3000 }).value).toBe(3000);
+    // IBNR = max(0, ult - reported)
+    expect(computeFormula(getFormula('claims.ibnr')!, { earnedPremium: 1000, expectedLossRatio: 0.6, reportedIncurred: 400 }).value).toBe(200);
+    // Sliding scale: at low loss ratio => max commission
+    const ss = computeFormula(getFormula('treaty.sliding_scale_commission')!, { premium: 100000, lossRatioPct: 40, minCommPct: 20, maxCommPct: 35, lowLossPct: 40, highLossPct: 60 });
+    expect(ss.value).toBe(35000); // 35% at/below low loss
+    // Swing rate clamps into [3,15]
+    const sw = computeFormula(getFormula('treaty.swing_rate')!, { lossRatio: 0.9, loadingFactor: 1.0 });
+    expect(sw.value).toBeLessThanOrEqual(15);
+  });
+});
