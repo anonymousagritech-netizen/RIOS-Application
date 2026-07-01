@@ -31,6 +31,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     [hasPermission],
   );
 
+  // A nav link whose path is a prefix of another link's path (e.g. /underwriting
+  // vs /underwriting/analytics) must match exactly, or React Router would flag
+  // both as active on the child route. Links with no such sibling keep prefix
+  // matching so a parent still highlights on its detail pages (/treaties/:id).
+  const exactPaths = useMemo(() => {
+    const all = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.to));
+    return new Set(all.filter((to) => all.some((other) => other !== to && other.startsWith(`${to}/`))));
+  }, []);
+
   // Sections are open by default; users can collapse individual ones.
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const toggleGroup = (label: string) =>
@@ -99,6 +108,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       <NavLink
                         key={item.to}
                         to={item.to}
+                        end={exactPaths.has(item.to)}
                         title={collapsed ? item.label : undefined}
                         className={({ isActive }) =>
                           `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
