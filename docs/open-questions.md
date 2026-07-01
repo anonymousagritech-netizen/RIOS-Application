@@ -131,8 +131,18 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 
 ## 6. Platform, configuration & UX
 
+- **Formula Engine & Calculation Framework** is now **delivered** full-stack (`@rios/domain/formula`,
+  `formulaLibrary`; server `formulas` module + migration 0050; web Formula Management page +
+  `CalculatedValue`): a safe, injection-free expression evaluator; formulas as versioned, effective-dated
+  **data** (variables, constants, functions, conditional logic) with named terms so every value carries a
+  step-by-step breakdown; `validateFormula` + a live test sandbox; the **SYSTEM / OVERRIDE / IMPORTED /
+  MANUAL** status model and **INPUT / CALCULATED / PROTECTED** governance (`canEditField`); an audited
+  override + restore trail (`formula_override`); and a grounded, deterministic **explain** (AI Formula
+  Assistant). A seed library covers underwriting/treaty/claims formulas. Designed-for: wiring
+  `CalculatedValue` into *every* screen, a formula approval workflow, and drag-and-drop authoring.
 - **No-code designers** for forms, workflows, rules, approval stages, templates, reports, dashboards - the
-  `config_document` store exists; **interpreters and designer UIs are designed-for**. (§9.3, §10.3, §13)
+  `config_document` store exists; **interpreters and designer UIs are designed-for** (the Formula Engine
+  above is the first fully-delivered no-code surface). (§9.3, §10.3, §13)
 - **Entitlement engine** (per-tenant/plan flags & limits) - designed-for. (§9.1)
 - **Config sandbox / simulate / promotion / approval** - designed-for. (§10.4)
 - **Frontend** - design tokens delivered; the full component library (accessible, themed, RTL), the
