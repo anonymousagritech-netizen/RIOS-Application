@@ -90,9 +90,29 @@ queries run through `runAs`; mutations are audited.
   dimension, peak-accumulation summary, peril×geo heatmap, concentration); server
   `exposureMgmt` (`/api/underwriting/exposure`); Exposure Management page
   (TIV/PML, peril mix, CRESTA accumulation, heatmap).
+- **Territory management** — cross-module roll-up combining exposure (TIV/PML by
+  country) with geographic capacity (available/consumed/utilisation) in one view
+  (`/api/territories`); Territory page.
+- **Integration dashboards** — Claims (loss ratio, frequency/severity,
+  `@rios/domain/lossAnalytics` chain-ladder IBNR, technical account), Finance
+  (premium/commission/claims, ledger, cash flow) and Retrocession (ceded premium,
+  layers, recoveries) tabs on UW Analytics, tying underwriting to those books.
+- **Tasks & SLA** — `@rios/domain/tasks` (SLA state + summary); `task` table
+  (migration 0043); server `tasks` (ops:read/write); Tasks & SLA page. Raising an
+  underwriting referral auto-creates a REFERRAL task (integration).
+- **Audit log / activity timeline** — read-only viewer over the hash-chained,
+  append-only `audit_log` (`/api/audit` with entity/action facets); Audit Log page.
+- **Reports** — printable slip / quote / UW summary and a consolidated **board
+  report** (browser print → PDF), plus CSV/Excel exports on the pipeline, brokers,
+  cedents, capacity, exposure and territories.
+- **AI assistant breadth** — grounded intents across claims, finance, retro,
+  capacity, exposure, brokers, cedents and a portfolio/executive insight.
+- **Cross-module links** — broker/cedent portfolios deep-link into the workbench
+  (`/underwriting?submission=`); referrals surface as tasks; every module's
+  activity is visible in the audit timeline.
 
-Migrations 0037–0042; server modules `underwriting`, `underwritingAnalytics`,
-`brokers`, `cedents`, `capacityMgmt`, `exposureMgmt`; domain modules `underwriting`,
+Migrations 0037–0043; server modules `underwriting`, `underwritingAnalytics`,
+`brokers`, `cedents`, `capacityMgmt`, `exposureMgmt`, `territories`, `tasks`, `auditLog`; domain modules `underwriting`,
 `pricingScenarios`, `catModel`, `underwritingModels`, `underwritingApproval`, `underwritingAdvisor`,
 `underwritingDocuments`, `counterparty`, `capacityMgmt`, `exposureMgmt`; integration tests in
 `server/test/underwriting.test.ts` and `server/test/counterparties.test.ts` (298 domain + server UW tests).
