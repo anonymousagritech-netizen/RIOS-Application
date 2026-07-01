@@ -62,8 +62,11 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   integer-exact minor units; `invoiceStatus` resolves settled/part-paid/overdue). Surfaced at
   `GET /api/statements/aging?kind=AR|AP`. **Tax & levy** is now delivered too (`@rios/domain/tax`): a
   cascading levy stack (`computeLevies` with compounding lines), withholding tax, US **Federal Excise Tax**
-  with income-tax-treaty exemption (`federalExciseTax`) and a tax gross-up (`grossUp`). **Bank reconciliation,
-  treasury, investments and fixed assets** sub-ledgers remain designed-for. (§9.8)
+  with income-tax-treaty exemption (`federalExciseTax`) and a tax gross-up (`grossUp`). **Bank reconciliation**
+  is now delivered too (`@rios/domain/bankRec.reconcileBank`): reference-then-amount/date matching of book vs
+  bank lines, surfacing deposits-in-transit / outstanding items and bank-only charges, and proving the
+  reconciliation identity to zero. **Treasury, investments and fixed assets** sub-ledgers remain
+  designed-for. (§9.8)
 - **Statement-of-account lifecycle** (Open → Prepared → … → Settled) - **delivered**: guarded status
   transitions (`STATEMENT_TRANSITIONS`) with the AR/AP invoice spin-off on issue. (§28.5)
 - **Profit-commission jurisdictional variants** - one common basis delivered; others would be configuration.
