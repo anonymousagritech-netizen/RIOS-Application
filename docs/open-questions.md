@@ -67,7 +67,11 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   bank lines, surfacing deposits-in-transit / outstanding items and bank-only charges, and proving the
   reconciliation identity to zero. **Fixed assets** is now delivered too (`@rios/domain/fixedAssets`):
   straight-line and reducing-balance `depreciationSchedule` (never below residual, ties to cost - residual),
-  `netBookValue` and disposal gain/loss. **Treasury and investments** sub-ledgers remain designed-for. (§9.8)
+  `netBookValue` and disposal gain/loss. **Investments** now have an amortised-cost / effective-interest
+  engine (`@rios/domain/treasury`): `effectivePeriodRate` (yield to maturity by bisection) and
+  `amortisedCostSchedule` (IFRS 9 premium/discount amortisation converging to par at maturity, semi-annual
+  supported), on top of the existing accrued-interest and portfolio valuation. **Cash-flow forecasting and a
+  full treasury dealing/settlement sub-ledger** remain designed-for. (§9.8)
 - **Statement-of-account lifecycle** (Open → Prepared → … → Settled) - **delivered**: guarded status
   transitions (`STATEMENT_TRANSITIONS`) with the AR/AP invoice spin-off on issue. (§28.5)
 - **Profit-commission jurisdictional variants** - one common basis delivered; others would be configuration.
