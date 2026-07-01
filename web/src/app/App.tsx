@@ -4,6 +4,7 @@ import { PageLoader } from '../components/Feedback';
 import { AppShell } from './AppShell';
 import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { LauncherPage } from '../pages/LauncherPage';
 import { TreatiesPage } from '../pages/TreatiesPage';
 import { UnderwritingPage } from '../pages/UnderwritingPage';
 import { UnderwritingAnalyticsPage } from '../pages/UnderwritingAnalyticsPage';
@@ -105,8 +106,9 @@ export function App() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/login" element={<Navigate to="/home" replace />} />
+        <Route path="/home" element={<LauncherPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/underwriting" element={<UnderwritingPage />} />
         <Route path="/underwriting/analytics" element={<UnderwritingAnalyticsPage />} />
@@ -194,7 +196,7 @@ export function App() {
         <Route path="/marketplace" element={<MarketplacePage />} />
         <Route path="/automation-studio" element={<AutomationStudioPage />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </AppShell>
   );
