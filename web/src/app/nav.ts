@@ -101,6 +101,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Analytics', to: '/analytics', icon: LineChart, permission: 'reporting:read' },
       { label: 'Risk & Capital', to: '/risk-capital', icon: ShieldCheck, permission: 'risk:read' },
       { label: 'Regulatory', to: '/regulatory', icon: Scale, permission: 'regulatory:read' },
+      { label: 'Compliance', to: '/compliance', icon: ShieldCheck, permission: 'regulatory:read' },
       { label: 'Returns', to: '/returns', icon: FileSpreadsheet, permission: 'regulatory:read' },
       { label: 'Workflow', to: '/workflow', icon: Workflow, permission: 'workflow:read' },
       { label: 'Delegation', to: '/delegation', icon: GitBranch },

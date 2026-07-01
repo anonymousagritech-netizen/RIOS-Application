@@ -22,6 +22,7 @@ import { OrganizationPage } from '../pages/OrganizationPage';
 import { TerritoryManagementPage } from '../pages/TerritoryManagementPage';
 import { ScheduledReportsPage } from '../pages/ScheduledReportsPage';
 import { ExecutiveDashboardPage } from '../pages/ExecutiveDashboardPage';
+import { CompliancePage } from '../pages/CompliancePage';
 import { TreatyDetailPage } from '../pages/TreatyDetailPage';
 import { PartiesPage } from '../pages/PartiesPage';
 import { PartyDetailPage } from '../pages/PartyDetailPage';
@@ -117,6 +118,7 @@ export function App() {
         <Route path="/territory-management" element={<TerritoryManagementPage />} />
         <Route path="/scheduled-reports" element={<ScheduledReportsPage />} />
         <Route path="/executive" element={<ExecutiveDashboardPage />} />
+        <Route path="/compliance" element={<CompliancePage />} />
         <Route path="/treaties" element={<TreatiesPage />} />
         <Route path="/treaties/:id" element={<TreatyDetailPage />} />
         <Route path="/parties" element={<PartiesPage />} />

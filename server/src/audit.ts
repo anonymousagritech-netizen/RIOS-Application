@@ -24,6 +24,11 @@ export async function writeAudit(
   ctx: { tenantId: string; userId: string | null },
   entry: AuditEntry,
 ): Promise<void> {
+  // Serialise appends per tenant so the "read latest hash → insert" is atomic:
+  // without this, concurrent writers can read the same tip and fork the chain.
+  // pg_advisory_xact_lock releases automatically at the end of the caller's tx.
+  await db.query(`select pg_advisory_xact_lock(hashtext($1))`, [`audit:${ctx.tenantId}`]);
+
   const prev = await db.query<{ row_hash: Buffer | null }>(
     `select row_hash from audit_log where tenant_id = $1 order by id desc limit 1`,
     [ctx.tenantId],
