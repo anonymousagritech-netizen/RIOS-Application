@@ -10,6 +10,7 @@ export * from './proportional.js';
 export * from './nonproportional.js';
 export * from './accounting.js';
 export * from './fx.js';
+export * from './bordereaux.js';
 export * from './pricing.js';
 export * from './ifrs17.js';
 export * from './solvency2.js';

@@ -9,7 +9,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { fromMajor } from '@rios/domain';
+import { ingestBordereau, type BordereauMapping } from '@rios/domain';
 import { runAs } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
@@ -29,38 +29,10 @@ const uploadSchema = z.object({
   mappingId: z.string().uuid().optional(),
   periodStart: z.string().optional(),
   periodEnd: z.string().optional(),
+  // Optional declared header total (major units): the line sum must tie out to it.
+  controlTotalMajor: z.number().positive().optional(),
   rows: z.array(z.record(z.unknown())).default([]),
 });
-
-interface LineResult {
-  lineNo: number;
-  raw: Record<string, unknown>;
-  amountMinor: number | null;
-  isValid: boolean;
-  errors: string[];
-}
-
-/** Validate one bordereau row and resolve its amount in minor units. */
-function validateRow(
-  row: Record<string, unknown>,
-  lineNo: number,
-  kind: 'PREMIUM' | 'LOSS',
-  currency: string,
-): LineResult {
-  const errors: string[] = [];
-  const rawAmount = row.amount ?? (kind === 'PREMIUM' ? row.premium : row.loss);
-  let amountMinor: number | null = null;
-  if (typeof rawAmount !== 'number' || !Number.isFinite(rawAmount) || rawAmount <= 0) {
-    errors.push('amount missing or not positive');
-  } else {
-    amountMinor = fromMajor(rawAmount, currency).amount;
-    if (amountMinor <= 0) errors.push('amount missing or not positive');
-  }
-  if (kind === 'LOSS' && row.lossDate != null && typeof row.lossDate !== 'string') {
-    errors.push('lossDate must be a string date');
-  }
-  return { lineNo, raw: row, amountMinor, isValid: errors.length === 0, errors };
-}
 
 export async function bordereauxModule(app: FastifyInstance): Promise<void> {
   app.post('/api/bordereaux/mappings', { preHandler: requirePermission('bordereaux:write') }, async (req, reply) => {
@@ -113,10 +85,32 @@ export async function bordereauxModule(app: FastifyInstance): Promise<void> {
     const b = parsed.data;
     const ccy = b.currency.toUpperCase();
     return runAs(ctx, async (db) => {
-      const lines = b.rows.map((row, i) => validateRow(row, i + 1, b.kind, ccy));
-      const errorCount = lines.filter((l) => !l.isValid).length;
-      const totalMinor = lines.reduce((acc, l) => (l.isValid && l.amountMinor ? acc + l.amountMinor : acc), 0);
-      const status = errorCount === 0 ? 'VALIDATED' : 'REJECTED';
+      // Load a stored column mapping when referenced, so arbitrary source headers
+      // are projected onto canonical fields before validation.
+      let mapping: BordereauMapping | undefined;
+      if (b.mappingId) {
+        const m = await db.query<{ mapping: unknown }>(
+          `select mapping from bordereau_mapping where id = $1`,
+          [b.mappingId],
+        );
+        if (m.rows[0] && m.rows[0].mapping && typeof m.rows[0].mapping === 'object') {
+          mapping = m.rows[0].mapping as BordereauMapping;
+        }
+      }
+
+      const result = ingestBordereau({
+        kind: b.kind,
+        currency: ccy,
+        rows: b.rows,
+        mapping,
+        controlTotalMajor: b.controlTotalMajor,
+      });
+      const lines = result.rows;
+      const errorCount = result.invalidCount;
+      const totalMinor = result.totalMinor;
+      // A file is VALIDATED only when every line is valid AND it ties out to any
+      // declared control total; otherwise it is REJECTED.
+      const status = result.accepted ? 'VALIDATED' : 'REJECTED';
       const ref = await nextReference(db, ctx.tenantId, 'bordereau_reference', 'BDX');
 
       const { rows } = await db.query<{ id: string }>(
@@ -135,8 +129,11 @@ export async function bordereauxModule(app: FastifyInstance): Promise<void> {
         await db.query(
           `insert into bordereau_line
              (tenant_id, bordereau_id, line_no, raw, mapped, amount_minor, currency, is_valid, errors)
-           values ($1,$2,$3,$4,$4,$5,$6,$7,$8)`,
-          [ctx.tenantId, id, l.lineNo, JSON.stringify(l.raw), l.amountMinor, ccy, l.isValid, JSON.stringify(l.errors)],
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [
+            ctx.tenantId, id, l.lineNo, JSON.stringify(l.raw), JSON.stringify(l.fields),
+            l.amountMinor, ccy, l.isValid, JSON.stringify(l.errors),
+          ],
         );
       }
 
@@ -144,11 +141,19 @@ export async function bordereauxModule(app: FastifyInstance): Promise<void> {
         action: 'create',
         entityType: 'bordereau',
         entityId: id,
-        after: { kind: b.kind, rowCount: lines.length, errorCount, status },
+        after: { kind: b.kind, rowCount: lines.length, errorCount, status, reconciles: result.reconciles },
         actorLabel: req.auth?.displayName,
       });
       reply.code(201);
-      return { id, status, rowCount: lines.length, errorCount, totalMinor };
+      return {
+        id,
+        status,
+        rowCount: lines.length,
+        errorCount,
+        totalMinor,
+        reconciles: result.reconciles,
+        varianceMinor: result.varianceMinor,
+      };
     });
   });
 

@@ -22,8 +22,13 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   RMS) are designed-for. (§7.8, §9.9)
 - **Pricing & rating** - burning-cost/experience rating, exposure rating, swing rating, capacity/authority
   checks are not in the domain library. (§7.8, §29.5)
-- **Bordereaux ingestion** - mapped/validated premium & loss bordereaux (Excel/CSV/feeds) → financial events
-  / losses is designed-for. (§7.10, §29.6)
+- **Bordereaux ingestion** - **delivered** as a pure engine (`@rios/domain/bordereaux`) wired into
+  `POST /api/bordereaux`: a stored column-mapping projects arbitrary source headers onto canonical fields,
+  each line is validated (amount present/positive, loss-date shape), amounts quantise to integer minor units,
+  and the line sum is reconciled against an optional declared control total (out-of-balance files are
+  REJECTED, not just error-free ones). Valid premium lines draft `INSTALMENT_PREMIUM` financial events; loss
+  lines feed claims. What remains designed-for is **file parsing** (Excel/CSV/feed → rows) and connector
+  ingestion. (§7.10, §29.6)
 - **Facultative & retrocession depth** - modelled in the schema (`contract_kind`, `direction`, party roles)
   but single-risk fast cession, fac-obligatory, inuring order, and gross/ceded/net position computation across
   inwards+outwards are designed-for. (§7.4, §7.5)
