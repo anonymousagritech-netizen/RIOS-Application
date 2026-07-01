@@ -91,3 +91,61 @@ describe('Underwriting: submission lifecycle', () => {
     expect(score.json().riskBand).toBe('LOW');
   });
 });
+
+describe('Underwriting: analytics, scenarios & approval matrix', () => {
+  it('returns portfolio, risk and CAT analytics', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    const portfolio = await app.inject({ method: 'GET', url: '/api/underwriting/analytics/portfolio', headers: auth });
+    expect(portfolio.statusCode).toBe(200);
+    expect(portfolio.json()).toHaveProperty('byStructure');
+    expect(portfolio.json()).toHaveProperty('topCedents');
+
+    const risk = await app.inject({ method: 'GET', url: '/api/underwriting/analytics/risk', headers: auth });
+    expect(risk.statusCode).toBe(200);
+    expect(Array.isArray(risk.json().heatmap)).toBe(true);
+
+    const cat = await app.inject({ method: 'GET', url: '/api/underwriting/analytics/cat', headers: auth });
+    expect(cat.statusCode).toBe(200);
+    expect(cat.json()).toHaveProperty('bookEpCurve');
+    expect(Array.isArray(cat.json().bookEpCurve)).toBe(true);
+  });
+
+  it('builds a pricing scenario grid for a submission', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    const create = await app.inject({
+      method: 'POST', url: '/api/underwriting/submissions', headers: auth,
+      payload: { title: 'Scenario QS', estPremium: 5_000_000, lossRatioPct: 60 },
+    });
+    const id = create.json().id as string;
+    const sc = await app.inject({ method: 'POST', url: `/api/underwriting/submissions/${id}/scenarios`, headers: auth, payload: {} });
+    expect(sc.statusCode).toBe(200);
+    expect(sc.json().grid.length).toBeGreaterThan(0);
+    expect(sc.json().base).toHaveProperty('combinedRatioPct');
+  });
+
+  it('blocks a non-approver from binding a HIGH-risk submission (403)', async () => {
+    if (!dbUp) return;
+    const adminAuth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    // uw@demo has treaty:write but NOT underwriting:approve / admin:manage.
+    const uwAuth = { authorization: `Bearer ${await token(app, 'uw@demo.rios')}` };
+
+    const create = await app.inject({
+      method: 'POST', url: '/api/underwriting/submissions', headers: adminAuth,
+      payload: { title: 'High risk cat', basis: 'NON_PROPORTIONAL', structure: 'CAT_XL', lossRatioPct: 95, catExposed: true, classHazard: 5, priorClaims: 4 },
+    });
+    expect(create.json().riskBand).toBe('HIGH');
+    const id = create.json().id as string;
+    // Advance to QUOTED with admin (who can approve).
+    for (const to of ['TRIAGE', 'ANALYSIS', 'PRICING', 'QUOTED']) {
+      await app.inject({ method: 'POST', url: `/api/underwriting/submissions/${id}/transition`, headers: adminAuth, payload: { to } });
+    }
+    // The junior underwriter cannot bind a HIGH-risk submission.
+    const uwBind = await app.inject({ method: 'POST', url: `/api/underwriting/submissions/${id}/transition`, headers: uwAuth, payload: { to: 'BOUND' } });
+    expect(uwBind.statusCode).toBe(403);
+    // The approver (admin) can.
+    const adminBind = await app.inject({ method: 'POST', url: `/api/underwriting/submissions/${id}/transition`, headers: adminAuth, payload: { to: 'BOUND' } });
+    expect(adminBind.statusCode).toBe(200);
+  });
+});

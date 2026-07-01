@@ -13,6 +13,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   riskScore, technicalPremium, canTransition, isTerminalStage,
+  scenarioGrid, sensitivity, ratios,
   type UwStage, type RiskFactorInput,
 } from '@rios/domain';
 import { runAs, type Db } from '../db.js';
@@ -59,6 +60,18 @@ function factorsFromRow(r: {
     yearsWithCedent: r.years_with_cedent ?? undefined,
     capacityUtilPct: capacity,
   };
+}
+
+/** Approval matrix: which senior sign-off (if any) a transition requires. The
+ *  thresholds are deliberately simple + explainable; a fuller matrix would be
+ *  configuration (code-list driven). Large limit ≥ 25m major units (2.5bn minor)
+ *  or a HIGH risk band gates quoting/binding to underwriting:approve. */
+const LARGE_LIMIT_MINOR = 25_000_000 * 100;
+function approvalRequired(to: string, band: string | null, limitMinor: number | null): string | null {
+  if (to !== 'QUOTED' && to !== 'BOUND') return null;
+  if (band === 'HIGH') return 'HIGH risk band';
+  if ((limitMinor ?? 0) >= LARGE_LIMIT_MINOR) return 'limit ≥ 25m';
+  return null;
 }
 
 async function logActivity(
@@ -212,18 +225,30 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // ---- Stage transition (guarded by the domain stage machine) --------------
+  // ---- Stage transition (guarded by the domain stage machine + approval matrix)
   app.post<{ Params: { id: string } }>('/api/underwriting/submissions/:id/transition', { preHandler: requirePermission('treaty:write') }, async (req, reply) => {
     const ctx = authContext(req);
     const to = (req.body as { to?: string })?.to as UwStage | undefined;
     const note = (req.body as { note?: string })?.note;
     if (!to) { reply.code(400); return { error: 'Target stage `to` is required' }; }
+    const perms = req.auth?.permissions ?? [];
+    const canApprove = perms.includes('underwriting:approve') || perms.includes('admin:manage');
     return runAs(ctx, async (db) => {
-      const cur = await db.query<{ stage: UwStage }>(`select stage from submission where id = $1`, [req.params.id]);
+      const cur = await db.query<{ stage: UwStage; risk_band: string | null; limit_minor: number | null }>(
+        `select stage, risk_band, limit_minor from submission where id = $1`, [req.params.id],
+      );
       if (!cur.rows[0]) { reply.code(404); return { error: 'Submission not found' }; }
       const from = cur.rows[0].stage;
       if (isTerminalStage(from)) { reply.code(409); return { error: `Submission is ${from} and cannot move` }; }
       if (!canTransition(from, to)) { reply.code(409); return { error: `Illegal transition ${from} → ${to}` }; }
+      // Approval matrix: quoting or binding a HIGH-risk or large-limit submission
+      // requires senior/chief sign-off (underwriting:approve). Everything else is
+      // within a normal underwriter's authority.
+      const app = approvalRequired(to, cur.rows[0].risk_band, cur.rows[0].limit_minor);
+      if (app && !canApprove) {
+        reply.code(403);
+        return { error: `${to} requires senior approval (${app}). You do not hold underwriting:approve.` };
+      }
       await db.query(`update submission set stage = $2, updated_at = now() where id = $1`, [req.params.id, to]);
       await logActivity(db, ctx.tenantId, req.params.id, ctx.userId, to === 'REFERRAL' ? 'REFERRAL' : isTerminalStage(to) ? 'DECISION' : 'STAGE', { fromStage: from, toStage: to, note });
       await writeAudit(db, ctx, { action: 'transition', entityType: 'submission', entityId: req.params.id, before: { stage: from }, after: { stage: to } });
@@ -279,6 +304,32 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
       if (!cur.rows[0]) { reply.code(404); return { error: 'Submission not found' }; }
       await logActivity(db, ctx.tenantId, req.params.id, ctx.userId, 'NOTE', { note });
       return { ok: true };
+    });
+  });
+
+  // ---- Pricing scenarios & sensitivity (what-if) ---------------------------
+  app.post<{ Params: { id: string } }>('/api/underwriting/submissions/:id/scenarios', { preHandler: requirePermission('treaty:read') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const body = (req.body ?? {}) as { rateChanges?: number[]; lossShocks?: number[]; expenseRatio?: number };
+    const rateChanges = Array.isArray(body.rateChanges) && body.rateChanges.length ? body.rateChanges : [-0.15, -0.05, 0, 0.05, 0.15, 0.25];
+    const lossShocks = Array.isArray(body.lossShocks) && body.lossShocks.length ? body.lossShocks : [0.8, 0.9, 1, 1.1, 1.25, 1.5];
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ est_premium_minor: number | null; loss_ratio_pct: number | null; target_premium_minor: number | null }>(
+        `select est_premium_minor, loss_ratio_pct, target_premium_minor from submission where id = $1`, [req.params.id],
+      );
+      const r = rows[0];
+      if (!r) { reply.code(404); return { error: 'Submission not found' }; }
+      const basePremium = Number(r.target_premium_minor ?? r.est_premium_minor ?? 0);
+      const expectedLoss = Math.round(Number(r.est_premium_minor ?? 0) * ((r.loss_ratio_pct ?? 60) / 100));
+      const expenseRatio = body.expenseRatio ?? 0.15;
+      return {
+        basePremiumMinor: basePremium,
+        expectedLossMinor: expectedLoss,
+        base: ratios({ premiumMinor: basePremium, expectedLossMinor: expectedLoss, expenseRatio }),
+        grid: scenarioGrid({ basePremiumMinor: basePremium, expectedLossMinor: expectedLoss, expenseRatio, rateChanges, lossShocks }),
+        sensitivity: sensitivity({ basePremiumMinor: basePremium, expectedLossMinor: expectedLoss, expenseRatio, rateChanges, lossShocks }),
+        rateChanges, lossShocks,
+      };
     });
   });
 }
