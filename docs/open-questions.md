@@ -79,7 +79,12 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   (`csmProjection`) - all unit-tested. What remains designed-for is **persistence + disclosure reporting**
   (measurement tables, movement analysis and the IFRS 17 disclosure notes) and full yield-curve
   bootstrapping/illiquidity premia. (§18.1)
-- **Solvency II** (SCR/MCR, technical provisions, ORSA, QRTs) - **deferred**. (§18.2)
+- **Solvency II** standard-formula Pillar 1 is now delivered as a pure engine (`@rios/domain/solvency2`):
+  non-life premium/reserve risk, SCR module aggregation via a correlation matrix, BSCR + operational + LAC to
+  the SCR, the MCR corridor (25-45% of SCR, AMCR floor), the **risk margin** (cost-of-capital method with
+  discounting) and **own-funds tiering/eligibility** (Tier limits vs SCR and MCR) with the solvency ratio -
+  all unit-tested. What remains designed-for is the **full sub-module granularity** (every standard-formula
+  sub-risk and the official correlation matrices), **ORSA**, and the **QRT report packs**. (§18.2)
 - **Statutory/market returns** (US Schedule F, Lloyd's returns), tax/levy regimes - designed-for as governed
   report packs. (§18.3)
 - **Data lineage to regulatory output** - the technical→financial chain is reconcilable and lineage-tracked

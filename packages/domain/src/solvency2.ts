@@ -113,3 +113,77 @@ export function solvencyRatio(ownFunds: number, scr: number): number {
   if (scr <= 0) throw new RangeError('SCR must be positive to compute a solvency ratio');
   return ownFunds / scr;
 }
+
+// ---------------------------------------------------------------------------
+// Risk margin (cost-of-capital method) - technical provisions (§18.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Risk margin under the cost-of-capital method (Art. 77):
+ *   RM = CoC · Σ_t SCR(t) / (1 + r_{t+1})^{t+1}
+ * `projectedScr[t]` is the SCR at the end of future year t (t = 0 is the current
+ * year). CoC defaults to the prescribed 6%; `rate` is a flat risk-free rate or a
+ * per-year spot vector (last spot held for longer horizons).
+ */
+export function riskMargin(projectedScr: number[], costOfCapital = 0.06, rate: number | number[] = 0): number {
+  if (projectedScr.some((s) => s < 0)) throw new RangeError('Projected SCRs must be non-negative');
+  let pv = 0;
+  projectedScr.forEach((scr, t) => {
+    const r = Array.isArray(rate) ? rate[Math.min(t, rate.length - 1)]! : rate;
+    if (!(r > -1)) throw new RangeError(`Discount rate must be > -100%, got ${r}`);
+    pv += scr / Math.pow(1 + r, t + 1);
+  });
+  return costOfCapital * pv;
+}
+
+// ---------------------------------------------------------------------------
+// Own-funds tiering & eligibility (Art. 82) - Pillar 1
+// ---------------------------------------------------------------------------
+
+export interface OwnFundsTiers {
+  tier1: number;
+  tier2: number;
+  tier3: number;
+}
+
+export interface EligibleOwnFunds {
+  eligibleForScr: number;
+  eligibleForMcr: number;
+  scrRatio: number;
+  mcrRatio: number;
+  /** Human-readable eligibility/coverage breaches (empty when compliant). */
+  breaches: string[];
+}
+
+/**
+ * Apply the Solvency II eligibility limits to classify own funds against the
+ * SCR and MCR (Art. 82 / Delegated Reg. Art. 82):
+ *   SCR - Tier 3 <= 15% of SCR; Tier 2 + Tier 3 <= 50% of SCR; Tier 1 must be >= 50% of SCR.
+ *   MCR - Tier 3 ineligible; Tier 2 <= 20% of MCR; Tier 1 must be >= 80% of MCR.
+ */
+export function eligibleOwnFunds(tiers: OwnFundsTiers, scr: number, mcr: number): EligibleOwnFunds {
+  if (scr <= 0 || mcr <= 0) throw new RangeError('SCR and MCR must be positive');
+  const { tier1, tier2, tier3 } = tiers;
+  const breaches: string[] = [];
+
+  // Eligible for SCR
+  const t3Scr = Math.min(tier3, 0.15 * scr);
+  const lowerScr = Math.min(tier2 + t3Scr, 0.5 * scr);
+  const eligibleForScr = tier1 + lowerScr;
+  if (tier1 < 0.5 * scr) breaches.push('Tier 1 below 50% of SCR');
+  if (eligibleForScr < scr) breaches.push('Eligible own funds do not cover the SCR');
+
+  // Eligible for MCR (Tier 3 not admitted)
+  const t2Mcr = Math.min(tier2, 0.2 * mcr);
+  const eligibleForMcr = tier1 + t2Mcr;
+  if (tier1 < 0.8 * mcr) breaches.push('Tier 1 below 80% of MCR');
+  if (eligibleForMcr < mcr) breaches.push('Eligible own funds do not cover the MCR');
+
+  return {
+    eligibleForScr,
+    eligibleForMcr,
+    scrRatio: eligibleForScr / scr,
+    mcrRatio: eligibleForMcr / mcr,
+    breaches,
+  };
+}
