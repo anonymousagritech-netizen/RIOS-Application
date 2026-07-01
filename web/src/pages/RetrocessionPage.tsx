@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { DollarSign, ArrowLeftRight, ShieldHalf, Layers } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { DollarSign, ArrowLeftRight, ShieldHalf, Layers, Undo2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useStatusColors, useCurrencies, useParties } from '../lib/queries';
@@ -109,9 +110,12 @@ export function RetrocessionPage() {
         description="Outwards retrocession protections and the resulting gross / ceded / net position."
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Retrocession' }]}
         actions={
-          hasPermission('retro:write') ? (
-            <Button variant="primary" onClick={() => setShowNew(true)} icon={<span aria-hidden>+</span>}>New retrocession</Button>
-          ) : null
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <Link to="/recoveries"><Button variant="secondary" icon={<Undo2 size={16} />}>Recoveries</Button></Link>
+            {hasPermission('retro:write') ? (
+              <Button variant="primary" onClick={() => setShowNew(true)} icon={<span aria-hidden>+</span>}>New retrocession</Button>
+            ) : null}
+          </div>
         }
       />
 

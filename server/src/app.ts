@@ -72,6 +72,8 @@ import { executiveModule } from './modules/executive.js';
 import { complianceModule } from './modules/compliance.js';
 import { facultativeAdminModule } from './modules/facultativeAdmin.js';
 import { workflowEngineModule } from './modules/workflowEngine.js';
+import { searchEnhancedModule } from './modules/searchEnhanced.js';
+import { aiInsightsModule } from './modules/aiInsights.js';
 import { productsModule } from './modules/products.js';
 import { platformModule } from './modules/platform.js';
 import { costModule } from './modules/cost.js';
@@ -258,6 +260,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(complianceModule);
   await app.register(facultativeAdminModule);
   await app.register(workflowEngineModule);
+  await app.register(searchEnhancedModule);
+  await app.register(aiInsightsModule);
   await app.register(productsModule);
   await app.register(platformModule);
   await app.register(costModule);

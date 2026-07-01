@@ -25,6 +25,7 @@ import { ExecutiveDashboardPage } from '../pages/ExecutiveDashboardPage';
 import { CompliancePage } from '../pages/CompliancePage';
 import { FacultativeAdminPage } from '../pages/FacultativeAdminPage';
 import { WorkflowEnginePage } from '../pages/WorkflowEnginePage';
+import { AIInsightsPage } from '../pages/AIInsightsPage';
 import { TreatyDetailPage } from '../pages/TreatyDetailPage';
 import { PartiesPage } from '../pages/PartiesPage';
 import { PartyDetailPage } from '../pages/PartyDetailPage';
@@ -123,6 +124,7 @@ export function App() {
         <Route path="/compliance" element={<CompliancePage />} />
         <Route path="/facultative-admin" element={<FacultativeAdminPage />} />
         <Route path="/workflow-engine" element={<WorkflowEnginePage />} />
+        <Route path="/ai-insights" element={<AIInsightsPage />} />
         <Route path="/treaties" element={<TreatiesPage />} />
         <Route path="/treaties/:id" element={<TreatyDetailPage />} />
         <Route path="/parties" element={<PartiesPage />} />

@@ -1,0 +1,245 @@
+/* AI Insights — a calm, premium "AI console" board. */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.titleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.boardCard { margin-bottom: var(--space-5); }
+
+.filterBar {
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+/* ---------------- Insight grid ---------------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-3);
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.insight {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  padding-left: calc(var(--space-4) + 3px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.insight:hover {
+  border-color: var(--border-strong, var(--primary));
+  box-shadow: var(--shadow-sm);
+}
+
+.accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--c-slate);
+}
+.insight[data-severity='RISK'] .accent { background: var(--c-red); }
+.insight[data-severity='WATCH'] .accent { background: var(--c-amber); }
+.insight[data-severity='INFO'] .accent { background: var(--c-blue); }
+.insight[data-severity='POSITIVE'] .accent { background: var(--c-green); }
+
+.insightHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.badgeInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.insightTitle {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  line-height: 1.35;
+}
+.insightDetail {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.metricPill {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: var(--text-xs);
+}
+.metricLabel { color: var(--text-muted); }
+.metricDot { color: var(--text-subtle, var(--text-muted)); }
+.metricValue {
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.reco {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-soft-strong, var(--border));
+}
+.recoIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--primary);
+  margin-top: 1px;
+}
+.recoText {
+  font-size: var(--text-xs);
+  color: var(--text);
+  line-height: 1.45;
+}
+
+/* ---------------- Empty ---------------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-7) var(--space-4);
+  color: var(--text-muted);
+  text-align: center;
+}
+.emptyTitle {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+.emptyMsg {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 34ch;
+}
+
+/* ---------------- Assistant panel ---------------- */
+.chatCard { }
+
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  max-height: 420px;
+  overflow-y: auto;
+}
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.bubble {
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bubbleUser {
+  align-self: flex-end;
+  max-width: 80%;
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-soft-strong, var(--border));
+  color: var(--text);
+}
+.bubbleAssistant {
+  align-self: flex-start;
+  max-width: 88%;
+  display: flex;
+  gap: var(--space-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.bubbleIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--primary);
+  margin-top: 2px;
+}
+.bubbleText { min-width: 0; }
+
+.prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.promptChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: border-color var(--motion-fast), color var(--motion-fast), background var(--motion-fast);
+}
+.promptChip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.composerFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.hintText {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.chatError {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}

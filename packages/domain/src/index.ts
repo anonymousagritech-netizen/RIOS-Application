@@ -77,3 +77,5 @@ export * from './territory.js';
 export * from './reportCadence.js';
 export * from './facultative.js';
 export * from './escalation.js';
+export * from './nlSearch.js';
+export * from './insight.js';
