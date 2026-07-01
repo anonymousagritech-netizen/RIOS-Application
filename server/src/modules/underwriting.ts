@@ -15,7 +15,8 @@ import {
   riskScore, technicalPremium, canTransition, isTerminalStage,
   scenarioGrid, sensitivity, ratios,
   modelCatalog, validateTerms,
-  type UwStage, type RiskFactorInput,
+  requiredApproval, levelCovers, LEVEL_PERMISSION,
+  type UwStage, type RiskFactorInput, type RiskBand, type ApprovalLevel,
 } from '@rios/domain';
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
@@ -265,6 +266,15 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
            from submission_activity where submission_id = $1 order by created_at desc limit 50`,
         [req.params.id],
       );
+      // Referral / approval history (the referral engine).
+      const approvals = await db.query(
+        `select id, level, reason, status, sla_due_at as "slaDueAt", decided_at as "decidedAt", note, created_at as "createdAt",
+                (status = 'PENDING' and sla_due_at is not null and sla_due_at < now()) as "slaBreached"
+           from submission_approval where submission_id = $1 order by created_at desc`,
+        [req.params.id],
+      );
+      // What the authority matrix requires for this submission right now.
+      const requirement = requiredApproval({ band: r.risk_band as RiskBand | null, limitMinor: (r.limit_minor as number | null) ?? (r.est_premium_minor as number | null) });
       // Live score breakdown so the detail view can explain the score.
       const breakdown = riskScore(factorsFromRow(r));
       return {
@@ -279,6 +289,7 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
         riskScore: r.risk_score, riskBand: r.risk_band, scoreBreakdown: breakdown.contributions,
         terms: r.terms, activity: activity.rows,
         termsCheck: validateTerms(r.structure as string | null, r.line_of_business as string | null, r.terms),
+        approvals: approvals.rows, approvalRequirement: requirement,
       };
     });
   });
@@ -292,20 +303,33 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
     const perms = req.auth?.permissions ?? [];
     const canApprove = perms.includes('underwriting:approve') || perms.includes('admin:manage');
     return runAs(ctx, async (db) => {
-      const cur = await db.query<{ stage: UwStage; risk_band: string | null; limit_minor: number | null }>(
-        `select stage, risk_band, limit_minor from submission where id = $1`, [req.params.id],
+      const cur = await db.query<{ stage: UwStage; risk_band: string | null; limit_minor: number | null; est_premium_minor: number | null }>(
+        `select stage, risk_band, limit_minor, est_premium_minor from submission where id = $1`, [req.params.id],
       );
       if (!cur.rows[0]) { reply.code(404); return { error: 'Submission not found' }; }
       const from = cur.rows[0].stage;
       if (isTerminalStage(from)) { reply.code(409); return { error: `Submission is ${from} and cannot move` }; }
       if (!canTransition(from, to)) { reply.code(409); return { error: `Illegal transition ${from} → ${to}` }; }
       // Approval matrix: quoting or binding a HIGH-risk or large-limit submission
-      // requires senior/chief sign-off (underwriting:approve). Everything else is
-      // within a normal underwriter's authority.
-      const app = approvalRequired(to, cur.rows[0].risk_band, cur.rows[0].limit_minor);
-      if (app && !canApprove) {
-        reply.code(403);
-        return { error: `${to} requires senior approval (${app}). You do not hold underwriting:approve.` };
+      // requires senior/chief sign-off. An approver (underwriting:approve /
+      // admin:manage) may proceed directly; a plain underwriter must first obtain
+      // an APPROVED referral at or above the required level (maker/checker split).
+      const gate = approvalRequired(to, cur.rows[0].risk_band, cur.rows[0].limit_minor);
+      if (gate && !canApprove) {
+        if (to === 'BOUND') {
+          const need = requiredApproval({ band: cur.rows[0].risk_band as RiskBand | null, limitMinor: cur.rows[0].limit_minor ?? cur.rows[0].est_premium_minor });
+          const approved = await db.query<{ level: ApprovalLevel }>(
+            `select level from submission_approval where submission_id = $1 and status = 'APPROVED'`, [req.params.id],
+          );
+          const covered = approved.rows.some((a) => levelCovers(a.level, need.level));
+          if (!covered) {
+            reply.code(403);
+            return { error: `Binding requires ${need.level.replace(/_/g, ' ')} sign-off (${need.reason}). Raise a referral and obtain approval first.` };
+          }
+        } else {
+          reply.code(403);
+          return { error: `${to} requires senior approval (${gate}). You do not hold underwriting:approve.` };
+        }
       }
       await db.query(`update submission set stage = $2, updated_at = now() where id = $1`, [req.params.id, to]);
       await logActivity(db, ctx.tenantId, req.params.id, ctx.userId, to === 'REFERRAL' ? 'REFERRAL' : isTerminalStage(to) ? 'DECISION' : 'STAGE', { fromStage: from, toStage: to, note });
@@ -388,6 +412,89 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
         sensitivity: sensitivity({ basePremiumMinor: basePremium, expectedLossMinor: expectedLoss, expenseRatio, rateChanges, lossShocks }),
         rateChanges, lossShocks,
       };
+    });
+  });
+
+  // ---- Raise an approval referral ------------------------------------------
+  // Evaluates the authority matrix for the submission and, if it exceeds
+  // delegated authority, opens a PENDING referral at the required level with its
+  // SLA. Idempotent: an open referral at that level is returned rather than duped.
+  app.post<{ Params: { id: string } }>('/api/underwriting/submissions/:id/approvals', { preHandler: requirePermission('treaty:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ risk_band: string | null; limit_minor: number | null; est_premium_minor: number | null }>(
+        `select risk_band, limit_minor, est_premium_minor from submission where id = $1`, [req.params.id],
+      );
+      const s = rows[0];
+      if (!s) { reply.code(404); return { error: 'Submission not found' }; }
+      const need = requiredApproval({ band: s.risk_band as RiskBand | null, limitMinor: s.limit_minor ?? s.est_premium_minor });
+      if (!need.referralRequired) return { referralRequired: false, level: need.level, reason: need.reason };
+      // Reuse an existing open referral at this level.
+      const existing = await db.query<{ id: string }>(
+        `select id from submission_approval where submission_id = $1 and level = $2 and status = 'PENDING'`, [req.params.id, need.level],
+      );
+      if (existing.rows[0]) return { referralRequired: true, level: need.level, reason: need.reason, slaHours: need.slaHours, approvalId: existing.rows[0].id, alreadyOpen: true };
+      const ins = await db.query<{ id: string; sla_due_at: string }>(
+        `insert into submission_approval (tenant_id, submission_id, level, reason, sla_due_at, requested_by)
+         values ($1,$2,$3,$4, now() + ($5 || ' hours')::interval, $6)
+         returning id, sla_due_at`,
+        [ctx.tenantId, req.params.id, need.level, need.reason, String(need.slaHours), ctx.userId],
+      );
+      await logActivity(db, ctx.tenantId, req.params.id, ctx.userId, 'REFERRAL', { note: `Referred to ${need.level.replace(/_/g, ' ')} — ${need.reason} (SLA ${need.slaHours}h)` });
+      await writeAudit(db, ctx, { action: 'refer', entityType: 'submission', entityId: req.params.id, after: { level: need.level, reason: need.reason } });
+      return { referralRequired: true, level: need.level, reason: need.reason, slaHours: need.slaHours, approvalId: ins.rows[0]!.id, slaDueAt: ins.rows[0]!.sla_due_at };
+    });
+  });
+
+  // ---- Approver queue ------------------------------------------------------
+  app.get('/api/underwriting/approvals', { preHandler: requirePermission('treaty:read') }, async (req) => {
+    const ctx = authContext(req);
+    const status = (req.query as { status?: string }).status ?? 'PENDING';
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query(
+        `select a.id, a.submission_id as "submissionId", a.level, a.reason, a.status,
+                a.sla_due_at as "slaDueAt", a.created_at as "createdAt",
+                a.decided_at as "decidedAt", a.note,
+                (a.status = 'PENDING' and a.sla_due_at is not null and a.sla_due_at < now()) as "slaBreached",
+                s.reference, s.title, s.currency, s.risk_score as "riskScore", s.risk_band as "riskBand",
+                s.limit_minor as "limitMinor", s.est_premium_minor as "estPremiumMinor",
+                ced.short_name as "cedentName"
+           from submission_approval a
+           join submission s on s.id = a.submission_id
+           left join party ced on ced.id = s.cedent_party_id
+          where ($1::text = 'ALL' or a.status = $1)
+          order by (a.sla_due_at is not null and a.sla_due_at < now()) desc, a.sla_due_at asc nulls last, a.created_at desc`,
+        [status],
+      );
+      return { approvals: rows };
+    });
+  });
+
+  // ---- Decide an approval (approve / reject) -------------------------------
+  // The decider must hold the authority for the referral's level (senior/chief/
+  // committee all exercise underwriting:approve; admin:manage overrides).
+  app.post<{ Params: { id: string } }>('/api/underwriting/approvals/:id/decision', { preHandler: requirePermission('treaty:read') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const body = (req.body ?? {}) as { decision?: string; note?: string };
+    const decision = body.decision;
+    if (decision !== 'APPROVED' && decision !== 'REJECTED') { reply.code(400); return { error: "decision must be 'APPROVED' or 'REJECTED'" }; }
+    const perms = req.auth?.permissions ?? [];
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ submission_id: string; level: ApprovalLevel; status: string }>(
+        `select submission_id, level, status from submission_approval where id = $1`, [req.params.id],
+      );
+      const a = rows[0];
+      if (!a) { reply.code(404); return { error: 'Approval not found' }; }
+      if (a.status !== 'PENDING') { reply.code(409); return { error: `Approval already ${a.status}` }; }
+      const holds = perms.includes(LEVEL_PERMISSION[a.level]) || perms.includes('admin:manage');
+      if (!holds) { reply.code(403); return { error: `You are not authorised to sign off at ${a.level.replace(/_/g, ' ')} level.` }; }
+      await db.query(
+        `update submission_approval set status = $2, decided_by = $3, decided_at = now(), note = $4 where id = $1`,
+        [req.params.id, decision, ctx.userId, body.note ?? null],
+      );
+      await logActivity(db, ctx.tenantId, a.submission_id, ctx.userId, 'DECISION', { note: `${a.level.replace(/_/g, ' ')} ${decision.toLowerCase()}${body.note ? ' — ' + body.note : ''}` });
+      await writeAudit(db, ctx, { action: 'approval_decision', entityType: 'submission', entityId: a.submission_id, after: { level: a.level, decision } });
+      return { id: req.params.id, status: decision, submissionId: a.submission_id };
     });
   });
 }

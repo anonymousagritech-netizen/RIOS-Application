@@ -116,6 +116,32 @@
 
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
+/* Approval / referral engine */
+.approvalReq {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3); margin-bottom: var(--space-3);
+  border-radius: var(--radius-md); background: var(--primary-soft); color: var(--primary);
+  font-size: var(--text-xs); font-weight: var(--weight-medium);
+}
+.approvalChain { display: inline-flex; align-items: center; gap: var(--space-1); margin-left: auto; }
+.approvalStep {
+  font-size: var(--text-2xs); font-weight: var(--weight-semibold); text-transform: uppercase; letter-spacing: 0.03em;
+  padding: 1px var(--space-2); border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.approvalStep:not(:last-child)::after { content: '→'; margin-left: var(--space-1); opacity: 0.6; }
+.approvalList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.approvalItem {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-2) 0; border-bottom: 1px solid var(--border);
+}
+.approvalItem:last-child { border-bottom: none; }
+.approvalItemMain { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); font-size: var(--text-sm); min-width: 0; }
+.approvalLevel { font-weight: var(--weight-semibold); color: var(--text); }
+.approvalSla { display: inline-flex; align-items: center; gap: 3px; font-size: var(--text-2xs); color: var(--text-muted); }
+.approvalSlaBreached { color: var(--danger); font-weight: var(--weight-semibold); }
+.approvalActions { display: flex; gap: var(--space-2); flex-shrink: 0; }
+
 /* Activity */
 .noteRow { display: flex; gap: var(--space-2); margin-bottom: var(--space-3); }
 .activity { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }

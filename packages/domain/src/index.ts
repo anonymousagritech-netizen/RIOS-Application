@@ -63,3 +63,4 @@ export * from './underwriting.js';
 export * from './pricingScenarios.js';
 export * from './catModel.js';
 export * from './underwritingModels.js';
+export * from './underwritingApproval.js';

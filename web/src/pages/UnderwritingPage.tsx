@@ -4,10 +4,12 @@ import {
   Gavel, Inbox, TrendingUp, Gauge, CheckCircle2, Percent,
   FileText, Calculator, Send, Play, XCircle, StickyNote,
   Download, Printer, FileSignature, FileBarChart,
+  ShieldCheck, Clock, ThumbsUp, ThumbsDown, ArrowUpCircle,
 } from 'lucide-react';
 import { api, ApiError, downloadFile } from '../lib/api';
 import { printReport } from '../lib/uwReports';
 import { useParties, useCurrencies } from '../lib/queries';
+import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
@@ -46,6 +48,12 @@ interface ModelStructure { key: string; label: string; basis: 'PROPORTIONAL' | '
 interface ModelLine { key: string; label: string; hazard: number; catExposed: boolean; blurb: string; fields: ModelField[]; }
 interface ModelCatalog { structures: ModelStructure[]; lines: ModelLine[]; }
 interface TermsCheck { ok: boolean; missing: string[]; unknown: string[]; }
+type ApprovalLevel = 'UNDERWRITER' | 'SENIOR_UW' | 'CHIEF_UW' | 'COMMITTEE';
+interface Approval {
+  id: string; level: ApprovalLevel; reason: string | null; status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  slaDueAt: string | null; decidedAt: string | null; note: string | null; createdAt: string; slaBreached: boolean;
+}
+interface ApprovalRequirement { level: ApprovalLevel; referralRequired: boolean; reason: string; slaHours: number; chain: ApprovalLevel[]; }
 
 /* ---------------- Types ---------------- */
 interface SubmissionRow {
@@ -62,6 +70,7 @@ interface SubmissionDetail extends SubmissionRow {
   lossRatioPct: number | null; catExposed: boolean; classHazard: number | null; priorClaims: number | null; yearsWithCedent: number | null;
   scoreBreakdown: ScoreContribution[]; activity: Activity[];
   terms: Record<string, unknown> | null; termsCheck?: TermsCheck;
+  approvals?: Approval[]; approvalRequirement?: ApprovalRequirement;
 }
 
 interface ScenarioBase {
@@ -384,6 +393,8 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
   const qc = useQueryClient();
   const { data: s, isLoading } = useSubmission(id);
   const { data: catalog } = useModelCatalog();
+  const { hasPermission } = useAuth();
+  const canApprove = hasPermission('underwriting:approve');
   const [note, setNote] = useState('');
   const [scenario, setScenario] = useState<ScenarioResult | null>(null);
 
@@ -403,6 +414,13 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
   const price = useMutation({ mutationFn: () => act(`price`, {}, 'Technical premium computed') });
   const rescore = useMutation({ mutationFn: () => act(`score`, {}, 'Risk re-scored') });
   const addNote = useMutation({ mutationFn: (n: string) => act(`note`, { note: n }, 'Note added').then(() => setNote('')) });
+  const raiseReferral = useMutation({ mutationFn: () => act<{ referralRequired: boolean; level: string }>(`approvals`, {}, 'Referral raised') });
+  const decide = useMutation({
+    mutationFn: ({ approvalId, decision }: { approvalId: string; decision: 'APPROVED' | 'REJECTED' }) =>
+      api(`/api/underwriting/approvals/${approvalId}/decision`, { body: { decision } })
+        .then((r) => { invalidate(); toast.success(`Referral ${decision.toLowerCase()}`); return r; })
+        .catch((e) => { toast.error(e instanceof ApiError ? e.message : 'Decision failed'); throw e; }),
+  });
 
   const allowed = s ? (TRANSITIONS[s.stage] ?? []) : [];
 
@@ -484,6 +502,16 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
               </div>
             ) : <p className={styles.cellSub}>This submission is {titleCase(s.stage)} — no further moves.</p>}
           </Card>
+
+          {/* Approval / referral engine */}
+          <ApprovalCard
+            submission={s}
+            canApprove={canApprove}
+            onRaise={() => raiseReferral.mutate()}
+            raising={raiseReferral.isPending}
+            onDecide={(approvalId, decision) => decide.mutate({ approvalId, decision })}
+            deciding={decide.isPending}
+          />
 
           {/* Documents — printable slip / quote / summary */}
           <Card padded>
@@ -626,6 +654,78 @@ function fmtTerm(field: ModelField, value: unknown, currency: string): string {
   if (field.type === 'percent') return `${value}%`;
   if (field.type === 'number') return `${value}${field.unit ? ' ' + field.unit : ''}`;
   return String(value);
+}
+
+/* The approval / referral engine: shows the authority the matrix requires, lets
+ * an underwriter raise a referral, and lets an approver sign it off or reject it. */
+const APPROVAL_LEVEL_LABEL: Record<string, string> = {
+  UNDERWRITER: 'Underwriter', SENIOR_UW: 'Senior Underwriter', CHIEF_UW: 'Chief Underwriter', COMMITTEE: 'Committee',
+};
+const APPROVAL_STATUS_COLOR: Record<string, 'amber' | 'green' | 'red'> = { PENDING: 'amber', APPROVED: 'green', REJECTED: 'red' };
+
+function ApprovalCard({ submission, canApprove, onRaise, raising, onDecide, deciding }: {
+  submission: SubmissionDetail; canApprove: boolean;
+  onRaise: () => void; raising: boolean;
+  onDecide: (approvalId: string, decision: 'APPROVED' | 'REJECTED') => void; deciding: boolean;
+}) {
+  const req = submission.approvalRequirement;
+  const approvals = submission.approvals ?? [];
+  const pending = approvals.find((a) => a.status === 'PENDING');
+  const hasApproved = approvals.some((a) => a.status === 'APPROVED');
+  const referralNeeded = req?.referralRequired ?? false;
+  const terminal = submission.stage === 'BOUND' || submission.stage === 'DECLINED' || submission.stage === 'LAPSED';
+
+  return (
+    <Card padded>
+      <CardHeader
+        title="Approval & referral"
+        subtitle={referralNeeded ? `Authority required: ${APPROVAL_LEVEL_LABEL[req!.level] ?? req!.level}` : 'Within delegated authority'}
+        actions={referralNeeded && !pending && !hasApproved && !terminal
+          ? <Button size="sm" variant="secondary" icon={<ArrowUpCircle size={14} />} loading={raising} onClick={onRaise}>Raise referral</Button>
+          : undefined}
+      />
+      {referralNeeded ? (
+        <>
+          <div className={styles.approvalReq}>
+            <ShieldCheck size={15} />
+            <span>{req!.reason} · SLA {req!.slaHours}h</span>
+            <span className={styles.approvalChain}>
+              {req!.chain.map((l) => <span key={l} className={styles.approvalStep}>{APPROVAL_LEVEL_LABEL[l] ?? l}</span>)}
+            </span>
+          </div>
+          {approvals.length === 0 ? (
+            <p className={styles.cellSub}>No referral raised yet. This submission exceeds delegated authority and must be referred before binding.</p>
+          ) : (
+            <ul className={styles.approvalList}>
+              {approvals.map((a) => (
+                <li key={a.id} className={styles.approvalItem}>
+                  <div className={styles.approvalItemMain}>
+                    <Badge color={APPROVAL_STATUS_COLOR[a.status] ?? 'gray'}>{titleCase(a.status)}</Badge>
+                    <span className={styles.approvalLevel}>{APPROVAL_LEVEL_LABEL[a.level] ?? a.level}</span>
+                    {a.reason && <span className={styles.cellSub}>· {a.reason}</span>}
+                    {a.status === 'PENDING' && a.slaDueAt && (
+                      <span className={`${styles.approvalSla} ${a.slaBreached ? styles.approvalSlaBreached : ''}`}>
+                        <Clock size={12} /> {a.slaBreached ? 'SLA breached' : `due ${new Date(a.slaDueAt).toLocaleDateString([], { day: '2-digit', month: 'short' })}`}
+                      </span>
+                    )}
+                    {a.note && <span className={styles.cellSub}>“{a.note}”</span>}
+                  </div>
+                  {a.status === 'PENDING' && canApprove && (
+                    <div className={styles.approvalActions}>
+                      <Button size="sm" variant="primary" icon={<ThumbsUp size={13} />} loading={deciding} onClick={() => onDecide(a.id, 'APPROVED')}>Approve</Button>
+                      <Button size="sm" variant="danger" icon={<ThumbsDown size={13} />} loading={deciding} onClick={() => onDecide(a.id, 'REJECTED')}>Reject</Button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <p className={styles.cellSub}>Binding this submission is within a normal underwriter's authority — no senior sign-off required.</p>
+      )}
+    </Card>
+  );
 }
 
 function Fact({ label, value }: { label: string; value: React.ReactNode }) {

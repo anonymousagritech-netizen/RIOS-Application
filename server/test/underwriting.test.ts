@@ -177,6 +177,55 @@ describe('Underwriting: analytics, scenarios & approval matrix', () => {
     expect(sc.json().base).toHaveProperty('combinedRatioPct');
   });
 
+  it('runs the maker/checker referral: underwriter binds only after sign-off', async () => {
+    if (!dbUp) return;
+    const adminAuth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    const uwAuth = { authorization: `Bearer ${await token(app, 'uw@demo.rios')}` };
+
+    // A HIGH-risk submission → the matrix requires chief-underwriter sign-off.
+    const create = await app.inject({
+      method: 'POST', url: '/api/underwriting/submissions', headers: uwAuth,
+      payload: { title: 'Referral flow cat', basis: 'NON_PROPORTIONAL', structure: 'CAT_XL', lossRatioPct: 95, catExposed: true, classHazard: 5, priorClaims: 4 },
+    });
+    const id = create.json().id as string;
+    expect(create.json().riskBand).toBe('HIGH');
+
+    // Advance to QUOTED with an approver (admin), then hand back to the underwriter.
+    for (const to of ['TRIAGE', 'ANALYSIS', 'PRICING', 'QUOTED']) {
+      await app.inject({ method: 'POST', url: `/api/underwriting/submissions/${id}/transition`, headers: adminAuth, payload: { to } });
+    }
+
+    // The underwriter raises the referral: required level is CHIEF_UW.
+    const refer = await app.inject({ method: 'POST', url: `/api/underwriting/submissions/${id}/approvals`, headers: uwAuth, payload: {} });
+    expect(refer.statusCode).toBe(200);
+    expect(refer.json().referralRequired).toBe(true);
+    expect(refer.json().level).toBe('CHIEF_UW');
+    const approvalId = refer.json().approvalId as string;
+
+    // Underwriter still cannot bind (no APPROVED referral yet).
+    const blocked = await app.inject({ method: 'POST', url: `/api/underwriting/submissions/${id}/transition`, headers: uwAuth, payload: { to: 'BOUND' } });
+    expect(blocked.statusCode).toBe(403);
+
+    // Underwriter cannot self-approve (lacks the level's authority).
+    const selfApprove = await app.inject({ method: 'POST', url: `/api/underwriting/approvals/${approvalId}/decision`, headers: uwAuth, payload: { decision: 'APPROVED' } });
+    expect(selfApprove.statusCode).toBe(403);
+
+    // The approver signs off, and the referral shows in the queue.
+    const queue = await app.inject({ method: 'GET', url: '/api/underwriting/approvals?status=PENDING', headers: adminAuth });
+    expect(queue.json().approvals.some((a: { id: string }) => a.id === approvalId)).toBe(true);
+    const decide = await app.inject({ method: 'POST', url: `/api/underwriting/approvals/${approvalId}/decision`, headers: adminAuth, payload: { decision: 'APPROVED', note: 'Within appetite' } });
+    expect(decide.statusCode).toBe(200);
+
+    // Now the underwriter can bind.
+    const bind = await app.inject({ method: 'POST', url: `/api/underwriting/submissions/${id}/transition`, headers: uwAuth, payload: { to: 'BOUND' } });
+    expect(bind.statusCode).toBe(200);
+
+    // Detail carries the approval history and the current requirement.
+    const detail = await app.inject({ method: 'GET', url: `/api/underwriting/submissions/${id}`, headers: adminAuth });
+    expect(detail.json().approvals.length).toBeGreaterThanOrEqual(1);
+    expect(detail.json().approvalRequirement.level).toBe('CHIEF_UW');
+  });
+
   it('blocks a non-approver from binding a HIGH-risk submission (403)', async () => {
     if (!dbUp) return;
     const adminAuth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
