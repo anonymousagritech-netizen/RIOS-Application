@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, TrendingUp, Sparkles, Brain, Search, Smartphone,
+  LayoutDashboard, LayoutGrid, TrendingUp, Sparkles, Brain, Search, Smartphone,
   Gavel, FileText, FileCheck2, PenLine, Calculator, Radar, Globe2, ArrowLeftRight, SlidersHorizontal,
   Users, Contact, Briefcase, Building2, Handshake,
   ShieldAlert, Grid2x2, Undo2, ListChecks, Workflow, Fingerprint,
@@ -38,6 +38,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Overview',
     icon: LayoutDashboard,
     items: [
+      { label: 'Home', to: '/home', icon: LayoutGrid },
       { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
       { label: 'Executive', to: '/executive', icon: TrendingUp, permission: 'reporting:read' },
       { label: 'Intelligence', to: '/intelligence', icon: Sparkles },

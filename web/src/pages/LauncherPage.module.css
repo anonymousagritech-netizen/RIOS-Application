@@ -1,0 +1,167 @@
+.launcher {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: var(--space-2) var(--space-1) 0;
+}
+
+/* ---- Header ---- */
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.greeting {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.wave { font-weight: 400; }
+.sub {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.headActions { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.ghostBtn, .primaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md, 10px);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.ghostBtn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+.ghostBtn:hover { color: var(--text-primary); border-color: var(--border-strong, var(--border)); }
+.primaryBtn {
+  border: 0;
+  background: var(--sidebar-bg, #0f172a);
+  color: #fff;
+}
+.primaryBtn:hover { opacity: 0.92; }
+
+.qaWrap { position: relative; }
+.qaBackdrop { position: fixed; inset: 0; z-index: 20; }
+.qaMenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 21;
+  min-width: 220px;
+  padding: var(--space-1);
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 16px 40px -12px rgba(16, 24, 40, 0.28);
+}
+.qaItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+}
+.qaItem:hover { background: var(--surface-hover, color-mix(in srgb, var(--primary) 8%, transparent)); }
+
+/* ---- Workspace grid ---- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+  gap: var(--space-4);
+}
+
+.card {
+  --tile: var(--primary);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg, 16px);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  min-height: 196px;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px -14px rgba(16, 24, 40, 0.22);
+  border-color: color-mix(in srgb, var(--tile) 45%, var(--border));
+}
+
+.cardTop { display: flex; align-items: flex-start; justify-content: space-between; }
+.iconTile {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md, 14px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tile);
+  background: color-mix(in srgb, var(--tile) 12%, transparent);
+}
+.badge {
+  min-width: 22px; height: 22px; padding: 0 6px;
+  border-radius: 999px;
+  background: var(--c-red, #dc2626);
+  color: #fff; font-size: 12px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.cardTitle {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  text-align: center;
+}
+.cardDesc {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  text-align: center;
+  flex: 1;
+}
+.open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: var(--space-4);
+  color: var(--tile);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* ---- Footer ---- */
+.footer {
+  margin-top: auto;
+  padding: var(--space-5) 0 var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-tertiary, var(--text-secondary));
+  font-size: var(--text-xs);
+}
+.footRight { display: flex; align-items: center; gap: var(--space-4); }
+.status { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 999px; background: var(--c-green, #16a34a); }
