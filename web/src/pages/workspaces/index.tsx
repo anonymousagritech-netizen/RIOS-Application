@@ -5,29 +5,33 @@
  * routes are untouched and remain individually reachable.
  */
 import { Workspace } from './Workspace';
+import { lazyPage } from '../../lib/lazyPage';
 
-import { UnderwritingPage } from '../UnderwritingPage';
-import { UnderwritingApprovalsPage } from '../UnderwritingApprovalsPage';
-import { UnderwritingAnalyticsPage } from '../UnderwritingAnalyticsPage';
-import { TreatiesPage } from '../TreatiesPage';
-import { TreatyAdminPage } from '../TreatyAdminPage';
-import { FacultativePage } from '../FacultativePage';
-import { FacultativeAdminPage } from '../FacultativeAdminPage';
-import { CapacityPage } from '../CapacityPage';
-import { ExposurePage } from '../ExposurePage';
-import { ExposureMgmtPage } from '../ExposureMgmtPage';
-import { TerritoriesPage } from '../TerritoriesPage';
-import { TerritoryManagementPage } from '../TerritoryManagementPage';
-import { TasksPage } from '../TasksPage';
-import { NotificationsPage } from '../NotificationsPage';
-import { WorkflowPage } from '../WorkflowPage';
-import { WorkflowEnginePage } from '../WorkflowEnginePage';
-import { IntegrationPage } from '../IntegrationPage';
-import { IntegrationHubPage } from '../IntegrationHubPage';
-import { MarketplacePage } from '../MarketplacePage';
-import { AutomationStudioPage } from '../AutomationStudioPage';
-import { DesignerPage } from '../DesignerPage';
-import { SchedulerPage } from '../SchedulerPage';
+// Each tab component is code-split (perf finding D-4): a workspace fetches a
+// page chunk only when its tab is first shown, sharing the chunk with the
+// page's own standalone route.
+const UnderwritingPage = lazyPage(() => import('../UnderwritingPage'), 'UnderwritingPage');
+const UnderwritingApprovalsPage = lazyPage(() => import('../UnderwritingApprovalsPage'), 'UnderwritingApprovalsPage');
+const UnderwritingAnalyticsPage = lazyPage(() => import('../UnderwritingAnalyticsPage'), 'UnderwritingAnalyticsPage');
+const TreatiesPage = lazyPage(() => import('../TreatiesPage'), 'TreatiesPage');
+const TreatyAdminPage = lazyPage(() => import('../TreatyAdminPage'), 'TreatyAdminPage');
+const FacultativePage = lazyPage(() => import('../FacultativePage'), 'FacultativePage');
+const FacultativeAdminPage = lazyPage(() => import('../FacultativeAdminPage'), 'FacultativeAdminPage');
+const CapacityPage = lazyPage(() => import('../CapacityPage'), 'CapacityPage');
+const ExposurePage = lazyPage(() => import('../ExposurePage'), 'ExposurePage');
+const ExposureMgmtPage = lazyPage(() => import('../ExposureMgmtPage'), 'ExposureMgmtPage');
+const TerritoriesPage = lazyPage(() => import('../TerritoriesPage'), 'TerritoriesPage');
+const TerritoryManagementPage = lazyPage(() => import('../TerritoryManagementPage'), 'TerritoryManagementPage');
+const TasksPage = lazyPage(() => import('../TasksPage'), 'TasksPage');
+const NotificationsPage = lazyPage(() => import('../NotificationsPage'), 'NotificationsPage');
+const WorkflowPage = lazyPage(() => import('../WorkflowPage'), 'WorkflowPage');
+const WorkflowEnginePage = lazyPage(() => import('../WorkflowEnginePage'), 'WorkflowEnginePage');
+const IntegrationPage = lazyPage(() => import('../IntegrationPage'), 'IntegrationPage');
+const IntegrationHubPage = lazyPage(() => import('../IntegrationHubPage'), 'IntegrationHubPage');
+const MarketplacePage = lazyPage(() => import('../MarketplacePage'), 'MarketplacePage');
+const AutomationStudioPage = lazyPage(() => import('../AutomationStudioPage'), 'AutomationStudioPage');
+const DesignerPage = lazyPage(() => import('../DesignerPage'), 'DesignerPage');
+const SchedulerPage = lazyPage(() => import('../SchedulerPage'), 'SchedulerPage');
 
 export function UnderwritingWorkspace() {
   return (
