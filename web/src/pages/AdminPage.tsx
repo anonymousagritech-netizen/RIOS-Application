@@ -120,13 +120,15 @@ function CodeListCard({ listKey, values, onAdd }: {
           actions={<Button size="sm" variant="secondary" onClick={onAdd} icon={<Plus size={14} />}>Add value</Button>}
         />
       </div>
-      <Table
-        columns={columns}
-        rows={values}
-        rowKey={(v) => v.code}
-        empty={<EmptyState title="No values" message="Add the first value for this list." />}
-        skeletonRows={3}
-      />
+      <div className={styles.panelBody}>
+        <Table
+          columns={columns}
+          rows={values}
+          rowKey={(v) => v.code}
+          empty={<EmptyState title="No values" message="Add the first value for this list." />}
+          skeletonRows={3}
+        />
+      </div>
     </div>
   );
 }

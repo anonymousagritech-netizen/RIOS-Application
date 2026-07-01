@@ -16,13 +16,21 @@
 }
 
 .listPanel {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
   overflow: hidden;
+  /* Equal height across the row; long lists scroll internally rather than
+     stretching the whole card. */
+  max-height: 460px;
 }
 
-.panelHead { padding: var(--space-4) var(--space-4) 0; }
+.panelHead { padding: var(--space-4) var(--space-4) 0; flex-shrink: 0; }
+
+/* Scrollable table area so every panel is the same height. */
+.panelBody { flex: 1; min-height: 0; overflow: auto; padding: var(--space-3) var(--space-4) var(--space-4); }
 
 .keyCode {
   font-family: var(--font-mono);

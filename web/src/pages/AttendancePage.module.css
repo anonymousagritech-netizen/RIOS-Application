@@ -1,17 +1,22 @@
-.hero {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: var(--space-5);
-  align-items: start;
-}
-
-.clockCard {
+/* Horizontal punch card: time info on the left, actions on the right. */
+.punchCard {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
   background:
-    radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 60%),
+    radial-gradient(120% 160% at 100% 0%, color-mix(in srgb, var(--primary) 9%, transparent), transparent 58%),
     var(--surface);
+}
+.punchMain { display: flex; flex-direction: column; gap: var(--space-3); min-width: 240px; flex: 1; }
+.punchSide { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-end; }
+
+/* Equal-height KPI row (no more stretched side column). */
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
 }
 .clockTop { display: flex; align-items: center; justify-content: space-between; }
 .clockLabel {
@@ -43,7 +48,7 @@
 .teamName { font-weight: var(--weight-medium); color: var(--text); }
 .teamEmail { font-size: var(--text-xs); color: var(--text-muted); }
 
-.actions { display: flex; gap: var(--space-3); margin-top: auto; flex-wrap: wrap; }
+.actions { display: flex; gap: var(--space-3); flex-wrap: wrap; justify-content: flex-end; }
 .btn {
   display: inline-flex;
   align-items: center;
@@ -62,12 +67,6 @@
 .btnOut { background: linear-gradient(135deg, var(--accent-rose), color-mix(in srgb, var(--accent-rose) 82%, black)); }
 .btnBreak { background: linear-gradient(135deg, var(--accent-orange), color-mix(in srgb, var(--accent-orange) 80%, black)); }
 .btnResume { background: linear-gradient(135deg, var(--primary), var(--accent-violet)); }
-
-.statCol {
-  display: grid;
-  grid-template-rows: repeat(3, 1fr);
-  gap: var(--space-4);
-}
 
 /* ---- Employee workspace widgets ---- */
 .widgets {
@@ -110,13 +109,19 @@
 .quickRow { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .quickBtn {
   display: inline-flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border); border-radius: var(--radius-md);
-  background: var(--surface-2); color: var(--text);
-  font-size: var(--text-sm); font-weight: var(--weight-medium); cursor: pointer;
-  transition: background var(--motion-fast), border-color var(--motion-fast);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent; border-radius: var(--radius-md);
+  font-size: var(--text-sm); font-weight: var(--weight-semibold); cursor: pointer;
+  transition: filter var(--motion-fast), transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast);
 }
-.quickBtn:hover { background: var(--surface-3); border-color: var(--primary); }
+.quickBtn:not(:disabled):hover { transform: translateY(-1px); }
+/* Apply OD - violet; Apply WFH - blue; Regularize - subtle outline. */
+.quickOd { background: color-mix(in srgb, var(--accent-violet) 14%, transparent); color: var(--accent-violet); border-color: color-mix(in srgb, var(--accent-violet) 32%, transparent); }
+.quickOd:hover { background: color-mix(in srgb, var(--accent-violet) 22%, transparent); }
+.quickWfh { background: color-mix(in srgb, var(--accent-blue) 14%, transparent); color: var(--accent-blue); border-color: color-mix(in srgb, var(--accent-blue) 32%, transparent); }
+.quickWfh:hover { background: color-mix(in srgb, var(--accent-blue) 22%, transparent); }
+.quickReg { background: var(--surface-2); color: var(--text-muted); border-color: var(--border-strong); }
+.quickReg:hover { background: var(--surface-3); color: var(--text); }
 
 /* ---- Monthly calendar ---- */
 .calHead {
@@ -214,8 +219,10 @@
 .rowActions { display: inline-flex; gap: var(--space-2); justify-content: flex-end; }
 
 @media (max-width: 960px) {
-  .hero { grid-template-columns: 1fr; }
-  .statCol { grid-template-rows: none; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .punchCard { flex-direction: column; align-items: stretch; }
+  .punchSide { align-items: stretch; }
+  .actions { justify-content: stretch; }
+  .actions .btn { flex: 1; justify-content: center; }
   .clockValue { font-size: 2.75rem; }
   .widgetWide { grid-column: span 1; }
   .formGrid { grid-template-columns: 1fr; }

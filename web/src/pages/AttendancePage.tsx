@@ -352,8 +352,8 @@ export function AttendancePage() {
 
       {tab === 'today' && (
         <>
-          <div className={styles.hero}>
-            <Card padded className={styles.clockCard}>
+          <Card padded className={styles.punchCard}>
+            <div className={styles.punchMain}>
               <div className={styles.clockTop}>
                 <span className={styles.clockLabel}><Timer size={15} /> Today, working time</span>
                 <Badge color={isIn ? (onBreak ? 'amber' : 'green') : 'slate'}>
@@ -367,6 +367,8 @@ export function AttendancePage() {
                 <span><Coffee size={14} /> Break {today?.breakMinutes ?? 0}m</span>
                 {data?.geofenced && <span className={styles.geoHint}><MapPin size={14} /> Geofenced punch</span>}
               </div>
+            </div>
+            <div className={styles.punchSide}>
               <div className={styles.actions}>
                 {!isIn ? (
                   <button className={`${styles.btn} ${styles.btnIn}`} disabled={busy} onClick={doPunchIn}>
@@ -390,17 +392,17 @@ export function AttendancePage() {
                 )}
               </div>
               <div className={styles.quickRow}>
-                <button className={styles.quickBtn} onClick={() => openRequest('od')}><Briefcase size={15} /> On-Duty</button>
-                <button className={styles.quickBtn} onClick={() => openRequest('wfh')}><Home size={15} /> WFH</button>
-                <button className={styles.quickBtn} onClick={() => openRequest('regularization')}><Pencil size={15} /> Regularize</button>
+                <button className={`${styles.quickBtn} ${styles.quickOd}`} onClick={() => openRequest('od')}><Briefcase size={15} /> Apply OD</button>
+                <button className={`${styles.quickBtn} ${styles.quickWfh}`} onClick={() => openRequest('wfh')}><Home size={15} /> Apply WFH</button>
+                <button className={`${styles.quickBtn} ${styles.quickReg}`} onClick={() => openRequest('regularization')}><Pencil size={15} /> Regularize</button>
               </div>
-            </Card>
-
-            <div className={styles.statCol}>
-              <KpiCard label="This week" value={fmtDuration(stats.weekMin)} hint="Worked, last 7 days" icon={<Clock size={20} />} accent="var(--accent-cyan)" loading={isLoading} />
-              <KpiCard label="Days this month" value={String(stats.monthDays)} hint="Days with attendance" icon={<CalendarDays size={20} />} accent="var(--accent-violet)" loading={isLoading} />
-              <KpiCard label="Average / day" value={fmtDuration(stats.avg)} hint="This month" icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" loading={isLoading} />
             </div>
+          </Card>
+
+          <div className={styles.statRow}>
+            <KpiCard label="This week" value={fmtDuration(stats.weekMin)} hint="Worked, last 7 days" icon={<Clock size={20} />} accent="var(--accent-cyan)" loading={isLoading} />
+            <KpiCard label="Days this month" value={String(stats.monthDays)} hint="Days with attendance" icon={<CalendarDays size={20} />} accent="var(--accent-violet)" loading={isLoading} />
+            <KpiCard label="Average / day" value={fmtDuration(stats.avg)} hint="This month" icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" loading={isLoading} />
           </div>
 
           <div className={styles.widgets}>

@@ -62,23 +62,27 @@
 .navGroup { display: flex; flex-direction: column; }
 
 /* Quiet, clickable caption with a subtle chevron (no border, no card). */
+/* Transparent uppercase section label with a subtle divider - no gray box. */
 .caption {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: var(--space-2) var(--space-3) var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-1);
   margin-top: var(--space-3);
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--sidebar-border);
   font-size: var(--text-2xs);
   font-weight: var(--weight-bold);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--sidebar-faint);
   cursor: pointer;
   transition: color var(--motion-fast);
 }
 .caption:hover { color: var(--sidebar-text-muted); }
-.navGroup:first-child .caption { margin-top: var(--space-1); }
+.navGroup:first-child .caption { margin-top: var(--space-1); border-top: none; padding-top: var(--space-1); }
 .captionChevron { transition: transform var(--motion-base); opacity: 0.7; }
 .captionChevronClosed { transform: rotate(-90deg); }
 
