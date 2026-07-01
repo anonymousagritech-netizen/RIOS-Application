@@ -10,7 +10,7 @@ import {
   ShoppingCart, Package,
   Activity, CalendarClock, Plug, Network, Store, Bot, Mail, PanelsTopLeft, Lock, Shield, ListChecks,
   Archive, EyeOff, Building2, Flag, Gauge, Settings, Globe2, Fingerprint,
-  Map as MapIcon,
+  Map as MapIcon, ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -52,6 +52,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Treaties', to: '/treaties', icon: FileText, permission: 'treaty:read' },
       { label: 'Treaty Admin', to: '/treaty-admin', icon: FileSpreadsheet, permission: 'treaty:read' },
       { label: 'Facultative', to: '/facultative', icon: FileCheck2, permission: 'facultative:read' },
+      { label: 'Facultative Admin', to: '/facultative-admin', icon: ClipboardCheck, permission: 'facultative:read' },
       { label: 'Retrocession', to: '/retrocession', icon: ArrowLeftRight, permission: 'retro:read' },
       { label: 'Placement', to: '/placement', icon: PenLine, permission: 'placement:read' },
       { label: 'Pricing', to: '/pricing', icon: Calculator, permission: 'pricing:read' },

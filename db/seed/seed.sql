@@ -896,3 +896,40 @@ from (values
  ('Annual Statutory Accounts','ANNUAL','PDF','Regulators','200')
 ) as v(name,cadence,format,list,days)
 on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Facultative Administration (§7): market quotes, placement lines, engineering
+-- reports on the six most recent facultative risks.
+-- ---------------------------------------------------------------------------
+with picked as (
+  select id, coalesce(sum_insured_minor, 5000000000) sum_insured_minor,
+         row_number() over (order by inception desc nulls last, reference) rn from risk limit 6
+), re as (
+  select id, short_name, row_number() over (order by short_name) rn from party
+  where short_name in ('Helvetia Re','Synd 4242','Alpha Re','Beta Re','Gamma Re')
+), q(k,share,rate,status) as (values (0,35.0,1.8,'QUOTED'),(1,25.0,2.1,'QUOTED'),(2,20.0,1.65,'ACCEPTED'),(3,15.0,2.4,'DECLINED'))
+insert into fac_quote (tenant_id, risk_id, reinsurer_party_id, reinsurer_name, share_pct, premium_minor, rate_pct, status, valid_until)
+select :'tenant_id'::uuid, p.id, re.id, re.short_name, q.share,
+       round((p.sum_insured_minor * q.rate/100.0))::bigint, q.rate, q.status, date '2026-09-30'
+from picked p cross join q join re on re.rn = ((p.rn + q.k) % 5) + 1
+on conflict do nothing;
+
+with picked as (
+  select id, coalesce(sum_insured_minor, 5000000000) sum_insured_minor,
+         row_number() over (order by inception desc nulls last, reference) rn from risk limit 6
+), re as (
+  select id, short_name, row_number() over (order by short_name) rn from party
+  where short_name in ('Helvetia Re','Synd 4242','Alpha Re','Beta Re','Gamma Re')
+), l(k,kind,wr,sg) as (values (0,'LEAD',40.0,35.0),(1,'FOLLOW',35.0,30.0),(2,'COINSURANCE',30.0,20.0))
+insert into fac_placement_line (tenant_id, risk_id, reinsurer_party_id, reinsurer_name, kind, written_pct, signed_pct, premium_minor, status)
+select :'tenant_id'::uuid, p.id, re.id, re.short_name, l.kind, l.wr, l.sg,
+       round(p.sum_insured_minor * l.sg/100.0 * 0.02)::bigint, 'SIGNED'
+from picked p cross join l join re on re.rn = ((p.rn + l.k) % 5) + 1
+on conflict do nothing;
+
+insert into fac_engineering (tenant_id, risk_id, kind, inspector, risk_grade, findings, inspected_on)
+select :'tenant_id'::uuid, id, 'ENGINEERING', 'Marsh Risk Consulting', 'ELEVATED',
+       'Sprinkler protection adequate; recommend upgrade of electrical switchgear and improved flood defences to riverside elevation.',
+       date '2026-05-15'
+from risk order by inception desc nulls last limit 3
+on conflict do nothing;
