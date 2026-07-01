@@ -1,15 +1,14 @@
 import {
   LayoutDashboard, TrendingUp, Sparkles, Brain, Search, Smartphone,
-  Gavel, BarChart3, ShieldCheck, FileText, FileSpreadsheet, FileCheck2, ClipboardCheck,
-  PenLine, Calculator, Boxes, Gauge, Radar, Crosshair, Globe2, Map as MapIcon,
-  ArrowLeftRight, SlidersHorizontal,
-  Users, Contact, Briefcase, Building2, Handshake, FolderOpen,
-  ShieldAlert, Grid2x2, Undo2, ListChecks, Bell, Workflow, GitBranch, Fingerprint,
+  Gavel, FileText, FileCheck2, PenLine, Calculator, Radar, Globe2, ArrowLeftRight, SlidersHorizontal,
+  Users, Contact, Briefcase, Building2, Handshake,
+  ShieldAlert, Grid2x2, Undo2, ListChecks, Workflow, Fingerprint,
   BookOpen, ReceiptText, Wallet, PiggyBank, CalendarCheck, ShoppingCart,
-  LineChart, CalendarClock, Scale,
+  BarChart3, CalendarClock, LineChart, ShieldCheck, Scale, ClipboardCheck, FileSpreadsheet,
   Clock, UserRound, Banknote, Award, Package, Network,
-  Plug, Store, Mail, Bot, Shapes, PanelsTopLeft,
-  Settings, Lock, Shield, EyeOff, Archive, Activity, Flag,
+  Boxes, Database, FolderOpen, Library,
+  Plug, Mail, Bot, PanelsTopLeft,
+  Settings, Activity, GitBranch, Lock, Shield, EyeOff, Archive, Gauge, Flag,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -26,10 +25,13 @@ export interface NavGroup {
 }
 
 /**
- * Sidebar information architecture. Every top-level route appears exactly once,
- * grouped by the business workflow it belongs to. Groups render as collapsible
- * accordion sections in AppShell. Keep this the single source of truth for
- * navigation — do not duplicate a route across groups.
+ * Sidebar information architecture, organised by business workflow.
+ *
+ * Related pages are consolidated into tabbed *workspaces* (routes under `/w/*`,
+ * see pages/workspaces) so each business process is one sidebar entry rather
+ * than many. The underlying pages keep their own routes and remain fully
+ * functional — they are simply reached through the workspace. Every concept
+ * appears exactly once here; do not duplicate a route across groups.
  */
 export const NAV_GROUPS: NavGroup[] = [
   {
@@ -48,21 +50,13 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Underwriting',
     icon: Gavel,
     items: [
-      { label: 'Workbench', to: '/underwriting', icon: Gavel, permission: 'treaty:read' },
-      { label: 'UW Analytics', to: '/underwriting/analytics', icon: BarChart3, permission: 'treaty:read' },
-      { label: 'Approvals', to: '/underwriting/approvals', icon: ShieldCheck, permission: 'treaty:read' },
-      { label: 'Treaties', to: '/treaties', icon: FileText, permission: 'treaty:read' },
-      { label: 'Treaty Admin', to: '/treaty-admin', icon: FileSpreadsheet, permission: 'treaty:read' },
-      { label: 'Facultative', to: '/facultative', icon: FileCheck2, permission: 'facultative:read' },
-      { label: 'Facultative Admin', to: '/facultative-admin', icon: ClipboardCheck, permission: 'facultative:read' },
+      { label: 'Underwriting Workspace', to: '/w/underwriting', icon: Gavel, permission: 'treaty:read' },
+      { label: 'Treaty Workspace', to: '/w/treaty', icon: FileText, permission: 'treaty:read' },
+      { label: 'Facultative Workspace', to: '/w/facultative', icon: FileCheck2, permission: 'facultative:read' },
       { label: 'Placement', to: '/placement', icon: PenLine, permission: 'placement:read' },
       { label: 'Pricing', to: '/pricing', icon: Calculator, permission: 'pricing:read' },
-      { label: 'Products', to: '/products', icon: Boxes, permission: 'product:read' },
-      { label: 'Capacity', to: '/capacity', icon: Gauge, permission: 'treaty:read' },
-      { label: 'Exposure', to: '/exposure', icon: Radar, permission: 'exposure:read' },
-      { label: 'Exposure Mgmt', to: '/exposure-management', icon: Crosshair, permission: 'exposure:read' },
-      { label: 'Territories', to: '/territories', icon: Globe2, permission: 'exposure:read' },
-      { label: 'Territory Mgmt', to: '/territory-management', icon: MapIcon, permission: 'exposure:read' },
+      { label: 'Capacity & Exposure', to: '/w/capacity-exposure', icon: Radar, permission: 'exposure:read' },
+      { label: 'Territory Workspace', to: '/w/territory', icon: Globe2, permission: 'exposure:read' },
       { label: 'Retrocession', to: '/retrocession', icon: ArrowLeftRight, permission: 'retro:read' },
       { label: 'Adjustments', to: '/adjustments', icon: SlidersHorizontal, permission: 'treaty:read' },
     ],
@@ -76,7 +70,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Brokers', to: '/brokers', icon: Briefcase, permission: 'party:read' },
       { label: 'Cedents', to: '/cedents', icon: Building2, permission: 'party:read' },
       { label: 'CRM', to: '/crm', icon: Handshake, permission: 'crm:read' },
-      { label: 'Documents', to: '/documents', icon: FolderOpen, permission: 'documents:read' },
     ],
   },
   {
@@ -86,10 +79,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Claims', to: '/claims', icon: ShieldAlert, permission: 'claims:read' },
       { label: 'Bordereaux', to: '/bordereaux', icon: Grid2x2, permission: 'bordereaux:read' },
       { label: 'Recoveries', to: '/recoveries', icon: Undo2, permission: 'claims:read' },
-      { label: 'Tasks & SLA', to: '/tasks', icon: ListChecks, permission: 'ops:read' },
-      { label: 'Notifications', to: '/notifications', icon: Bell },
-      { label: 'Workflow', to: '/workflow', icon: Workflow, permission: 'workflow:read' },
-      { label: 'Workflow Engine', to: '/workflow-engine', icon: GitBranch, permission: 'workflow:read' },
+      { label: 'Operations Center', to: '/w/operations', icon: ListChecks, permission: 'ops:read' },
+      { label: 'Workflow Center', to: '/w/workflow', icon: Workflow, permission: 'workflow:read' },
       { label: 'Audit Log', to: '/audit', icon: Fingerprint, permission: 'ops:read' },
     ],
   },
@@ -131,16 +122,26 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: 'Master Data',
+    icon: Database,
+    items: [
+      { label: 'Products', to: '/products', icon: Boxes, permission: 'product:read' },
+    ],
+  },
+  {
+    label: 'Documents & Knowledge',
+    icon: Library,
+    items: [
+      { label: 'Documents', to: '/documents', icon: FolderOpen, permission: 'documents:read' },
+    ],
+  },
+  {
     label: 'Integration & Automation',
     icon: Plug,
     items: [
-      { label: 'Integration', to: '/integration', icon: Plug, permission: 'integration:read' },
-      { label: 'Integration Hub', to: '/integration-hub', icon: Network, permission: 'integration:read' },
-      { label: 'Marketplace', to: '/marketplace', icon: Store, permission: 'integration:read' },
+      { label: 'Integration Hub', to: '/w/integration', icon: Plug, permission: 'integration:read' },
       { label: 'Messaging', to: '/messaging', icon: Mail, permission: 'integration:read' },
-      { label: 'Automation Studio', to: '/automation-studio', icon: Bot, permission: 'config:read' },
-      { label: 'Designer', to: '/designer', icon: Shapes, permission: 'config:read' },
-      { label: 'Scheduler', to: '/scheduler', icon: CalendarClock, permission: 'ops:read' },
+      { label: 'Automation Studio', to: '/w/automation', icon: Bot, permission: 'config:read' },
       { label: 'Portal', to: '/portal', icon: PanelsTopLeft, permission: 'portal:read' },
     ],
   },
