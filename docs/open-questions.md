@@ -72,8 +72,13 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 
 ## 4. Regulatory & compliance
 
-- **IFRS 17** (GMM/BBA, PAA, VFA, CSM roll-forward, risk adjustment, onerous contracts) - **deferred**; no
-  measurement tables/engines. (§18.1)
+- **IFRS 17** measurement is now delivered as a pure engine (`@rios/domain/ifrs17`): PAA (LRC roll-forward,
+  LIC as discounted fulfilment cash flows + risk adjustment, onerous loss component), GMM/BBA initial
+  measurement, the CSM roll-forward (interest accretion → new business → estimate changes → coverage-unit
+  release), VFA, term-structure discounting (`presentValue`) and a multi-period CSM amortisation schedule
+  (`csmProjection`) - all unit-tested. What remains designed-for is **persistence + disclosure reporting**
+  (measurement tables, movement analysis and the IFRS 17 disclosure notes) and full yield-curve
+  bootstrapping/illiquidity premia. (§18.1)
 - **Solvency II** (SCR/MCR, technical provisions, ORSA, QRTs) - **deferred**. (§18.2)
 - **Statutory/market returns** (US Schedule F, Lloyd's returns), tax/levy regimes - designed-for as governed
   report packs. (§18.3)
