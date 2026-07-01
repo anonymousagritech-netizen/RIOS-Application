@@ -16,6 +16,7 @@ import { exposureSummary, aggregateExposure, exposureHeatmap, type ExposureItemI
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { toCsv, majorFromMinor } from '../csv.js';
 
 async function loadItems(db: Db): Promise<(ExposureItemInput & { id: string; name: string | null })[]> {
   const { rows } = await db.query<{
@@ -54,6 +55,21 @@ export async function exposureMgmtModule(app: FastifyInstance): Promise<void> {
            from exposure_item order by tiv_minor desc limit 200`,
       );
       return { items: rows };
+    });
+  });
+
+  // ---- Exposure export (CSV / Excel) ---------------------------------------
+  app.get('/api/underwriting/exposure/export.csv', { preHandler: requirePermission('exposure:read') }, async (req, reply) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ name: string | null; country: string | null; admin1: string | null; city: string | null; cresta: string | null; peril: string | null; line_of_business: string | null; tiv_minor: string; pml_minor: string | null }>(
+        `select name, country, admin1, city, cresta, peril, line_of_business, tiv_minor, pml_minor from exposure_item order by tiv_minor desc`,
+      );
+      const csv = toCsv(['Name', 'Country', 'State', 'City', 'CRESTA', 'Peril', 'Line of business', 'TIV (major)', 'PML (major)'],
+        rows.map((r) => [r.name ?? '', r.country ?? '', r.admin1 ?? '', r.city ?? '', r.cresta ?? '', r.peril ?? '', r.line_of_business ?? '', majorFromMinor(r.tiv_minor), majorFromMinor(r.pml_minor)]));
+      reply.header('content-type', 'text/csv; charset=utf-8');
+      reply.header('content-disposition', 'attachment; filename="exposure.csv"');
+      return csv;
     });
   });
 

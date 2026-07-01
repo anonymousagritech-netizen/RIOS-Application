@@ -99,3 +99,21 @@ describe('Exposure management', () => {
     expect(items.json().items.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('CSV exports', () => {
+  it('exports brokers, cedents, capacity and exposure as CSV', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    for (const [url, header] of [
+      ['/api/brokers/export.csv', 'Broker'],
+      ['/api/cedents/export.csv', 'Cedent'],
+      ['/api/underwriting/capacity/export.csv', 'Utilisation %'],
+      ['/api/underwriting/exposure/export.csv', 'CRESTA'],
+    ] as const) {
+      const res = await app.inject({ method: 'GET', url, headers: auth });
+      expect(res.statusCode, url).toBe(200);
+      expect(res.headers['content-type']).toContain('text/csv');
+      expect((res.body as string).split('\n')[0]).toContain(header);
+    }
+  });
+});

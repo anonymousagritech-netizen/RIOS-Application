@@ -14,6 +14,7 @@ import { counterpartyScore, counterpartyProfitability } from '@rios/domain';
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { toCsv, majorFromMinor } from '../csv.js';
 
 async function cedentBook(db: Db, cedentId: string, yearsActive: number) {
   const { rows } = await db.query<{ gwp: string; bound: string; quoted: string; renewed: string; up_for_renewal: string }>(
@@ -81,6 +82,26 @@ export async function cedentsModule(app: FastifyInstance): Promise<void> {
         bookLossRatioPct: totalGwp > 0 ? Math.round((totalIncurred / totalGwp) * 1000) / 10 : 0,
         topCedents: rows.slice(0, 8).map((r) => ({ id: r.id, legalName: r.legalName, gwpMinor: Number(r.gwp), lossRatioPct: Number(r.gwp) > 0 ? Math.round((Number(r.incurred) / Number(r.gwp)) * 1000) / 10 : 0 })),
       };
+    });
+  });
+
+  // ---- Cedent list export (CSV / Excel) ------------------------------------
+  app.get('/api/cedents/export.csv', { preHandler: requirePermission('party:read') }, async (req, reply) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ legalName: string; country: string | null; rating: string | null; ratingAgency: string | null; relationshipScore: number | null; gwpMinor: string; boundCount: number }>(
+        `select p.legal_name as "legalName", p.country, cp.rating, cp.rating_agency as "ratingAgency", cp.relationship_score as "relationshipScore",
+                coalesce(sub.gwp,0)::bigint as "gwpMinor", coalesce(sub.bound,0)::int as "boundCount"
+           from party p join party_role pr on pr.party_id=p.id and pr.role_code='cedent' and pr.is_active
+           left join cedent_profile cp on cp.party_id=p.id
+           left join (select cedent_party_id, sum(est_premium_minor) gwp, count(*) filter (where stage='BOUND') bound from submission group by cedent_party_id) sub on sub.cedent_party_id=p.id
+          where not p.is_deleted order by "gwpMinor" desc`,
+      );
+      const csv = toCsv(['Cedent', 'Country', 'Rating', 'Agency', 'Relationship score', 'GWP (major)', 'Bound'],
+        rows.map((r) => [r.legalName, r.country ?? '', r.rating ?? '', r.ratingAgency ?? '', r.relationshipScore ?? '', majorFromMinor(r.gwpMinor), r.boundCount]));
+      reply.header('content-type', 'text/csv; charset=utf-8');
+      reply.header('content-disposition', 'attachment; filename="cedents.csv"');
+      return csv;
     });
   });
 

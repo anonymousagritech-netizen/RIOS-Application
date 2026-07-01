@@ -2,9 +2,9 @@ import { useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users, Landmark, Award, TrendingUp, Building2, Network,
-  MessageSquare, Plus, Pencil, Star,
+  MessageSquare, Plus, Pencil, Star, Download,
 } from 'lucide-react';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, downloadFile } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -242,6 +242,7 @@ export function BrokerPage() {
         title="Broker Management"
         description="Relationships, production and profitability across your broking panel."
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Broker' }]}
+        actions={<Button variant="secondary" icon={<Download size={16} />} onClick={() => downloadFile('/api/brokers/export.csv', 'brokers.csv')}>Export CSV</Button>}
       />
 
       <div className={styles.kpis}>

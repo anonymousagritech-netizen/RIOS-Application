@@ -14,6 +14,7 @@ import { counterpartyScore, counterpartyProfitability, brokerTierForVolume } fro
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { toCsv, majorFromMinor } from '../csv.js';
 
 const minor = (v: number | undefined) => (v === undefined ? null : Math.round(v * 100));
 
@@ -101,6 +102,27 @@ export async function brokersModule(app: FastifyInstance): Promise<void> {
         topBrokers: rows.slice(0, 8).map((r) => ({ id: r.id, legalName: r.legalName, gwpMinor: Number(r.gwp) })),
         byTier: Object.entries(tierMap).map(([key, n]) => ({ key, n })),
       };
+    });
+  });
+
+  // ---- Broker panel export (CSV / Excel) -----------------------------------
+  app.get('/api/brokers/export.csv', { preHandler: requirePermission('party:read') }, async (req, reply) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ legalName: string; country: string | null; tier: string | null; region: string | null; relationshipScore: number | null; gwpMinor: string; boundCount: number; contractCount: number }>(
+        `select p.legal_name as "legalName", p.country, bp.tier, bp.region, bp.relationship_score as "relationshipScore",
+                coalesce(sub.gwp,0)::bigint as "gwpMinor", coalesce(sub.bound,0)::int as "boundCount", coalesce(bc.n,0)::int as "contractCount"
+           from party p join party_role pr on pr.party_id=p.id and pr.role_code='broker' and pr.is_active
+           left join broker_profile bp on bp.party_id=p.id
+           left join (select broker_party_id, sum(est_premium_minor) gwp, count(*) filter (where stage='BOUND') bound from submission group by broker_party_id) sub on sub.broker_party_id=p.id
+           left join (select broker_party_id, count(*) n from broker_contract group by broker_party_id) bc on bc.broker_party_id=p.id
+          where not p.is_deleted order by "gwpMinor" desc`,
+      );
+      const csv = toCsv(['Broker', 'Country', 'Tier', 'Region', 'Relationship score', 'GWP (major)', 'Bound', 'Contracts'],
+        rows.map((r) => [r.legalName, r.country ?? '', r.tier ?? '', r.region ?? '', r.relationshipScore ?? '', majorFromMinor(r.gwpMinor), r.boundCount, r.contractCount]));
+      reply.header('content-type', 'text/csv; charset=utf-8');
+      reply.header('content-disposition', 'attachment; filename="brokers.csv"');
+      return csv;
     });
   });
 

@@ -11,9 +11,9 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  DollarSign, TrendingUp, Layers, MapPin, Plus, Flame, Waves, Grid3x3,
+  DollarSign, TrendingUp, Layers, MapPin, Plus, Flame, Waves, Grid3x3, Download,
 } from 'lucide-react';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, downloadFile } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
@@ -162,13 +162,14 @@ export function ExposureMgmtPage() {
         description="Geographic and peril aggregation of insured values, accumulation control, and concentration heatmaps across the underwriting exposure book."
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Underwriting', to: '/underwriting' }, { label: 'Exposure' }]}
         actions={
-          canWrite ? (
-            <Button variant="primary" icon={<Plus size={16} />} onClick={() => setAddOpen(true)}>
-              Add exposure
-            </Button>
-          ) : (
-            <Badge color="slate">Read-only</Badge>
-          )
+          <>
+            <Button variant="secondary" icon={<Download size={16} />} onClick={() => downloadFile('/api/underwriting/exposure/export.csv', 'exposure.csv')}>Export CSV</Button>
+            {canWrite ? (
+              <Button variant="primary" icon={<Plus size={16} />} onClick={() => setAddOpen(true)}>Add exposure</Button>
+            ) : (
+              <Badge color="slate">Read-only</Badge>
+            )}
+          </>
         }
       />
 

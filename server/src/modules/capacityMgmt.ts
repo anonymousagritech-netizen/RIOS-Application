@@ -15,6 +15,7 @@ import { capacityBook, capacityAlerts, capacityForecast } from '@rios/domain';
 import { runAs } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { toCsv, majorFromMinor } from '../csv.js';
 
 /** Fraction of the calendar year elapsed (server clock; domain stays clockless). */
 function yearFractionElapsed(): number {
@@ -50,6 +51,25 @@ export async function capacityMgmtModule(app: FastifyInstance): Promise<void> {
       const linesById = new Map(rows.map((r) => [`${r.dimension}|${r.dim_key}`, r.id]));
       const lines = book.lines.map((l) => ({ ...l, id: linesById.get(`${l.dimension}|${l.dimKey}`) }));
       return { book: { ...book, lines }, alerts, forecast, fractionElapsed: Math.round(frac * 100) / 100 };
+    });
+  });
+
+  // ---- Capacity export (CSV / Excel) ---------------------------------------
+  app.get('/api/underwriting/capacity/export.csv', { preHandler: requirePermission('treaty:read') }, async (req, reply) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ dimension: string; dim_key: string; label: string | null; period: string | null; available_minor: string; consumed_minor: string; warn_pct: number }>(
+        `select dimension, dim_key, label, period, available_minor, consumed_minor, warn_pct from capacity_line order by dimension, dim_key`,
+      );
+      const csv = toCsv(['Dimension', 'Key', 'Label', 'Period', 'Available (major)', 'Consumed (major)', 'Remaining (major)', 'Utilisation %', 'Warn %'],
+        rows.map((r) => {
+          const avail = Number(r.available_minor), consumed = Number(r.consumed_minor);
+          const util = avail > 0 ? Math.round((consumed / avail) * 1000) / 10 : 0;
+          return [r.dimension, r.dim_key, r.label ?? '', r.period ?? '', majorFromMinor(r.available_minor), majorFromMinor(r.consumed_minor), majorFromMinor(avail - consumed), util, r.warn_pct];
+        }));
+      reply.header('content-type', 'text/csv; charset=utf-8');
+      reply.header('content-disposition', 'attachment; filename="capacity.csv"');
+      return csv;
     });
   });
 

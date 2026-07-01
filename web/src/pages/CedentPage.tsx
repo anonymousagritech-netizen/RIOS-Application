@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Building2, Users, TrendingUp, Percent, Star, MapPin, ShieldCheck,
-  Layers, FileText, AlertTriangle, MessageSquare, PlusCircle, Pencil, Network,
+  Layers, FileText, AlertTriangle, MessageSquare, PlusCircle, Pencil, Network, Download,
 } from 'lucide-react';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, downloadFile } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
@@ -185,6 +185,7 @@ export function CedentPage() {
         title="Cedent Management"
         description="The cedent relationship workspace: rating, capacity, profitability, portfolio, treaties, claims and correspondence in one place."
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Cedent' }]}
+        actions={<Button variant="secondary" icon={<Download size={16} />} onClick={() => downloadFile('/api/cedents/export.csv', 'cedents.csv')}>Export CSV</Button>}
       />
 
       <div className={styles.kpis}>

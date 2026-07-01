@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Layers, Gauge, Wallet, PiggyBank, TrendingUp, AlertTriangle,
-  ShieldAlert, PlusCircle, SlidersHorizontal,
+  ShieldAlert, PlusCircle, SlidersHorizontal, Download,
 } from 'lucide-react';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, downloadFile } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
@@ -168,9 +168,10 @@ export function CapacityPage() {
         title="Capacity Management"
         description="Track available, consumed and remaining underwriting capacity across the book, with breach and warning alerts before you overcommit."
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Underwriting', to: '/underwriting' }, { label: 'Capacity' }]}
-        actions={canWrite ? (
-          <Button variant="primary" icon={<PlusCircle size={16} />} onClick={() => setShowNew(true)}>New capacity line</Button>
-        ) : undefined}
+        actions={<>
+          <Button variant="secondary" icon={<Download size={16} />} onClick={() => downloadFile('/api/underwriting/capacity/export.csv', 'capacity.csv')}>Export CSV</Button>
+          {canWrite && <Button variant="primary" icon={<PlusCircle size={16} />} onClick={() => setShowNew(true)}>New capacity line</Button>}
+        </>}
       />
 
       <div className={styles.kpis}>
