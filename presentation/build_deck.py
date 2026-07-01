@@ -9,10 +9,34 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_AUTO_SIZE
 from pptx.oxml.ns import qn
-from PIL import Image
+from PIL import Image, ImageFont
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 SCR = os.path.join(BASE, 'assets', 'screens')
+
+# ---- text measurement (Liberation Sans is metric-compatible with Arial/Segoe UI;
+# used to size pill chips so their labels never wrap inside the pill) ----
+_MEASURE_DPI = 200
+_LIBER_BOLD = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'
+_LIBER_REG = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+_MFONTS = {}
+
+
+def text_w(txt, size, bold=True):
+    """Rendered width of `txt` at `size` pt, in inches (approx, generous)."""
+    key = (round(size * 2), bool(bold))
+    f = _MFONTS.get(key)
+    if f is None:
+        path = _LIBER_BOLD if bold else _LIBER_REG
+        try:
+            f = ImageFont.truetype(path, int(size * _MEASURE_DPI / 72))
+        except Exception:
+            f = ImageFont.load_default()
+        _MFONTS[key] = f
+    try:
+        return f.getlength(txt) / _MEASURE_DPI
+    except Exception:
+        return len(txt) * size * 0.009
 
 # ---- palette ----
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
