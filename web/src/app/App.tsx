@@ -14,6 +14,7 @@ import { CapacityPage } from '../pages/CapacityPage';
 import { ExposureMgmtPage } from '../pages/ExposureMgmtPage';
 import { TerritoriesPage } from '../pages/TerritoriesPage';
 import { TasksPage } from '../pages/TasksPage';
+import { AuditLogPage } from '../pages/AuditLogPage';
 import { TreatyDetailPage } from '../pages/TreatyDetailPage';
 import { PartiesPage } from '../pages/PartiesPage';
 import { PartyDetailPage } from '../pages/PartyDetailPage';
@@ -101,6 +102,7 @@ export function App() {
         <Route path="/exposure-management" element={<ExposureMgmtPage />} />
         <Route path="/territories" element={<TerritoriesPage />} />
         <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/audit" element={<AuditLogPage />} />
         <Route path="/treaties" element={<TreatiesPage />} />
         <Route path="/treaties/:id" element={<TreatyDetailPage />} />
         <Route path="/parties" element={<PartiesPage />} />

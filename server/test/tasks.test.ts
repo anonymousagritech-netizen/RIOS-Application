@@ -58,3 +58,15 @@ describe('Task management', () => {
     expect(res.statusCode).toBe(403);
   });
 });
+
+describe('Audit log', () => {
+  it('returns a filterable, tamper-evident timeline', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token('admin@demo.rios')}` };
+    const res = await app.inject({ method: 'GET', url: '/api/audit?limit=20', headers: auth });
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.json().entries)).toBe(true);
+    expect(res.json().chain).toHaveProperty('total');
+    expect(Array.isArray(res.json().entityTypes)).toBe(true);
+  });
+});

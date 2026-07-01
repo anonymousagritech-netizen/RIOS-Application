@@ -9,7 +9,7 @@ import {
   Clock, UserRound, Banknote, TrendingUp,
   ShoppingCart, Package,
   Activity, CalendarClock, Plug, Network, Store, Bot, Mail, PanelsTopLeft, Lock, Shield, ListChecks,
-  Archive, EyeOff, Building2, Flag, Gauge, Settings, Globe2,
+  Archive, EyeOff, Building2, Flag, Gauge, Settings, Globe2, Fingerprint,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -125,6 +125,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Operations', to: '/operations', icon: Activity, permission: 'ops:read' },
       { label: 'Tasks & SLA', to: '/tasks', icon: ListChecks, permission: 'ops:read' },
+      { label: 'Audit Log', to: '/audit', icon: Fingerprint, permission: 'ops:read' },
       { label: 'Scheduler', to: '/scheduler', icon: CalendarClock, permission: 'ops:read' },
       { label: 'Integration', to: '/integration', icon: Plug, permission: 'integration:read' },
       { label: 'Integration Hub', to: '/integration-hub', icon: Network, permission: 'integration:read' },
