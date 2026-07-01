@@ -67,12 +67,23 @@ interface HighRisk {
   stage: string; estPremiumMinor: number | null; currency: string; cedentName: string | null;
 }
 interface RiskAnalytics { distribution: RiskDist[]; heatmap: HeatCell[]; highRisk: HighRisk[]; }
+interface RenewalBook {
+  upForRenewal: number; renewed: number; lapsed: number; inProgress: number;
+  expiringPremiumMinor: number; renewedPremiumMinor: number;
+  retentionRatePct: number; premiumRetentionPct: number; avgRateChangePct: number | null;
+}
+interface RenewalRow {
+  id: string; reference: string; title: string; stage: string; currency: string;
+  cedentName: string | null; expiringPremiumMinor: number; renewalPremiumMinor: number; rateChangePct: number | null;
+}
+interface RenewalAnalytics { book: RenewalBook; renewals: RenewalRow[]; }
 
 /* ---------------- Data hooks ---------------- */
 const useKpis = () => useQuery({ queryKey: ['uwa', 'kpis'], queryFn: () => api<Kpis>('/api/underwriting/kpis') });
 const usePortfolio = () => useQuery({ queryKey: ['uwa', 'portfolio'], queryFn: () => api<Portfolio>('/api/underwriting/analytics/portfolio') });
 const useCat = () => useQuery({ queryKey: ['uwa', 'cat'], queryFn: () => api<CatAnalytics>('/api/underwriting/analytics/cat') });
 const useRisk = () => useQuery({ queryKey: ['uwa', 'risk'], queryFn: () => api<RiskAnalytics>('/api/underwriting/analytics/risk') });
+const useRenewal = () => useQuery({ queryKey: ['uwa', 'renewal'], queryFn: () => api<RenewalAnalytics>('/api/underwriting/analytics/renewal') });
 
 /* ==================================================================== */
 export function UnderwritingAnalyticsPage() {
@@ -92,6 +103,7 @@ export function UnderwritingAnalyticsPage() {
             { id: 'portfolio', label: 'Portfolio' },
             { id: 'cat', label: 'Catastrophe' },
             { id: 'risk', label: 'Risk' },
+            { id: 'renewal', label: 'Renewals' },
           ]}
           active={tab}
           onChange={setTab}
@@ -101,6 +113,7 @@ export function UnderwritingAnalyticsPage() {
           {tab === 'portfolio' && <PortfolioTab />}
           {tab === 'cat' && <CatTab />}
           {tab === 'risk' && <RiskTab />}
+          {tab === 'renewal' && <RenewalTab />}
         </div>
       </Card>
     </>
@@ -434,6 +447,59 @@ function HeatRow({ structure, bands, matrix, maxN }: { structure: string; bands:
           </div>
         );
       })}
+    </>
+  );
+}
+
+/* ---------------- Renewals ---------------- */
+function RenewalTab() {
+  const renewal = useRenewal();
+  const b = renewal.data?.book;
+  const rows = renewal.data?.renewals ?? [];
+
+  const columns: Column<RenewalRow>[] = [
+    {
+      key: 'sub', header: 'Renewal', sortValue: (r) => r.reference,
+      render: (r) => (
+        <div>
+          <div className={styles.cellMain}>{r.title}</div>
+          <div className={styles.cellSub}>{r.reference} · {r.cedentName ?? 'Cedent TBC'}</div>
+        </div>
+      ),
+    },
+    { key: 'expiring', header: 'Expiring', align: 'right', render: (r) => <span className={styles.num}>{money(r.expiringPremiumMinor, r.currency)}</span> },
+    { key: 'renewal', header: 'Renewal', align: 'right', render: (r) => <span className={styles.num}>{money(r.renewalPremiumMinor, r.currency)}</span> },
+    {
+      key: 'rate', header: 'Rate Δ', align: 'right',
+      render: (r) => r.rateChangePct == null
+        ? <span className={styles.cellSub}>—</span>
+        : <Badge color={r.rateChangePct >= 0 ? 'green' : 'red'}>{r.rateChangePct > 0 ? '+' : ''}{r.rateChangePct}%</Badge>,
+    },
+    { key: 'stage', header: 'Stage', align: 'right', render: (r) => <Badge color="slate">{titleCase(r.stage)}</Badge> },
+  ];
+
+  return (
+    <>
+      <div className={styles.kpis}>
+        <KpiCard label="Up for renewal" value={String(b?.upForRenewal ?? 0)} hint="Expiring book" icon={<Inbox size={20} />} accent="var(--primary)" loading={renewal.isLoading} />
+        <KpiCard label="Retention" value={`${b?.retentionRatePct ?? 0}%`} hint="Renewed of expiring" icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" loading={renewal.isLoading} />
+        <KpiCard label="Premium retention" value={`${b?.premiumRetentionPct ?? 0}%`} hint="Renewed vs expiring premium" icon={<DollarSign size={20} />} accent="var(--accent-cyan)" loading={renewal.isLoading} />
+        <KpiCard label="Avg rate change" value={b?.avgRateChangePct == null ? '—' : `${b.avgRateChangePct > 0 ? '+' : ''}${b.avgRateChangePct}%`} hint="On renewed business" icon={<TrendingUp size={20} />} accent="var(--accent-orange)" loading={renewal.isLoading} />
+      </div>
+
+      <Card padded={false}>
+        <CardHeader title="Renewal pipeline" subtitle={`${b?.renewed ?? 0} renewed · ${b?.inProgress ?? 0} in progress · ${b?.lapsed ?? 0} lapsed · expiring ${compact(b?.expiringPremiumMinor)}`} />
+        <div className={styles.tableWrap}>
+          <Table
+            columns={columns}
+            rows={rows}
+            loading={renewal.isLoading}
+            rowKey={(r) => r.id}
+            empty={<EmptyState icon={<TrendingUp size={18} />} title="No renewals" message="Mark a submission as a renewal of a prior one to build the renewal book." />}
+            skeletonRows={5}
+          />
+        </div>
+      </Card>
     </>
   );
 }

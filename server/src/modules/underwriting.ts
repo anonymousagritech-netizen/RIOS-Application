@@ -47,6 +47,8 @@ const createSchema = z.object({
   priorClaims: z.number().nonnegative().optional(),
   yearsWithCedent: z.number().nonnegative().optional(),
   capacityUtilPct: z.number().min(0).max(100).optional(),
+  renewalOfId: z.string().uuid().optional(),
+  expiringPremium: z.number().nonnegative().optional(),
   terms: z.record(z.unknown()).optional(),
 });
 
@@ -227,8 +229,9 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
             cedent_party_id, broker_party_id, currency, inception, expiry, territory,
             sum_insured_minor, attachment_minor, limit_minor, est_premium_minor,
             loss_ratio_pct, cat_exposed, class_hazard, prior_claims, years_with_cedent,
-            risk_score, risk_band, stage, terms, created_by, assigned_to)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,'SUBMISSION',$25,$26,$26)
+            risk_score, risk_band, stage, terms, created_by, assigned_to,
+            renewal_of_id, expiring_premium_minor)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,'SUBMISSION',$25,$26,$26,$27,$28)
          returning id`,
         [
           ctx.tenantId, ref, b.title, b.kind, b.basis ?? null, b.structure ?? null, b.lineOfBusiness ?? null,
@@ -236,6 +239,7 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
           minor(b.sumInsured), minor(b.attachment), minor(b.limit), minor(b.estPremium),
           b.lossRatioPct ?? null, b.catExposed ?? false, b.classHazard ?? null, b.priorClaims ?? null, b.yearsWithCedent ?? null,
           rs.score, rs.band, JSON.stringify(terms), ctx.userId,
+          b.renewalOfId ?? null, minor(b.expiringPremium),
         ],
       );
       const id = rows[0]!.id;

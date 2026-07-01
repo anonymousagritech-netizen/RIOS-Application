@@ -8,7 +8,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import { defaultCatModel, tvarFromEpCurve, RETURN_PERIODS } from '@rios/domain';
+import { defaultCatModel, tvarFromEpCurve, RETURN_PERIODS, renewalBook, renewalRateChangePct } from '@rios/domain';
 import { runAs } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 
@@ -122,6 +122,44 @@ export async function underwritingAnalyticsModule(app: FastifyInstance): Promise
         bookTvar99Minor: tvarFromEpCurve(book.epCurve, 0.99),
         zones,
       };
+    });
+  });
+
+  // ---- Renewal pipeline ----------------------------------------------------
+  // Submissions that renew a prior submission (or carry an expiring premium):
+  // retention by count + premium, average rate change, and the renewal list.
+  app.get('/api/underwriting/analytics/renewal', { preHandler: requirePermission('treaty:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{
+        id: string; reference: string; title: string; stage: string; currency: string;
+        cedentName: string | null; expiring_premium_minor: number | null;
+        est_premium_minor: number | null; target_premium_minor: number | null;
+      }>(
+        `select s.id, s.reference, s.title, s.stage, s.currency,
+                ced.short_name as "cedentName",
+                s.expiring_premium_minor, s.est_premium_minor, s.target_premium_minor
+           from submission s
+           left join party ced on ced.id = s.cedent_party_id
+          where s.renewal_of_id is not null or s.expiring_premium_minor is not null
+          order by s.created_at desc`,
+      );
+      const bookRows = rows.map((r) => ({
+        stage: r.stage,
+        expiringPremiumMinor: Number(r.expiring_premium_minor ?? 0),
+        renewalPremiumMinor: Number(r.target_premium_minor ?? r.est_premium_minor ?? 0),
+      }));
+      const book = renewalBook(bookRows);
+      const renewals = rows.map((r) => {
+        const renewalPremium = Number(r.target_premium_minor ?? r.est_premium_minor ?? 0);
+        const expiring = Number(r.expiring_premium_minor ?? 0);
+        return {
+          id: r.id, reference: r.reference, title: r.title, stage: r.stage, currency: r.currency,
+          cedentName: r.cedentName, expiringPremiumMinor: expiring, renewalPremiumMinor: renewalPremium,
+          rateChangePct: renewalRateChangePct(renewalPremium, expiring),
+        };
+      });
+      return { book, renewals };
     });
   });
 }

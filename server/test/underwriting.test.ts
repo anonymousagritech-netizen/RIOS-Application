@@ -213,6 +213,34 @@ describe('Underwriting: analytics, scenarios & approval matrix', () => {
     expect(badSign.statusCode).toBe(409);
   });
 
+  it('tracks a renewal: rate change and retention in the renewal pipeline', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+
+    // The expiring contract (prior year).
+    const prior = await app.inject({
+      method: 'POST', url: '/api/underwriting/submissions', headers: auth,
+      payload: { title: 'Expiring QS 2025', structure: 'QUOTA_SHARE', estPremium: 1_000_000 },
+    });
+    const priorId = prior.json().id as string;
+
+    // The renewal, 8% up on expiring premium.
+    const renewal = await app.inject({
+      method: 'POST', url: '/api/underwriting/submissions', headers: auth,
+      payload: { title: 'Renewal QS 2026', structure: 'QUOTA_SHARE', estPremium: 1_080_000, renewalOfId: priorId, expiringPremium: 1_000_000 },
+    });
+    expect(renewal.statusCode).toBe(201);
+    const renewalId = renewal.json().id as string;
+
+    const analytics = await app.inject({ method: 'GET', url: '/api/underwriting/analytics/renewal', headers: auth });
+    expect(analytics.statusCode).toBe(200);
+    const body = analytics.json();
+    expect(body.book).toHaveProperty('retentionRatePct');
+    const row = body.renewals.find((r: { id: string }) => r.id === renewalId);
+    expect(row).toBeTruthy();
+    expect(row.rateChangePct).toBe(8);
+  });
+
   it('exports the pipeline as CSV', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };

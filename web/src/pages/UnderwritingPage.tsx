@@ -215,16 +215,19 @@ function NewSubmissionModal({ open, onClose, onCreated }: { open: boolean; onClo
   const { data: partyData } = useParties({});
   const { data: ccy } = useCurrencies();
   const { data: catalog } = useModelCatalog();
+  const { data: allSubs } = useSubmissions('');
   const parties = partyData?.parties ?? [];
   const currencies = ccy?.currencies ?? [];
   const structures = catalog?.structures ?? [];
   const lines = catalog?.lines ?? [];
+  const priorSubmissions = allSubs?.submissions ?? [];
 
   const [f, setF] = useState({
     title: '', kind: 'TREATY', basis: 'NON_PROPORTIONAL', structure: 'CAT_XL', lineOfBusiness: '',
     cedentPartyId: '', brokerPartyId: '', currency: 'USD', inception: '', expiry: '', territory: '',
     sumInsured: '', attachment: '', limit: '', estPremium: '',
     lossRatioPct: '', catExposed: false, classHazard: '3', priorClaims: '', yearsWithCedent: '', capacityUtilPct: '',
+    renewalOfId: '', expiringPremium: '',
   });
   // Model-specific term values, keyed by field key. Kept as strings/booleans and
   // coerced on submit against the field type (money → integer minor units).
@@ -294,6 +297,7 @@ function NewSubmissionModal({ open, onClose, onCreated }: { open: boolean; onClo
       sumInsured: numv(f.sumInsured), attachment: numv(f.attachment), limit: numv(f.limit), estPremium: numv(f.estPremium),
       lossRatioPct: numv(f.lossRatioPct), catExposed: f.catExposed, classHazard: numv(f.classHazard),
       priorClaims: numv(f.priorClaims), yearsWithCedent: numv(f.yearsWithCedent), capacityUtilPct: numv(f.capacityUtilPct),
+      renewalOfId: f.renewalOfId || undefined, expiringPremium: numv(f.expiringPremium),
       terms: buildTerms(),
     });
   };
@@ -344,6 +348,16 @@ function NewSubmissionModal({ open, onClose, onCreated }: { open: boolean; onClo
           <TextField label="Inception" type="date" value={f.inception} onChange={set('inception')} />
           <TextField label="Expiry" type="date" value={f.expiry} onChange={set('expiry')} />
           <div style={{ gridColumn: '1 / -1' }}><TextField label="Territory" value={f.territory} onChange={set('territory')} placeholder="e.g. Worldwide excl. USA & Canada" /></div>
+        </FormSection>
+
+        <FormSection title="Renewal" description="Link an expiring submission to track rate change and retention.">
+          <FormField label="Renewal of (prior submission)">
+            <Select value={f.renewalOfId} onChange={(e) => set('renewalOfId')(e.target.value)}>
+              <option value="">New business</option>
+              {priorSubmissions.map((p) => <option key={p.id} value={p.id}>{p.reference} · {p.title}</option>)}
+            </Select>
+          </FormField>
+          <TextField label="Expiring premium (major)" type="number" value={f.expiringPremium} onChange={set('expiringPremium')} placeholder="Prior-year premium" />
         </FormSection>
 
         <FormSection title="Headline terms & premium">
