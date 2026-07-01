@@ -175,8 +175,9 @@
 .content { flex: 1; overflow-y: auto; background: var(--bg-tint); }
 .contentInner {
   width: 100%;
-  max-width: var(--content-max);
-  margin: 0 auto;
+  /* Fill the full available width (no centered max-width gutter). */
+  max-width: none;
+  margin: 0;
   padding: var(--space-6) var(--space-7);
   display: flex;
   flex-direction: column;
