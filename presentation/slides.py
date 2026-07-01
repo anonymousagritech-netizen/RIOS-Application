@@ -18,15 +18,19 @@ def pn():
     return N[0]
 
 
-def chip_flow(s, x, y, maxw, items, color, size=9.5, ch=0.30, gap=0.12):
+def chip_flow(s, x, y, maxw, items, color, size=9.5, ch=0.32, gap=0.14):
+    """Flow pill chips, wrapping to new rows. Each pill is sized to fit its label
+    (measured width + padding) so text never wraps inside the pill."""
+    pad = 0.32
     cx, cy = x, y
     for it in items:
-        w = max(0.6, 0.22 + len(it) * 0.061)
-        if cx + w > x + maxw + 0.01:
+        w = text_w(it, size, True) + pad
+        if cx > x and cx + w > x + maxw + 0.01:
             cx = x; cy += ch + gap
         rect(s, cx, cy, w, ch, fill=_mix(color, WHITE, 0.12), radius=0.5)
-        text(s, cx, cy - 0.02, w, ch, [[(it, size, _mix(color, INK, 0.62), True)]],
-             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        tb = text(s, cx, cy - 0.02, w, ch, [[(it, size, _mix(color, INK, 0.62), True)]],
+                  align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        tb.text_frame.word_wrap = False  # never wrap inside a pill
         cx += w + gap
     return cy + ch
 
@@ -183,10 +187,11 @@ def module_slide(kick, ttl, shot, purpose, features, inside, users, ai, addr, co
     bullets(s, 0.9, 3.62, 5.55, 1.3, features, size=11, marker_color=color, gap=4)
     # what's inside
     label(s, 0.9, 4.95, 'WHAT’S INSIDE', INK)
-    chip_flow(s, 0.9, 5.28, 5.55, inside, color)
-    # primary users
-    label(s, 0.9, 6.12, 'PRIMARY USERS', MUTE)
-    chip_flow(s, 0.9, 6.42, 5.55, users, SLATE, size=9)
+    ib = chip_flow(s, 0.9, 5.28, 5.55, inside, color)
+    # primary users — placed below wherever the inside chips actually end
+    uy = max(6.10, ib + 0.18)
+    label(s, 0.9, uy, 'PRIMARY USERS', MUTE)
+    chip_flow(s, 0.9, uy + 0.30, 5.55, users, SLATE, size=9)
     # AI strip
     rect(s, 6.6, 5.25, 6.0, 1.35, fill=_mix(INDIGO, WHITE, 0.07), radius=0.07)
     ai_badge(s, 6.82, 5.45)
