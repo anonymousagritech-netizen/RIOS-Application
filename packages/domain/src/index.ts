@@ -71,3 +71,4 @@ export * from './counterparty.js';
 export * from './capacityMgmt.js';
 export * from './exposureMgmt.js';
 export * from './lossAnalytics.js';
+export * from './tasks.js';

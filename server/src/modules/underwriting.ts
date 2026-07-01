@@ -566,8 +566,8 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
   app.post<{ Params: { id: string } }>('/api/underwriting/submissions/:id/approvals', { preHandler: requirePermission('treaty:write') }, async (req, reply) => {
     const ctx = authContext(req);
     return runAs(ctx, async (db) => {
-      const { rows } = await db.query<{ risk_band: string | null; limit_minor: number | null; est_premium_minor: number | null }>(
-        `select risk_band, limit_minor, est_premium_minor from submission where id = $1`, [req.params.id],
+      const { rows } = await db.query<{ risk_band: string | null; limit_minor: number | null; est_premium_minor: number | null; reference: string; title: string; assigned_to: string | null }>(
+        `select risk_band, limit_minor, est_premium_minor, reference, title, assigned_to from submission where id = $1`, [req.params.id],
       );
       const s = rows[0];
       if (!s) { reply.code(404); return { error: 'Submission not found' }; }
@@ -585,6 +585,17 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
         [ctx.tenantId, req.params.id, need.level, need.reason, String(need.slaHours), ctx.userId],
       );
       await logActivity(db, ctx.tenantId, req.params.id, ctx.userId, 'REFERRAL', { note: `Referred to ${need.level.replace(/_/g, ' ')} — ${need.reason} (SLA ${need.slaHours}h)` });
+      // Integration: raise an operations task so the referral appears on the task
+      // board with the same SLA (kept lightweight; no duplicate for an open one).
+      const openTask = await db.query(`select 1 from task where entity_type='submission' and entity_id=$1 and kind='REFERRAL' and status not in ('DONE','CANCELLED')`, [req.params.id]);
+      if (!openTask.rows[0]) {
+        await db.query(
+          `insert into task (tenant_id, title, description, kind, priority, due_at, entity_type, entity_id, entity_label, created_by)
+           values ($1,$2,$3,'REFERRAL',$4, now() + ($5 || ' hours')::interval, 'submission', $6, $7, $8)`,
+          [ctx.tenantId, `Approve ${s.reference}: ${need.level.replace(/_/g, ' ')}`, `${need.reason}. Sign-off required before binding.`,
+           need.level === 'COMMITTEE' || need.level === 'CHIEF_UW' ? 'URGENT' : 'HIGH', String(need.slaHours), req.params.id, s.title, ctx.userId],
+        );
+      }
       await writeAudit(db, ctx, { action: 'refer', entityType: 'submission', entityId: req.params.id, after: { level: need.level, reason: need.reason } });
       return { referralRequired: true, level: need.level, reason: need.reason, slaHours: need.slaHours, approvalId: ins.rows[0]!.id, slaDueAt: ins.rows[0]!.sla_due_at };
     });

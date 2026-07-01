@@ -60,6 +60,7 @@ import { cedentsModule } from './modules/cedents.js';
 import { capacityMgmtModule } from './modules/capacityMgmt.js';
 import { exposureMgmtModule } from './modules/exposureMgmt.js';
 import { territoriesModule } from './modules/territories.js';
+import { tasksModule } from './modules/tasks.js';
 import { productsModule } from './modules/products.js';
 import { platformModule } from './modules/platform.js';
 import { costModule } from './modules/cost.js';
@@ -234,6 +235,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(capacityMgmtModule);
   await app.register(exposureMgmtModule);
   await app.register(territoriesModule);
+  await app.register(tasksModule);
   await app.register(productsModule);
   await app.register(platformModule);
   await app.register(costModule);
