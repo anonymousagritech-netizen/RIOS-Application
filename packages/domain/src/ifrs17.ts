@@ -11,7 +11,7 @@
  * are designed-for; see docs/open-questions.md). All amounts are minor units.
  */
 
-import { Money, money, zero, add, subtract, multiply, max, isNegative } from './money.js';
+import { Money, money, zero, add, subtract, multiply, max, isNegative, type Rounding } from './money.js';
 
 // ---------------------------------------------------------------------------
 // Liability for Remaining Coverage (PAA)
@@ -246,4 +246,80 @@ export function vfaCsmRollforward(input: VfaRollforwardInput): CsmRollforwardRes
     changeInEstimates: add(input.changeInEstimates ?? zero(input.openingCsm.currency), input.changeInVariableFee),
   });
   return base;
+}
+
+// ---------------------------------------------------------------------------
+// Discounting (term structure) - the PV inputs to measurement
+// ---------------------------------------------------------------------------
+
+/**
+ * Present value of a vector of period-end cash flows. `rate` is either a flat
+ * annual rate or a spot-rate vector by maturity (the last spot rate is held for
+ * any longer maturities). Discount factor for period t is 1 / (1 + s_t)^t.
+ */
+export function presentValue(amounts: Money[], rate: number | number[], rounding: Rounding = 'half-even'): Money {
+  if (amounts.length === 0) throw new RangeError('presentValue requires at least one cash flow');
+  const currency = amounts[0]!.currency;
+  let pv = zero(currency);
+  amounts.forEach((amt, i) => {
+    const t = i + 1;
+    const spot = Array.isArray(rate) ? rate[Math.min(i, rate.length - 1)]! : rate;
+    if (!(spot > -1)) throw new RangeError(`Discount rate must be > -100%, got ${spot}`);
+    const df = 1 / Math.pow(1 + spot, t);
+    pv = add(pv, multiply(amt, df, rounding));
+  });
+  return pv;
+}
+
+export interface CsmProjectionInput {
+  openingCsm: Money;
+  interestAccretionRate: number;
+  /** Coverage units provided in each future period; drives the CSM release. */
+  coverageUnits: number[];
+  newBusinessByPeriod?: Money[];
+  changeInEstimatesByPeriod?: Money[];
+}
+
+export interface CsmProjectionPeriod {
+  period: number;
+  released: Money;
+  closingCsm: Money;
+}
+
+export interface CsmProjectionResult {
+  periods: CsmProjectionPeriod[];
+  totalReleased: Money;
+  finalCsm: Money;
+}
+
+/**
+ * Project the CSM amortisation schedule across the coverage period by rolling
+ * `csmRollforward` forward: each period accretes interest, adds new business and
+ * estimate changes, then releases CSM to P&L on a coverage-unit basis. The sum
+ * of the releases plus the final CSM equals the opening CSM grossed up for
+ * interest and adjustments.
+ */
+export function csmProjection(input: CsmProjectionInput): CsmProjectionResult {
+  const currency = input.openingCsm.currency;
+  let csm = input.openingCsm;
+  let remaining = input.coverageUnits.reduce((a, b) => a + b, 0);
+  let totalReleased = zero(currency);
+  const periods: CsmProjectionPeriod[] = [];
+
+  input.coverageUnits.forEach((units, i) => {
+    const rf = csmRollforward({
+      openingCsm: csm,
+      interestAccretionRate: input.interestAccretionRate,
+      newBusinessCsm: input.newBusinessByPeriod?.[i] ?? zero(currency),
+      changeInEstimates: input.changeInEstimatesByPeriod?.[i] ?? zero(currency),
+      coverageUnitsThisPeriod: units,
+      coverageUnitsRemaining: remaining,
+    });
+    periods.push({ period: i + 1, released: rf.released, closingCsm: rf.closingCsm });
+    csm = rf.closingCsm;
+    totalReleased = add(totalReleased, rf.released);
+    remaining -= units;
+  });
+
+  return { periods, totalReleased, finalCsm: csm };
 }
