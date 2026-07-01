@@ -139,8 +139,12 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 
 ## 8. Integration & distribution
 
-- **Webhooks/event subscriptions, Integration Hub, Data Import/Export with mapping/validation, connector
-  framework (ACORD/EBOT/ECOT/bordereaux), Developer Portal, API Marketplace** - designed-for. (§17)
+- **Data import with mapping/validation** is now delivered as a reusable engine (`@rios/domain/dataImport`
+  `mapAndValidate`): column-to-field mapping, typed coercion (string/number/money-minor/date/boolean/currency/
+  enum), per-field rules and a precise per-cell error report, exposed as a dry-run preview at
+  `POST /api/import/validate` (and used by bordereaux ingestion). **Webhooks/event subscriptions, the
+  Integration Hub, export with mapping, the ACORD/EBOT/ECOT connector framework, the Developer Portal and
+  API Marketplace** remain designed-for. (§17)
 - **Portals** (broker, cedent, retrocessionaire, client, coverholder, mobile) - designed-for as thin scoped
   projections. (§9.11)
 
