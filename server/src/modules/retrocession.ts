@@ -19,6 +19,8 @@ import { nextReference } from './parties.js';
 
 // Premium-type financial events count toward written/ceded premium (§7.6).
 const PREMIUM_EVENT_TYPES = ['DEPOSIT_PREMIUM', 'INSTALMENT_PREMIUM', 'ADJUSTMENT_PREMIUM', 'MINIMUM_PREMIUM'];
+// Loss-type financial events count toward incurred-paid losses (gross inwards vs ceded outwards).
+const LOSS_EVENT_TYPES = ['PAID_LOSS', 'CASH_LOSS'];
 
 const createRetrocessionSchema = z.object({
   name: z.string().min(1),
@@ -91,6 +93,95 @@ export async function retrocessionModule(app: FastifyInstance): Promise<void> {
           return { currency: ccy, grossMinor: g.amount, cededMinor: c.amount, netMinor: net.amount };
         });
         return { positions };
+      });
+    },
+  );
+
+  // Portfolio-level gross/ceded/net rollup across inwards + outwards contracts,
+  // per currency and per line of business, from the SAME financial_event source
+  // the accounting chain reconciles (no parallel money path). Gross = events on
+  // INWARDS contracts, ceded = events on OUTWARDS (retro) contracts, net = gross
+  // − ceded; premiums and paid losses are rolled up separately. Currencies never
+  // mix: `totals` is the whole-book position keyed by currency.
+  app.get(
+    '/api/portfolio/net-position',
+    { preHandler: requirePermission('treaty:read') },
+    async (req) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{
+          direction: string;
+          line_of_business: string | null;
+          currency: string;
+          premium_minor: string;
+          loss_minor: string;
+        }>(
+          `select c.direction, c.line_of_business, fe.currency,
+                  coalesce(sum(fe.amount_minor) filter (where fe.event_type = any($1::citext[])), 0)::bigint as premium_minor,
+                  coalesce(sum(fe.amount_minor) filter (where fe.event_type = any($2::citext[])), 0)::bigint as loss_minor
+             from financial_event fe
+             join contract c on c.id = fe.contract_id
+            where not c.is_deleted
+              and fe.event_type = any($3::citext[])
+            group by c.direction, c.line_of_business, fe.currency`,
+          [PREMIUM_EVENT_TYPES, LOSS_EVENT_TYPES, [...PREMIUM_EVENT_TYPES, ...LOSS_EVENT_TYPES]],
+        );
+
+        interface Bucket { grossPremium: Money; cededPremium: Money; grossLoss: Money; cededLoss: Money }
+        const emptyBucket = (ccy: string): Bucket => ({
+          grossPremium: zero(ccy),
+          cededPremium: zero(ccy),
+          grossLoss: zero(ccy),
+          cededLoss: zero(ccy),
+        });
+        const accumulate = (bucket: Bucket, r: (typeof rows)[number]): void => {
+          const premium = money(Number(r.premium_minor), r.currency);
+          const loss = money(Number(r.loss_minor), r.currency);
+          if (r.direction === 'OUTWARDS') {
+            bucket.cededPremium = add(bucket.cededPremium, premium);
+            bucket.cededLoss = add(bucket.cededLoss, loss);
+          } else {
+            bucket.grossPremium = add(bucket.grossPremium, premium);
+            bucket.grossLoss = add(bucket.grossLoss, loss);
+          }
+        };
+        const project = (b: Bucket) => ({
+          grossPremiumMinor: b.grossPremium.amount,
+          cededPremiumMinor: b.cededPremium.amount,
+          netPremiumMinor: subtract(b.grossPremium, b.cededPremium).amount,
+          grossLossMinor: b.grossLoss.amount,
+          cededLossMinor: b.cededLoss.amount,
+          netLossMinor: subtract(b.grossLoss, b.cededLoss).amount,
+        });
+
+        const byCcy = new Map<string, Bucket>();
+        const byLobKey = new Map<string, { lineOfBusiness: string | null; currency: string; bucket: Bucket }>();
+        for (const r of rows) {
+          const ccyBucket = byCcy.get(r.currency) ?? emptyBucket(r.currency);
+          accumulate(ccyBucket, r);
+          byCcy.set(r.currency, ccyBucket);
+
+          const lobKey = `${r.line_of_business ?? '\u0000'}|${r.currency}`;
+          const lobEntry =
+            byLobKey.get(lobKey) ?? { lineOfBusiness: r.line_of_business, currency: r.currency, bucket: emptyBucket(r.currency) };
+          accumulate(lobEntry.bucket, r);
+          byLobKey.set(lobKey, lobEntry);
+        }
+
+        const currencies = [...byCcy.keys()].sort();
+        const byCurrency = currencies.map((ccy) => ({ currency: ccy, ...project(byCcy.get(ccy)!) }));
+        const byLob = [...byLobKey.values()]
+          .sort((a, b) => {
+            if (a.lineOfBusiness !== b.lineOfBusiness) {
+              if (a.lineOfBusiness === null) return 1; // unclassified last
+              if (b.lineOfBusiness === null) return -1;
+              return a.lineOfBusiness < b.lineOfBusiness ? -1 : 1;
+            }
+            return a.currency < b.currency ? -1 : a.currency > b.currency ? 1 : 0;
+          })
+          .map((e) => ({ lineOfBusiness: e.lineOfBusiness, currency: e.currency, ...project(e.bucket) }));
+        const totals = Object.fromEntries(currencies.map((ccy) => [ccy, project(byCcy.get(ccy)!)]));
+        return { byCurrency, byLob, totals };
       });
     },
   );
