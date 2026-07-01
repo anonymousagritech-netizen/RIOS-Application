@@ -36,9 +36,12 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 
 ## 2. Accounting & finance breadth
 
-- **FX & revaluation** - cross-currency arithmetic is deliberately rejected by the domain core; the
-  `exchange_rate` table and `financial_event` settlement columns exist, but an FX/settlement/period-end
-  revaluation engine is designed-for. (§7.6, §16.1)
+- **FX & revaluation** - cross-currency arithmetic is deliberately rejected by the domain core (all crossing
+  goes through explicit rates). A period-end **revaluation engine is now delivered** in `@rios/domain/fx`:
+  single-item and portfolio revaluation to a closing rate, realized (on settlement) vs unrealized FX
+  gain/loss with asset/liability sign correction, per-currency net open exposure, and balanced GL postings
+  that reconcile to zero (unit-tested). What remains designed-for is the **live rate feed** into
+  `exchange_rate` and wiring revaluation output into the period-close posting run. (§7.6, §16.1)
 - **AR/AP, cash management, bank reconciliation, treasury, investments, fixed assets, tax & levy** - the GL
   core (journal/posting/reconcile) is delivered; these sub-ledgers are designed-for. (§9.8)
 - **Statement-of-account lifecycle** (Open → Prepared → … → Settled) - `statement_status` list seeded;
