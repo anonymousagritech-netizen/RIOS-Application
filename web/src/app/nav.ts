@@ -105,6 +105,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Compliance', to: '/compliance', icon: ShieldCheck, permission: 'regulatory:read' },
       { label: 'Returns', to: '/returns', icon: FileSpreadsheet, permission: 'regulatory:read' },
       { label: 'Workflow', to: '/workflow', icon: Workflow, permission: 'workflow:read' },
+      { label: 'Workflow Engine', to: '/workflow-engine', icon: GitBranch, permission: 'workflow:read' },
       { label: 'Delegation', to: '/delegation', icon: GitBranch },
       { label: 'Designer', to: '/designer', icon: Shapes, permission: 'config:read' },
     ],

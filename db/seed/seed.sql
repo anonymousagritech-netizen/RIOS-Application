@@ -933,3 +933,23 @@ select :'tenant_id'::uuid, id, 'ENGINEERING', 'Marsh Risk Consulting', 'ELEVATED
        date '2026-05-15'
 from risk order by inception desc nulls last limit 3
 on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Workflow Engine (§11): live workflow tasks with varied SLA state + a few
+-- pending approvals so the console shows escalations and the approval matrix.
+-- ---------------------------------------------------------------------------
+with inst as (select id, row_number() over (order by started_at nulls last, id) rn from workflow_instance limit 6),
+     t(rn,name,role,status,due) as (values
+       (1,'Peer review pricing','TREATY_UW','pending', now() - interval '2 days'),
+       (2,'Compliance sign-off','ACCOUNTANT','pending', now() - interval '30 hours'),
+       (3,'Bind authorisation','ADMIN','in_progress', now() + interval '2 hours'),
+       (4,'Broker confirmation','TREATY_UW','pending', now() + interval '18 hours'),
+       (5,'Wording check','ADMIN','pending', now() + interval '3 days'),
+       (6,'Claims reserve review','CLAIMS','pending', now() - interval '5 hours'))
+insert into workflow_task (tenant_id, instance_id, name, assignee_role, status, due_at)
+select :'tenant_id'::uuid, inst.id, t.name, t.role, t.status, t.due
+from inst join t on t.rn = inst.rn
+on conflict do nothing;
+
+update approval_request set status='pending', decided_by=null, decided_at=null
+where id in (select id from approval_request order by created_at desc limit 5);
