@@ -128,3 +128,16 @@ describe('formula.explainFormula (AI Formula Assistant)', () => {
     expect(ex.narrative).toContain('claims.net_claim');
   });
 });
+
+describe('formula.canEditField (governance)', () => {
+  it('classifies INPUT / CALCULATED / PROTECTED edit rights', async () => {
+    const { canEditField } = await import('./formula.js');
+    expect(canEditField('INPUT', false).editable).toBe(true);
+    expect(canEditField('PROTECTED', true).editable).toBe(false);
+    const calcNoAuth = canEditField('CALCULATED', false);
+    expect(calcNoAuth.editable).toBe(false);
+    const calcAuth = canEditField('CALCULATED', true);
+    expect(calcAuth.editable).toBe(true);
+    expect(calcAuth.requiresOverrideAudit).toBe(true);
+  });
+});

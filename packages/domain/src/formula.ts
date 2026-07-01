@@ -317,3 +317,35 @@ export function explainFormula(
   const narrative = `${title} is ${total.formatted}, derived from ${parts} (formula "${def.key}" v${result.version}).`;
   return { title, lines, total, narrative };
 }
+
+// --------------------------------------------------------------------------- field-type governance
+/**
+ * The three governance classes for a numeric field:
+ *  - INPUT      user-entered data (e.g. sum insured, rate, share) - freely editable
+ *  - CALCULATED system-computed, but an authorised user may override with an audit trail
+ *  - PROTECTED  always system-generated, never editable (audit timestamps, journal ids,
+ *               posting references)
+ */
+export type FieldClass = 'INPUT' | 'CALCULATED' | 'PROTECTED';
+
+export interface EditDecision {
+  editable: boolean;
+  /** True when editing is an override that must be logged with a reason. */
+  requiresOverrideAudit: boolean;
+  reason: string;
+}
+
+/**
+ * Decide whether a field may be edited given its governance type and whether the
+ * actor holds override authority. INPUT is always editable; CALCULATED is
+ * editable only as an audited override by an authorised user; PROTECTED is never
+ * editable. This is the governance the UI and API both enforce.
+ */
+export function canEditField(fieldClass: FieldClass, hasOverrideAuthority: boolean): EditDecision {
+  if (fieldClass === 'INPUT') return { editable: true, requiresOverrideAudit: false, reason: 'Input field' };
+  if (fieldClass === 'PROTECTED') return { editable: false, requiresOverrideAudit: false, reason: 'System-protected field' };
+  // CALCULATED
+  return hasOverrideAuthority
+    ? { editable: true, requiresOverrideAudit: true, reason: 'Authorised override (audited)' }
+    : { editable: false, requiresOverrideAudit: false, reason: 'Override authority required' };
+}
