@@ -97,8 +97,11 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   non-life premium/reserve risk, SCR module aggregation via a correlation matrix, BSCR + operational + LAC to
   the SCR, the MCR corridor (25-45% of SCR, AMCR floor), the **risk margin** (cost-of-capital method with
   discounting) and **own-funds tiering/eligibility** (Tier limits vs SCR and MCR) with the solvency ratio -
-  all unit-tested. What remains designed-for is the **full sub-module granularity** (every standard-formula
-  sub-risk and the official correlation matrices), **ORSA**, and the **QRT report packs**. (§18.2)
+  all unit-tested. **ORSA** now has a delivered projection backbone (`@rios/domain/orsa`): `projectOrsa`
+  rolls own funds forward against a projected SCR year by year (solvency ratio, surplus, SCR- and
+  appetite-breach flags, first breach year) and `stressOrsa` re-projects under a shock scenario. What remains
+  designed-for is the **full sub-module granularity** (every standard-formula sub-risk and the official
+  correlation matrices) and the **QRT report packs** (assembled via the report-pack engine). (§18.2)
 - **Statutory/market returns** - a governed **report-pack assembler is now delivered**
   (`@rios/domain/reportPack`): template-driven sections and line items with computed sum/diff totals,
   completeness checks and control-total tie-outs, resolved iteratively regardless of declaration order. The
