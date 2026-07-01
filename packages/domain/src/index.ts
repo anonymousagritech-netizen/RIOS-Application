@@ -70,3 +70,4 @@ export * from './underwritingRenewal.js';
 export * from './counterparty.js';
 export * from './capacityMgmt.js';
 export * from './exposureMgmt.js';
+export * from './lossAnalytics.js';

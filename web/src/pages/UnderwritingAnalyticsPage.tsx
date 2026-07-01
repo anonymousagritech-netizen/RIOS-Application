@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Inbox, TrendingUp, Gauge, CheckCircle2, Percent,
   Layers, DollarSign, Building2, Waves, Flame, Sigma, ShieldAlert, AlertTriangle,
+  Receipt, ArrowLeftRight, Undo2, Wallet, Activity, Landmark,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { PageHeader } from '../components/PageHeader';
@@ -77,6 +78,27 @@ interface RenewalRow {
   cedentName: string | null; expiringPremiumMinor: number; renewalPremiumMinor: number; rateChangePct: number | null;
 }
 interface RenewalAnalytics { book: RenewalBook; renewals: RenewalRow[]; }
+interface KeyIncurred { key: string; incurredMinor: number; n: number; }
+interface TechAccount { premiumMinor: number; commissionMinor: number; claimsMinor: number; expensesMinor: number; lossRatioPct: number; commissionRatioPct: number; expenseRatioPct: number; combinedRatioPct: number; technicalResultMinor: number; }
+interface ClaimsAnalytics {
+  totals: { claimCount: number; incurredMinor: number; paidMinor: number; outstandingMinor: number; recoveredMinor: number; premiumMinor: number };
+  lossRatioPct: number;
+  frequencySeverity: { frequency: number; severityMinor: number; claimCount: number };
+  technicalAccount: TechAccount;
+  byLine: KeyIncurred[]; byStatus: { key: string; n: number; incurredMinor: number }[]; byYear: KeyIncurred[];
+  topClaims: { id: string; reference: string; description: string | null; lossDate: string | null; status: string; currency: string; grossLossMinor: number; outstandingMinor: number; cedentName: string | null }[];
+}
+interface FinanceAnalytics {
+  technicalAccount: TechAccount;
+  totals: { premiumMinor: number; commissionMinor: number; claimsMinor: number; otherMinor: number };
+  byType: { key: string; amountMinor: number; n: number }[];
+  cashflow: { key: string; inflowMinor: number; outflowMinor: number; netMinor: number }[];
+}
+interface RetroAnalytics {
+  summary: { programmes: number; layers: number; cededPremiumMinor: number; recoveredMinor: number; outstandingMinor: number };
+  byStructure: { key: string; n: number }[];
+  programmes: { id: string; reference: string | null; name: string; basis: string; npType: string | null; status: string; currency: string; periodStart: string | null; periodEnd: string | null }[];
+}
 
 /* ---------------- Data hooks ---------------- */
 const useKpis = () => useQuery({ queryKey: ['uwa', 'kpis'], queryFn: () => api<Kpis>('/api/underwriting/kpis') });
@@ -84,6 +106,9 @@ const usePortfolio = () => useQuery({ queryKey: ['uwa', 'portfolio'], queryFn: (
 const useCat = () => useQuery({ queryKey: ['uwa', 'cat'], queryFn: () => api<CatAnalytics>('/api/underwriting/analytics/cat') });
 const useRisk = () => useQuery({ queryKey: ['uwa', 'risk'], queryFn: () => api<RiskAnalytics>('/api/underwriting/analytics/risk') });
 const useRenewal = () => useQuery({ queryKey: ['uwa', 'renewal'], queryFn: () => api<RenewalAnalytics>('/api/underwriting/analytics/renewal') });
+const useClaimsA = () => useQuery({ queryKey: ['uwa', 'claims'], queryFn: () => api<ClaimsAnalytics>('/api/underwriting/analytics/claims') });
+const useFinanceA = () => useQuery({ queryKey: ['uwa', 'finance'], queryFn: () => api<FinanceAnalytics>('/api/underwriting/analytics/finance') });
+const useRetroA = () => useQuery({ queryKey: ['uwa', 'retro'], queryFn: () => api<RetroAnalytics>('/api/underwriting/analytics/retro') });
 
 /* ==================================================================== */
 export function UnderwritingAnalyticsPage() {
@@ -104,6 +129,9 @@ export function UnderwritingAnalyticsPage() {
             { id: 'cat', label: 'Catastrophe' },
             { id: 'risk', label: 'Risk' },
             { id: 'renewal', label: 'Renewals' },
+            { id: 'claims', label: 'Claims' },
+            { id: 'finance', label: 'Finance' },
+            { id: 'retro', label: 'Retrocession' },
           ]}
           active={tab}
           onChange={setTab}
@@ -114,6 +142,9 @@ export function UnderwritingAnalyticsPage() {
           {tab === 'cat' && <CatTab />}
           {tab === 'risk' && <RiskTab />}
           {tab === 'renewal' && <RenewalTab />}
+          {tab === 'claims' && <ClaimsTab />}
+          {tab === 'finance' && <FinanceTab />}
+          {tab === 'retro' && <RetroTab />}
         </div>
       </Card>
     </>
@@ -501,5 +532,156 @@ function RenewalTab() {
         </div>
       </Card>
     </>
+  );
+}
+
+/* ---------------- Combined-ratio band helper ---------------- */
+const crStatus = (cr: number): string => (cr < 100 ? 'green' : cr <= 110 ? 'amber' : 'red');
+
+/* ---------------- Claims integration ---------------- */
+function ClaimsTab() {
+  const q = useClaimsA();
+  const d = q.data;
+  const ta = d?.technicalAccount;
+  const columns: Column<NonNullable<typeof d>['topClaims'][number]>[] = [
+    { key: 'ref', header: 'Claim', render: (r) => (<div><div className={styles.cellMain}>{r.description ?? r.reference}</div><div className={styles.cellSub}>{r.reference} · {r.cedentName ?? '—'}</div></div>) },
+    { key: 'loss', header: 'Loss date', render: (r) => <span className={styles.cellSub}>{r.lossDate ?? '—'}</span> },
+    { key: 'status', header: 'Status', render: (r) => <Badge color="slate">{titleCase(r.status)}</Badge> },
+    { key: 'incurred', header: 'Incurred', align: 'right', render: (r) => <span className={styles.num}>{money(r.grossLossMinor, r.currency)}</span> },
+    { key: 'os', header: 'Outstanding', align: 'right', render: (r) => <span className={styles.num}>{money(r.outstandingMinor, r.currency)}</span> },
+  ];
+  return (
+    <>
+      <div className={styles.kpis}>
+        <KpiCard label="Claims" value={String(d?.totals.claimCount ?? 0)} hint="On the book" icon={<ShieldAlert size={20} />} accent="var(--primary)" loading={q.isLoading} />
+        <KpiCard label="Incurred" value={d ? compact(d.totals.incurredMinor) : '—'} hint="Gross incurred loss" icon={<TrendingUp size={20} />} accent="var(--accent-rose)" loading={q.isLoading} />
+        <KpiCard label="Loss ratio" value={d ? `${d.lossRatioPct}%` : '—'} hint="Incurred / premium" icon={<Percent size={20} />} accent="var(--accent-orange)" loading={q.isLoading} />
+        <KpiCard label="Outstanding" value={d ? compact(d.totals.outstandingMinor) : '—'} hint="Case reserves" icon={<Layers size={20} />} accent="var(--accent-violet)" loading={q.isLoading} />
+        <KpiCard label="Avg severity" value={d ? compact(d.frequencySeverity.severityMinor) : '—'} hint={`${d?.frequencySeverity.frequency ?? 0} freq / contract`} icon={<Activity size={20} />} accent="var(--accent-cyan)" loading={q.isLoading} />
+      </div>
+      <div className={styles.grid2}>
+        <Card padded={false}>
+          <CardHeader title="Incurred by line of business" subtitle="Where the losses sit" actions={<Layers size={16} />} />
+          <div className={styles.chartBody}><BarChart data={(d?.byLine ?? []).map((r) => ({ label: titleCase(r.key), value: r.incurredMinor / 100 }))} emptyLabel="No claims yet" /></div>
+        </Card>
+        <Card padded={false}>
+          <CardHeader title="Claims by status" subtitle="Lifecycle distribution" actions={<ShieldAlert size={16} />} />
+          <div className={styles.chartBody}><DonutChart data={(d?.byStatus ?? []).map((r) => ({ label: titleCase(r.key), value: r.n }))} /></div>
+        </Card>
+      </div>
+      {ta && (
+        <Card padded>
+          <CardHeader title="Technical account" subtitle="Premium, commission and losses → combined ratio" />
+          <div className={styles.statRow}>
+            <Stat label="Premium" value={money(ta.premiumMinor)} />
+            <Stat label="Commission" value={money(ta.commissionMinor)} />
+            <Stat label="Claims" value={money(ta.claimsMinor)} />
+            <Stat label="Loss ratio" value={`${ta.lossRatioPct}%`} />
+            <Stat label="Combined ratio" value={`${ta.combinedRatioPct}%`} status={crStatus(ta.combinedRatioPct)} />
+            <Stat label="Technical result" value={money(ta.technicalResultMinor)} status={ta.technicalResultMinor >= 0 ? 'green' : 'red'} />
+          </div>
+        </Card>
+      )}
+      <Card padded={false}>
+        <CardHeader title="Largest claims" subtitle="By incurred loss" />
+        <div className={styles.tableWrap}>
+          <Table columns={columns} rows={d?.topClaims} loading={q.isLoading} rowKey={(r) => r.id} empty={<EmptyState icon={<ShieldAlert size={18} />} title="No claims" message="No claims are recorded against the book yet." />} skeletonRows={5} />
+        </div>
+      </Card>
+    </>
+  );
+}
+
+/* ---------------- Finance integration ---------------- */
+function FinanceTab() {
+  const q = useFinanceA();
+  const d = q.data;
+  const ta = d?.technicalAccount;
+  return (
+    <>
+      <div className={styles.kpis}>
+        <KpiCard label="Premium" value={d ? compact(d.totals.premiumMinor) : '—'} hint="Booked premium" icon={<Wallet size={20} />} accent="var(--primary)" loading={q.isLoading} />
+        <KpiCard label="Commission" value={d ? compact(d.totals.commissionMinor) : '—'} hint="Ceding + brokerage" icon={<Receipt size={20} />} accent="var(--accent-violet)" loading={q.isLoading} />
+        <KpiCard label="Claims paid" value={d ? compact(d.totals.claimsMinor) : '—'} hint="Loss settlements" icon={<ShieldAlert size={20} />} accent="var(--accent-rose)" loading={q.isLoading} />
+        <KpiCard label="Combined ratio" value={ta ? `${ta.combinedRatioPct}%` : '—'} hint="Loss + commission" icon={<Percent size={20} />} accent="var(--accent-orange)" loading={q.isLoading} />
+        <KpiCard label="Technical result" value={ta ? compact(ta.technicalResultMinor) : '—'} hint="Bottom line" icon={<Landmark size={20} />} accent="var(--accent-emerald)" loading={q.isLoading} />
+      </div>
+      <div className={styles.grid2}>
+        <Card padded={false}>
+          <CardHeader title="Ledger by event type" subtitle="Financial event mix" actions={<DollarSign size={16} />} />
+          <div className={styles.chartBody}><BarChart data={(d?.byType ?? []).map((r) => ({ label: titleCase(r.key.replace(/_/g, ' ')), value: r.amountMinor / 100 }))} emptyLabel="No financial events yet" /></div>
+        </Card>
+        <Card padded={false}>
+          <CardHeader title="Net cash flow" subtitle="Inflow − outflow by month" actions={<TrendingUp size={16} />} />
+          <div className={styles.chartBody}><BarChart data={(d?.cashflow ?? []).map((r) => ({ label: r.key, value: r.netMinor / 100, status: r.netMinor >= 0 ? 'green' : 'red' }))} metaColors={{ green: 'var(--c-green)', red: 'var(--c-red)' }} emptyLabel="No cash flow yet" /></div>
+        </Card>
+      </div>
+      {ta && (
+        <Card padded>
+          <CardHeader title="Technical account" subtitle="The underwriting P&L" />
+          <div className={styles.statRow}>
+            <Stat label="Premium" value={money(ta.premiumMinor)} />
+            <Stat label="Commission" value={money(ta.commissionMinor)} />
+            <Stat label="Claims" value={money(ta.claimsMinor)} />
+            <Stat label="Loss ratio" value={`${ta.lossRatioPct}%`} />
+            <Stat label="Commission ratio" value={`${ta.commissionRatioPct}%`} />
+            <Stat label="Combined ratio" value={`${ta.combinedRatioPct}%`} status={crStatus(ta.combinedRatioPct)} />
+            <Stat label="Technical result" value={money(ta.technicalResultMinor)} status={ta.technicalResultMinor >= 0 ? 'green' : 'red'} />
+          </div>
+        </Card>
+      )}
+    </>
+  );
+}
+
+/* ---------------- Retrocession ---------------- */
+function RetroTab() {
+  const q = useRetroA();
+  const d = q.data;
+  const columns: Column<NonNullable<typeof d>['programmes'][number]>[] = [
+    { key: 'name', header: 'Programme', render: (r) => (<div><div className={styles.cellMain}>{r.name}</div><div className={styles.cellSub}>{r.reference ?? '—'}</div></div>) },
+    { key: 'basis', header: 'Basis', render: (r) => <Badge color="indigo">{titleCase((r.npType ?? r.basis).replace(/_/g, ' '))}</Badge> },
+    { key: 'period', header: 'Period', render: (r) => <span className={styles.cellSub}>{r.periodStart ? `${r.periodStart} → ${r.periodEnd ?? '?'}` : '—'}</span> },
+    { key: 'status', header: 'Status', align: 'right', render: (r) => <Badge color="slate">{titleCase(r.status)}</Badge> },
+  ];
+  return (
+    <>
+      <div className={styles.kpis}>
+        <KpiCard label="Retro programmes" value={String(d?.summary.programmes ?? 0)} hint="Outwards protections" icon={<ArrowLeftRight size={20} />} accent="var(--primary)" loading={q.isLoading} />
+        <KpiCard label="Layers" value={String(d?.summary.layers ?? 0)} hint="Across programmes" icon={<Layers size={20} />} accent="var(--accent-violet)" loading={q.isLoading} />
+        <KpiCard label="Ceded premium" value={d ? compact(d.summary.cededPremiumMinor) : '—'} hint="Outwards premium" icon={<Wallet size={20} />} accent="var(--accent-cyan)" loading={q.isLoading} />
+        <KpiCard label="Recovered" value={d ? compact(d.summary.recoveredMinor) : '—'} hint="Retro recoveries" icon={<Undo2 size={20} />} accent="var(--accent-emerald)" loading={q.isLoading} />
+      </div>
+      <div className={styles.grid2}>
+        <Card padded={false}>
+          <CardHeader title="Programme mix" subtitle="By structure" actions={<ArrowLeftRight size={16} />} />
+          <div className={styles.chartBody}><DonutChart data={(d?.byStructure ?? []).map((r) => ({ label: titleCase(r.key.replace(/_/g, ' ')), value: r.n }))} /></div>
+        </Card>
+        <Card padded>
+          <CardHeader title="Recoveries" subtitle="Ceded losses recovered vs outstanding" />
+          <div className={styles.statRow}>
+            <Stat label="Recovered" value={money(d?.summary.recoveredMinor)} status="green" />
+            <Stat label="Outstanding" value={money(d?.summary.outstandingMinor)} status="amber" />
+            <Stat label="Ceded premium" value={money(d?.summary.cededPremiumMinor)} />
+          </div>
+        </Card>
+      </div>
+      <Card padded={false}>
+        <CardHeader title="Retrocession programmes" subtitle="Outwards / retro contracts" />
+        <div className={styles.tableWrap}>
+          <Table columns={columns} rows={d?.programmes} loading={q.isLoading} rowKey={(r) => r.id} empty={<EmptyState icon={<ArrowLeftRight size={18} />} title="No retrocession" message="No outwards or retrocession programmes are recorded yet." />} skeletonRows={5} />
+        </div>
+      </Card>
+    </>
+  );
+}
+
+/* ---------------- Small stat cell ---------------- */
+function Stat({ label, value, status }: { label: string; value: string; status?: string }) {
+  return (
+    <div className={styles.stat} data-status={status}>
+      <span className={styles.statLabel}>{label}</span>
+      <span className={styles.statValue}>{value}</span>
+    </div>
   );
 }
