@@ -12,6 +12,8 @@
   box-shadow: var(--shadow-sm);
   min-height: 120px;
   overflow: hidden;
+  /* Enable container queries so the value can auto-fit the card width. */
+  container-type: inline-size;
   transition: border-color var(--motion-fast), box-shadow var(--motion-base), transform var(--motion-base);
 }
 .card:hover {
@@ -47,11 +49,16 @@
   background: color-mix(in srgb, currentColor 14%, transparent);
 }
 .value {
-  font-size: var(--text-3xl);
+  /* Auto-fit: short values stay at text-3xl; long currency shrinks to fit the
+     card width on one line rather than clipping at the border. */
+  font-size: clamp(1.15rem, 9cqi, var(--text-3xl));
   font-weight: var(--weight-bold);
   letter-spacing: -0.025em;
-  line-height: 1.1;
+  line-height: 1.15;
   color: var(--text);
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 100%;
 }
 .hint { font-size: var(--text-xs); color: var(--text-muted); }
 
