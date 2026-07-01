@@ -258,6 +258,89 @@ const INTENTS: Intent[] = [
     },
   },
 
+  // ---- Claims: loss ratio & reserves -----------------------------------
+  {
+    test: /loss ratio|claims? (summary|position|overview|incurred)|incurred loss|outstanding reserve/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'claims:read') && !has(perms, 'treaty:read')) return answer('You do not have permission to view claims (claims:read).');
+      const t = await db.query<{ n: string; incurred: string; outstanding: string; paid: string }>(
+        `select count(*)::int n, coalesce(sum(gross_loss_minor),0)::bigint incurred,
+                coalesce(sum(outstanding_minor),0)::bigint outstanding, coalesce(sum(paid_minor),0)::bigint paid
+           from claim where not is_deleted`,
+      );
+      const p = await db.query<{ premium: string }>(`select coalesce(sum(amount_minor),0)::bigint premium from financial_event where event_type ilike '%premium%'`);
+      const r = t.rows[0]!;
+      const premium = Number(p.rows[0]!.premium);
+      const lr = premium > 0 ? Math.round((Number(r.incurred) / premium) * 1000) / 10 : 0;
+      return answer(`Claims: ${r.n} on the book, ${fmt(Number(r.incurred))} incurred (${lr}% loss ratio), ${fmt(Number(r.outstanding))} outstanding reserves, ${fmt(Number(r.paid))} paid.`);
+    },
+  },
+
+  // ---- Finance: technical result ---------------------------------------
+  {
+    test: /technical (result|account|profit)|underwriting (result|profit)|combined ratio|finance (summary|position)|profitab/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'treaty:read')) return answer('You do not have permission to view financials (treaty:read).');
+      const a = await db.query<{ premium: string; commission: string; claims: string }>(
+        `select coalesce(sum(amount_minor) filter (where event_type ilike '%premium%'),0)::bigint premium,
+                coalesce(sum(amount_minor) filter (where event_type ilike '%commission%'),0)::bigint commission,
+                coalesce(sum(amount_minor) filter (where claim_id is not null or event_type ilike '%claim%' or event_type ilike '%loss%'),0)::bigint claims
+           from financial_event`,
+      );
+      const row = a.rows[0]!;
+      const premium = Number(row.premium), commission = Number(row.commission), claims = Number(row.claims);
+      const cr = premium > 0 ? Math.round(((claims + commission) / premium) * 1000) / 10 : 0;
+      const result = premium - commission - claims;
+      return answer(`Technical account: ${fmt(premium)} premium, ${fmt(commission)} commission, ${fmt(claims)} claims → combined ratio ${cr}%, technical result ${fmt(result)}.`);
+    },
+  },
+
+  // ---- Retrocession position -------------------------------------------
+  {
+    test: /retro(cession)?( position| summary| programme| protection)?|outward|ceded (premium|business)/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'treaty:read')) return answer('You do not have permission to view retrocession (treaty:read).');
+      const s = await db.query<{ n: string; ceded: string; recovered: string }>(
+        `select count(distinct ct.id)::int n,
+                coalesce((select sum(fe.amount_minor) from financial_event fe join contract c2 on c2.id=fe.contract_id where fe.event_type ilike '%premium%' and (c2.contract_kind='RETROCESSION' or c2.direction='OUTWARDS')),0)::bigint ceded,
+                coalesce(sum(cl.recovered_minor),0)::bigint recovered
+           from contract ct left join claim cl on cl.contract_id=ct.id and not cl.is_deleted
+          where not ct.is_deleted and (ct.contract_kind='RETROCESSION' or ct.direction='OUTWARDS')`,
+      );
+      const r = s.rows[0]!;
+      if (!Number(r.n)) return answer('No retrocession / outwards programmes are recorded yet.');
+      return answer(`Retrocession: ${r.n} outwards programme(s), ${fmt(Number(r.ceded))} ceded premium, ${fmt(Number(r.recovered))} recovered.`);
+    },
+  },
+
+  // ---- Portfolio / executive insights ----------------------------------
+  {
+    test: /portfolio (insight|health|summary|overview)|executive (summary|insight|brief)|how is the (book|portfolio)|book health/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'treaty:read')) return answer('You do not have permission to view the portfolio (treaty:read).');
+      const sub = await db.query<{ open: string; epi: string; avg: string; bound: string }>(
+        `select count(*) filter (where stage not in ('BOUND','DECLINED','LAPSED'))::int open,
+                coalesce(sum(est_premium_minor) filter (where stage not in ('BOUND','DECLINED','LAPSED')),0)::bigint epi,
+                coalesce(round(avg(risk_score)),0)::int avg,
+                count(*) filter (where stage='BOUND')::int bound from submission`,
+      );
+      const cap = await db.query<{ avail: string; consumed: string }>(`select coalesce(sum(available_minor),0)::bigint avail, coalesce(sum(consumed_minor),0)::bigint consumed from capacity_line`);
+      const clm = await db.query<{ incurred: string }>(`select coalesce(sum(gross_loss_minor),0)::bigint incurred from claim where not is_deleted`);
+      const prem = await db.query<{ premium: string }>(`select coalesce(sum(amount_minor),0)::bigint premium from financial_event where event_type ilike '%premium%'`);
+      const s = sub.rows[0]!;
+      const avail = Number(cap.rows[0]!.avail), consumed = Number(cap.rows[0]!.consumed);
+      const util = avail > 0 ? Math.round((consumed / avail) * 100) : 0;
+      const premium = Number(prem.rows[0]!.premium), incurred = Number(clm.rows[0]!.incurred);
+      const lr = premium > 0 ? Math.round((incurred / premium) * 100) : 0;
+      return answer(
+        `Portfolio snapshot: ${s.open} open submission(s) carrying ${fmt(Number(s.epi))} EPI at an average risk score of ${s.avg}/100; ${s.bound} bound. ` +
+        `Capacity is ${util}% utilised. Booked loss ratio is ${lr}%. ` +
+        (util >= 90 ? 'Capacity is running hot — watch new commitments. ' : '') +
+        (lr >= 80 ? 'Loss ratio is elevated. ' : lr > 0 && lr < 60 ? 'Loss experience is favourable. ' : ''),
+      );
+    },
+  },
+
   // ---- Navigation -------------------------------------------------------
   {
     test: /^(go to|open|show me|take me to|navigate to)\b/i,

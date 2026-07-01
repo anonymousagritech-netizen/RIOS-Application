@@ -94,3 +94,24 @@ describe('assistant - mutation guardrails (§12.4)', () => {
     expect(res.json().ok).toBe(true);
   });
 });
+
+describe('assistant - platform-wide grounded intents', () => {
+  it('answers claims, finance, retro, capacity, exposure and portfolio queries', async () => {
+    if (!dbUp) return;
+    const tkn = await token('admin@demo.rios');
+    for (const [msg, needle] of [
+      ['what is the loss ratio', 'loss ratio'],
+      ['technical result', 'technical result'],
+      ['retrocession position', 'retrocession'],
+      ['capacity utilisation', 'apacity'],
+      ['peak accumulation zone', 'accumulation'],
+      ['portfolio insights', 'ortfolio'],
+      ['top brokers', 'broker'],
+      ['top cedents', 'cedent'],
+    ] as const) {
+      const r = await ask(tkn, msg);
+      expect(typeof r.reply, msg).toBe('string');
+      expect(r.reply.toLowerCase(), msg).toContain(String(needle).toLowerCase());
+    }
+  });
+});

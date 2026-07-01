@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, Volume2, Square, FileText, CircleAlert, TrendingUp, CalendarClock, ShieldAlert, ClipboardList } from 'lucide-react';
+import { Mic, Volume2, Square, FileText, CircleAlert, TrendingUp, CalendarClock, ShieldAlert, ClipboardList, Gauge, Landmark } from 'lucide-react';
 import type { AssistantAction } from '@rios/shared';
 import { Drawer } from '../components/Drawer';
 import { Button } from '../components/Button';
@@ -22,9 +22,12 @@ interface ChatTurn {
 }
 
 const SUGGESTIONS = [
-  'How many treaties are active?',
-  'Summarise open claims',
-  'What is total GWP this year?',
+  'Portfolio insights',
+  'What is the loss ratio?',
+  'Technical result',
+  'Capacity utilisation',
+  'Peak accumulation zone',
+  'Top brokers',
 ];
 
 // Quick voice commands shown in voice mode.
@@ -35,6 +38,9 @@ const VOICE_COMMANDS = [
   { icon: CalendarClock, label: "Who's on leave", text: 'Who is on leave today?' },
   { icon: ShieldAlert, label: 'High-risk', text: 'Show high-risk submissions' },
   { icon: ClipboardList, label: 'UW pipeline', text: 'Underwriting pipeline' },
+  { icon: TrendingUp, label: 'Portfolio', text: 'Portfolio insights' },
+  { icon: Gauge, label: 'Capacity', text: 'Capacity utilisation' },
+  { icon: Landmark, label: 'Technical result', text: 'Technical result' },
 ];
 
 export function AssistantDrawer({ open, onClose, autoVoice = false }: { open: boolean; onClose: () => void; autoVoice?: boolean }) {
