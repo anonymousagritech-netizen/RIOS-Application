@@ -174,3 +174,111 @@ export function printReport(kind: ReportKind, s: Submission, catalog: Catalog | 
   // Give the new document a tick to lay out before printing.
   setTimeout(() => { try { w.print(); } catch { /* user can print manually */ } }, 300);
 }
+
+/* ============================================================================
+ * Board / Executive report — a consolidated underwriting pack composed from the
+ * analytics endpoints. Printable (→ PDF), no dependencies.
+ * ========================================================================== */
+
+export interface BoardReportData {
+  generatedAt: string;
+  kpis?: { open: number; bound: number; pipelineEpiMinor: number; avgRiskScore: number; hitRatioPct: number };
+  portfolio?: { totalEpiMinor: number; byStructure: { key: string; n: number; epi: number }[]; byLineOfBusiness: { key: string; n: number; epi: number }[]; topCedents: { key: string; n: number; epi: number }[] };
+  cat?: { totalAalMinor: number; bookPmlMinor: Record<number, number>; bookTvar99Minor: number };
+  claims?: { lossRatioPct: number; totals: { claimCount: number; incurredMinor: number; outstandingMinor: number }; technicalAccount: { combinedRatioPct: number; technicalResultMinor: number } };
+  finance?: { totals: { premiumMinor: number; commissionMinor: number; claimsMinor: number }; technicalAccount: { combinedRatioPct: number; technicalResultMinor: number } };
+  renewal?: { book: { upForRenewal: number; retentionRatePct: number; avgRateChangePct: number | null } };
+}
+
+function kpiCards(cards: { label: string; value: string }[]): string {
+  return `<div class="kpirow">${cards.map((c) => `<div class="kpi"><span class="kpiLabel">${esc(c.label)}</span><span class="kpiValue">${esc(c.value)}</span></div>`).join('')}</div>`;
+}
+
+export function buildBoardReportHtml(d: BoardReportData): string {
+  const parts: string[] = [];
+
+  if (d.kpis) {
+    parts.push(section('Executive summary', kpiCards([
+      { label: 'Open submissions', value: String(d.kpis.open) },
+      { label: 'Pipeline EPI', value: money(d.kpis.pipelineEpiMinor) },
+      { label: 'Bound', value: String(d.kpis.bound) },
+      { label: 'Hit ratio', value: `${d.kpis.hitRatioPct}%` },
+      { label: 'Avg risk score', value: `${d.kpis.avgRiskScore}/100` },
+    ])));
+  }
+  if (d.portfolio) {
+    const rows = d.portfolio.byStructure.slice(0, 8).map((r) => row(title(r.key), `${r.n} risk(s) · ${money(r.epi)}`)).join('');
+    const ced = d.portfolio.topCedents.slice(0, 6).map((r) => row(r.key, `${r.n} · ${money(r.epi)}`)).join('');
+    parts.push(section('Portfolio', `<table class="kv">${row('Total EPI', money(d.portfolio.totalEpiMinor))}${rows}</table>`
+      + (ced ? `<h3>Top cedents</h3><table class="kv">${ced}</table>` : '')));
+  }
+  if (d.cat) {
+    const pmls = Object.entries(d.cat.bookPmlMinor).map(([rp, v]) => row(`${rp}-yr PML`, money(Number(v)))).join('');
+    parts.push(section('Catastrophe', `<table class="kv">${row('Book AAL', money(d.cat.totalAalMinor))}${row('99% TVaR', money(d.cat.bookTvar99Minor))}${pmls}</table>`));
+  }
+  if (d.claims) {
+    parts.push(section('Claims & loss experience', `<table class="kv">
+      ${row('Claim count', String(d.claims.totals.claimCount))}
+      ${row('Incurred', money(d.claims.totals.incurredMinor))}
+      ${row('Outstanding reserves', money(d.claims.totals.outstandingMinor))}
+      ${row('Loss ratio', `${d.claims.lossRatioPct}%`)}
+    </table>`));
+  }
+  if (d.finance) {
+    parts.push(section('Technical account', `<table class="kv">
+      ${row('Premium', money(d.finance.totals.premiumMinor))}
+      ${row('Commission', money(d.finance.totals.commissionMinor))}
+      ${row('Claims', money(d.finance.totals.claimsMinor))}
+      ${row('Combined ratio', `${d.finance.technicalAccount.combinedRatioPct}%`)}
+      ${row('Technical result', money(d.finance.technicalAccount.technicalResultMinor))}
+    </table>`));
+  }
+  if (d.renewal) {
+    parts.push(section('Renewals', `<table class="kv">
+      ${row('Up for renewal', String(d.renewal.book.upForRenewal))}
+      ${row('Retention', `${d.renewal.book.retentionRatePct}%`)}
+      ${row('Average rate change', d.renewal.book.avgRateChangePct == null ? 'n/a' : `${d.renewal.book.avgRateChangePct}%`)}
+    </table>`));
+  }
+
+  return `<!doctype html><html><head><meta charset="utf-8"><title>RIOS Board Report</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, Segoe UI, Roboto, sans-serif; color: #1e293b; margin: 0; padding: 40px; font-size: 12px; line-height: 1.5; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #2563EB; padding-bottom: 16px; margin-bottom: 24px; }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: #2563EB; }
+    .brand span { color: #94a3b8; font-weight: 600; }
+    .doctype { text-align: right; }
+    .doctype h1 { font-size: 16px; margin: 0; text-transform: uppercase; letter-spacing: 0.04em; }
+    .doctype p { margin: 2px 0 0; color: #64748b; font-size: 11px; }
+    h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #2563EB; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin: 22px 0 10px; }
+    h3 { font-size: 11px; margin: 14px 0 6px; color: #475569; }
+    table { width: 100%; border-collapse: collapse; }
+    table.kv th { text-align: left; width: 45%; color: #64748b; font-weight: 500; padding: 4px 8px 4px 0; vertical-align: top; }
+    table.kv td { padding: 4px 0; font-weight: 600; }
+    .kpirow { display: flex; flex-wrap: wrap; gap: 10px; }
+    .kpi { flex: 1 1 120px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; }
+    .kpiLabel { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; font-weight: 700; }
+    .kpiValue { display: block; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; margin-top: 3px; }
+    footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 10px; display: flex; justify-content: space-between; }
+    section { break-inside: avoid; }
+    @media print { body { padding: 24px; } @page { margin: 16mm; } }
+  </style></head><body>
+    <header>
+      <div><div class="brand">RIOS <span>· Reinsurance Intelligent Operating System</span></div></div>
+      <div class="doctype"><h1>Board Report</h1><p>Underwriting portfolio</p><p>${esc(d.generatedAt)}</p></div>
+    </header>
+    ${parts.join('')}
+    <footer><span>Generated by RIOS Underwriting Analytics</span><span>Confidential · board use only</span></footer>
+  </body></html>`;
+}
+
+/** Compose the board report and hand it to the browser print pipeline. */
+export function printBoardReport(d: BoardReportData): void {
+  const w = window.open('', '_blank', 'width=900,height=1000');
+  if (!w) return;
+  w.document.write(buildBoardReportHtml(d));
+  w.document.close();
+  w.focus();
+  setTimeout(() => { try { w.print(); } catch { /* manual */ } }, 300);
+}

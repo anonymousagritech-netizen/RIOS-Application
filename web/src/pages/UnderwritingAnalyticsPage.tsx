@@ -10,10 +10,12 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Inbox, TrendingUp, Gauge, CheckCircle2, Percent,
   Layers, DollarSign, Building2, Waves, Flame, Sigma, ShieldAlert, AlertTriangle,
-  Receipt, ArrowLeftRight, Undo2, Wallet, Activity, Landmark,
+  Receipt, ArrowLeftRight, Undo2, Wallet, Activity, Landmark, FileText,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { printBoardReport } from '../lib/uwReports';
 import { PageHeader } from '../components/PageHeader';
+import { Button } from '../components/Button';
 import { Card, CardHeader } from '../components/Card';
 import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
@@ -113,13 +115,39 @@ const useRetroA = () => useQuery({ queryKey: ['uwa', 'retro'], queryFn: () => ap
 /* ==================================================================== */
 export function UnderwritingAnalyticsPage() {
   const [tab, setTab] = useState('executive');
+  const [reporting, setReporting] = useState(false);
+
+  // Compose the board report from every analytics endpoint, then print (→ PDF).
+  const runBoardReport = async () => {
+    setReporting(true);
+    try {
+      const [kpis, portfolio, cat, claims, finance, renewal] = await Promise.all([
+        api<Kpis>('/api/underwriting/kpis').catch(() => undefined),
+        api<Portfolio>('/api/underwriting/analytics/portfolio').catch(() => undefined),
+        api<CatAnalytics>('/api/underwriting/analytics/cat').catch(() => undefined),
+        api<ClaimsAnalytics>('/api/underwriting/analytics/claims').catch(() => undefined),
+        api<FinanceAnalytics>('/api/underwriting/analytics/finance').catch(() => undefined),
+        api<RenewalAnalytics>('/api/underwriting/analytics/renewal').catch(() => undefined),
+      ]);
+      printBoardReport({
+        generatedAt: new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }),
+        kpis: kpis && { open: kpis.open, bound: kpis.bound, pipelineEpiMinor: kpis.pipelineEpiMinor, avgRiskScore: kpis.avgRiskScore, hitRatioPct: kpis.hitRatioPct },
+        portfolio: portfolio && { totalEpiMinor: portfolio.totalEpiMinor, byStructure: portfolio.byStructure, byLineOfBusiness: portfolio.byLineOfBusiness, topCedents: portfolio.topCedents },
+        cat: cat && { totalAalMinor: cat.totalAalMinor, bookPmlMinor: cat.bookPmlMinor, bookTvar99Minor: cat.bookTvar99Minor },
+        claims: claims && { lossRatioPct: claims.lossRatioPct, totals: claims.totals, technicalAccount: claims.technicalAccount },
+        finance: finance && { totals: finance.totals, technicalAccount: finance.technicalAccount },
+        renewal: renewal && { book: renewal.book },
+      });
+    } finally { setReporting(false); }
+  };
+
   return (
     <>
       <PageHeader
         title="Underwriting Analytics"
         description="Portfolio mix, catastrophe accumulation and risk concentration across the submission book — one console for the underwriting leadership view."
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Underwriting', to: '/underwriting' }, { label: 'Analytics' }]}
-        actions={<Badge color="indigo">Live book</Badge>}
+        actions={<Button variant="secondary" icon={<FileText size={16} />} loading={reporting} onClick={runBoardReport}>Board report</Button>}
       />
       <Card padded={false}>
         <Tabs
