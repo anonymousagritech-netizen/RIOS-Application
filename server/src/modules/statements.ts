@@ -260,7 +260,11 @@ export async function statementsModule(app: FastifyInstance): Promise<void> {
           due_date: string | null;
           status: string;
         }>(
-          `select id, party_id, currency, amount_minor, settled_minor, due_date, status
+          // to_char keeps the date as ISO text: node-postgres would otherwise
+          // hand back a JS Date whose String() ("Fri Jul 31 ...") fails the
+          // domain engine's strict ISO validation (defect D-3).
+          `select id, party_id, currency, amount_minor, settled_minor,
+                  to_char(due_date, 'YYYY-MM-DD') as due_date, status
              from ${table} where status <> 'SETTLED'`,
         );
         const items: AgingItem[] = rows
@@ -268,7 +272,7 @@ export async function statementsModule(app: FastifyInstance): Promise<void> {
           .map((r) => ({
             ref: r.id,
             outstandingMinor: Number(r.amount_minor) - Number(r.settled_minor),
-            dueDate: String(r.due_date).slice(0, 10),
+            dueDate: r.due_date as string,
           }));
         const report = agingReport(items, asOf);
         return { kind, ...report };
