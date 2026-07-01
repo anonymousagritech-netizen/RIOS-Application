@@ -29,11 +29,14 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   each line is validated (amount present/positive, loss-date shape), amounts quantise to integer minor units,
   and the line sum is reconciled against an optional declared control total (out-of-balance files are
   REJECTED, not just error-free ones). Valid premium lines draft `INSTALMENT_PREMIUM` financial events; loss
-  lines feed claims. What remains designed-for is **file parsing** (Excel/CSV/feed → rows) and connector
-  ingestion. (§7.10, §29.6)
+  lines feed claims. **CSV file parsing is now delivered too** (`POST /api/bordereaux/parse`: RFC-4180 with
+  quoted fields/escapes/CRLF, line-numbered errors, ragged-row detection, 50k-row cap). Excel (.xlsx)
+  parsing and streaming/connector ingestion remain designed-for. (§7.10, §29.6)
 - **Facultative & retrocession depth** - modelled in the schema (`contract_kind`, `direction`, party roles)
-  but single-risk fast cession, fac-obligatory, inuring order, and gross/ceded/net position computation across
-  inwards+outwards are designed-for. (§7.4, §7.5)
+  but single-risk fast cession and fac-obligatory remain designed-for; **gross/ceded/net position across
+  inwards+outwards is now delivered** (`GET /api/portfolio/net-position`: premium and losses per currency
+  and line of business from the same `financial_event` source as the accounting chain, net === gross - ceded
+  exact). (§7.4, §7.5)
 - **Placement & slip (MRC)** management, signing-down workflow, written-vs-signed reconciliation UI - schema
   supports participations; flows are designed-for. (§7.3, §29.4)
 - **Commutation & portfolio transfer** valuation is now delivered (`@rios/domain/commutation`): `commute`
@@ -128,8 +131,10 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 - **KMS / per-tenant keys / rotation, encryption-at-rest config, TLS termination** - deployment-layer,
   designed-for. (§14.2)
 - **Immediate token revocation** - bounded by the 12h JWT today; refresh + deny-list designed-for.
-- **Negative cross-tenant isolation test**, **secrets manager**, **SAST/DAST/pen-test**, **SOC/SIEM**,
-  **retention / legal hold / right-to-erasure** - designed-for. (§14.4, §14.5)
+- **The negative cross-tenant isolation test is delivered** (`server/test/tenant_isolation.test.ts`:
+  a second live tenant is provisioned and cross-tenant reads are proven blocked). **Secrets manager**,
+  **SAST/DAST/pen-test**, **SOC/SIEM**, **retention / legal hold / right-to-erasure** - designed-for.
+  (§14.4, §14.5)
 - **Audit coverage** - material business mutations are audited; extending to *all* config writes is a small
   hardening item.
 
