@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Building2, Users, TrendingUp, Percent, Star, MapPin, ShieldCheck,
@@ -237,6 +238,7 @@ export function CedentPage() {
 function CedentDrawer({ id, onClose }: { id: string | null; onClose: () => void }) {
   const { data: c, isLoading } = useCedent(id);
   const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const canWrite = hasPermission('party:write');
   const [showEdit, setShowEdit] = useState(false);
 
@@ -336,6 +338,7 @@ function CedentDrawer({ id, onClose }: { id: string | null; onClose: () => void 
                 columns={portfolioColumns}
                 rows={c.portfolio}
                 rowKey={(r) => r.id}
+                onRowClick={(r) => navigate(`/underwriting?submission=${r.id}`)}
                 empty={<EmptyState icon={<Layers size={18} />} title="No submissions" message="No live submissions from this cedent." />}
                 skeletonRows={3}
               />

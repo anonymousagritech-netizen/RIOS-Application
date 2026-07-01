@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users, Landmark, Award, TrendingUp, Building2, Network,
@@ -597,15 +598,16 @@ function ContractsCard({
 
 /* ---------------- Portfolio ---------------- */
 function PortfolioCard({ items }: { items: BrokerPortfolioItem[] }) {
+  const navigate = useNavigate();
   return (
     <Card padded>
-      <CardHeader title="Portfolio" subtitle={`${items.length} submission${items.length === 1 ? '' : 's'}`} />
+      <CardHeader title="Portfolio" subtitle={`${items.length} submission${items.length === 1 ? '' : 's'} · click to open`} />
       {items.length === 0 ? (
         <p className={styles.emptyNote}>No submissions from this broker.</p>
       ) : (
         <ul className={styles.list}>
           {items.map((p) => (
-            <li key={p.id} className={styles.item}>
+            <li key={p.id} className={styles.item} style={{ cursor: 'pointer' }} onClick={() => navigate(`/underwriting?submission=${p.id}`)}>
               <div className={styles.itemMain}>
                 <div className={styles.itemTop}>
                   <span className={styles.itemName}>{p.title}</span>

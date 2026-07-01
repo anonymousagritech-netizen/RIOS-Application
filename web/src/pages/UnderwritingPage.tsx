@@ -8,6 +8,7 @@ import {
   Sparkles, AlertTriangle, ScrollText, ClipboardCheck, GitCompareArrows,
   FolderOpen, FilePlus2, PenTool, History, ScanText,
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { api, ApiError, downloadFile } from '../lib/api';
 import { printReport } from '../lib/uwReports';
 import { useParties, useCurrencies } from '../lib/queries';
@@ -130,9 +131,12 @@ function useDocuments(id: string | null) {
 const DOC_KINDS = ['SLIP', 'SOV', 'LOSS_RUN', 'WORDING', 'FINANCIALS', 'BORDEREAU', 'EMAIL', 'OTHER'] as const;
 
 export function UnderwritingPage() {
+  const [params, setParams] = useSearchParams();
   const [stage, setStage] = useState('');
   const [showNew, setShowNew] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  // Deep-link: /underwriting?submission=<id> opens that submission's drawer, so
+  // other modules (broker/cedent portfolios) can link straight into it.
+  const [detailId, setDetailId] = useState<string | null>(params.get('submission'));
   const kpis = useKpis();
   const list = useSubmissions(stage);
   const k = kpis.data;
@@ -203,7 +207,7 @@ export function UnderwritingPage() {
       </Card>
 
       <NewSubmissionModal open={showNew} onClose={() => setShowNew(false)} onCreated={(id) => { setShowNew(false); setDetailId(id); }} />
-      <SubmissionDrawer id={detailId} onClose={() => setDetailId(null)} />
+      <SubmissionDrawer id={detailId} onClose={() => { setDetailId(null); if (params.has('submission')) { params.delete('submission'); setParams(params, { replace: true }); } }} />
     </>
   );
 }
