@@ -16,7 +16,8 @@ import {
   scenarioGrid, sensitivity, ratios,
   modelCatalog, validateTerms,
   requiredApproval, levelCovers, LEVEL_PERMISSION,
-  type UwStage, type RiskFactorInput, type RiskBand, type ApprovalLevel,
+  recommendedClauses, missingInformation, attentionFlags, executiveSummary,
+  type UwStage, type RiskFactorInput, type RiskBand, type ApprovalLevel, type AdvisorInput,
 } from '@rios/domain';
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
@@ -411,6 +412,59 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
         grid: scenarioGrid({ basePremiumMinor: basePremium, expectedLossMinor: expectedLoss, expenseRatio, rateChanges, lossShocks }),
         sensitivity: sensitivity({ basePremiumMinor: basePremium, expectedLossMinor: expectedLoss, expenseRatio, rateChanges, lossShocks }),
         rateChanges, lossShocks,
+      };
+    });
+  });
+
+  // ---- Underwriting advisor (deterministic decision support) ---------------
+  // Clause recommendations, missing-info detection, consistency flags, an
+  // executive summary and similar-risk benchmarking from the book. No LLM.
+  app.get<{ Params: { id: string } }>('/api/underwriting/submissions/:id/advisor', { preHandler: requirePermission('treaty:read') }, async (req, reply) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<Record<string, unknown>>(
+        `select s.*, ced.short_name as "cedentName"
+           from submission s left join party ced on ced.id = s.cedent_party_id
+          where s.id = $1`, [req.params.id],
+      );
+      const r = rows[0];
+      if (!r) { reply.code(404); return { error: 'Submission not found' }; }
+      const input: AdvisorInput = {
+        title: r.title as string, kind: r.kind as string, structure: r.structure as string | null,
+        lineOfBusiness: r.line_of_business as string | null, currency: r.currency as string,
+        cedentName: r.cedentName as string | null, territory: r.territory as string | null,
+        inception: r.inception as string | null, expiry: r.expiry as string | null,
+        sumInsuredMinor: r.sum_insured_minor as number | null, limitMinor: r.limit_minor as number | null,
+        attachmentMinor: r.attachment_minor as number | null, estPremiumMinor: r.est_premium_minor as number | null,
+        targetPremiumMinor: r.target_premium_minor as number | null, lossRatioPct: r.loss_ratio_pct as number | null,
+        catExposed: r.cat_exposed as boolean | null, priorClaims: r.prior_claims as number | null,
+        yearsWithCedent: r.years_with_cedent as number | null, riskScore: r.risk_score as number | null,
+        riskBand: r.risk_band as string | null, terms: r.terms as Record<string, unknown> | null,
+      };
+
+      // Similar risks: other submissions sharing the structure or line, most
+      // comparable first (same structure + line ranks highest), priced ones only.
+      const similar = await db.query(
+        `select s.id, s.reference, s.title, s.structure, s.line_of_business as "lineOfBusiness",
+                s.stage, s.currency, s.risk_score as "riskScore", s.risk_band as "riskBand",
+                s.loss_ratio_pct as "lossRatioPct", s.est_premium_minor as "estPremiumMinor",
+                s.target_premium_minor as "targetPremiumMinor",
+                (case when s.structure is not distinct from $2 then 2 else 0 end)
+              + (case when s.line_of_business is not distinct from $3 then 1 else 0 end) as match
+           from submission s
+          where s.id <> $1
+            and (s.structure is not distinct from $2 or s.line_of_business is not distinct from $3)
+          order by match desc, s.created_at desc
+          limit 5`,
+        [req.params.id, r.structure ?? null, r.line_of_business ?? null],
+      );
+
+      return {
+        clauses: recommendedClauses(input.structure, input.lineOfBusiness),
+        missingInfo: missingInformation(input),
+        flags: attentionFlags(input),
+        executiveSummary: executiveSummary(input),
+        similar: similar.rows,
       };
     });
   });

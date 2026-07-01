@@ -149,6 +149,30 @@ describe('Underwriting: analytics, scenarios & approval matrix', () => {
     expect(detail.json().termsCheck.ok).toBe(true);
   });
 
+  it('produces underwriting advice: clauses, gaps, flags, summary, similar risks', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    const create = await app.inject({
+      method: 'POST', url: '/api/underwriting/submissions', headers: auth,
+      payload: {
+        title: 'Advisor cat XL', structure: 'CAT_XL', lineOfBusiness: 'PROPERTY', currency: 'USD',
+        limit: 100_000_000, estPremium: 200_000, lossRatioPct: 120, catExposed: true, classHazard: 5,
+        terms: { peril: 'Windstorm' },
+      },
+    });
+    const id = create.json().id as string;
+    const adv = await app.inject({ method: 'GET', url: `/api/underwriting/submissions/${id}/advisor`, headers: auth });
+    expect(adv.statusCode).toBe(200);
+    const body = adv.json();
+    expect(body.clauses.some((c: { code: string }) => c.code === 'HOURS')).toBe(true);
+    expect(body.missingInfo.length).toBeGreaterThan(0);
+    // LR 120% and a thin rate on line should both flag.
+    expect(body.flags.some((f: { code: string }) => f.code === 'LR_OVER_100')).toBe(true);
+    expect(typeof body.executiveSummary).toBe('string');
+    expect(body.executiveSummary.length).toBeGreaterThan(40);
+    expect(Array.isArray(body.similar)).toBe(true);
+  });
+
   it('exports the pipeline as CSV', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };

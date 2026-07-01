@@ -5,6 +5,7 @@ import {
   FileText, Calculator, Send, Play, XCircle, StickyNote,
   Download, Printer, FileSignature, FileBarChart,
   ShieldCheck, Clock, ThumbsUp, ThumbsDown, ArrowUpCircle,
+  Sparkles, AlertTriangle, ScrollText, ClipboardCheck, GitCompareArrows,
 } from 'lucide-react';
 import { api, ApiError, downloadFile } from '../lib/api';
 import { printReport } from '../lib/uwReports';
@@ -54,6 +55,15 @@ interface Approval {
   slaDueAt: string | null; decidedAt: string | null; note: string | null; createdAt: string; slaBreached: boolean;
 }
 interface ApprovalRequirement { level: ApprovalLevel; referralRequired: boolean; reason: string; slaHours: number; chain: ApprovalLevel[]; }
+interface Clause { code: string; title: string; rationale: string; }
+interface InfoGap { field: string; label: string; severity: 'required' | 'recommended'; }
+interface AttentionFlag { code: string; severity: 'high' | 'medium' | 'low'; message: string; }
+interface SimilarRisk {
+  id: string; reference: string; title: string; structure: string | null; lineOfBusiness: string | null;
+  stage: string; currency: string; riskScore: number | null; riskBand: string | null;
+  lossRatioPct: number | null; estPremiumMinor: number | null; targetPremiumMinor: number | null;
+}
+interface Advisor { clauses: Clause[]; missingInfo: InfoGap[]; flags: AttentionFlag[]; executiveSummary: string; similar: SimilarRisk[]; }
 
 /* ---------------- Types ---------------- */
 interface SubmissionRow {
@@ -103,6 +113,9 @@ function useSubmissions(stage: string) {
 }
 function useSubmission(id: string | null) {
   return useQuery({ queryKey: ['uw', 'submission', id], queryFn: () => api<SubmissionDetail>(`/api/underwriting/submissions/${id}`), enabled: !!id });
+}
+function useAdvisor(id: string | null) {
+  return useQuery({ queryKey: ['uw', 'advisor', id], queryFn: () => api<Advisor>(`/api/underwriting/submissions/${id}/advisor`), enabled: !!id });
 }
 
 export function UnderwritingPage() {
@@ -393,6 +406,7 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
   const qc = useQueryClient();
   const { data: s, isLoading } = useSubmission(id);
   const { data: catalog } = useModelCatalog();
+  const { data: advisor, isLoading: advisorLoading } = useAdvisor(id);
   const { hasPermission } = useAuth();
   const canApprove = hasPermission('underwriting:approve');
   const [note, setNote] = useState('');
@@ -481,6 +495,9 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
             <Fact label="Loss ratio" value={s.lossRatioPct != null ? `${s.lossRatioPct}%` : '—'} />
             <Fact label="Cat exposed" value={s.catExposed ? 'Yes' : 'No'} />
           </div>
+
+          {/* AI underwriting advisor */}
+          <AdvisorCard advisor={advisor} loading={advisorLoading} currency={s.currency} />
 
           {/* Model-specific slip terms */}
           <ModelTermsCard submission={s} catalog={catalog} />
@@ -606,6 +623,76 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
         </div>
       )}
     </Drawer>
+  );
+}
+
+/* The deterministic AI underwriting advisor: executive summary, consistency
+ * flags, recommended clauses, missing information and similar-risk benchmarking. */
+const FLAG_COLOR: Record<string, 'red' | 'amber' | 'slate'> = { high: 'red', medium: 'amber', low: 'slate' };
+
+function AdvisorCard({ advisor, loading, currency }: { advisor?: Advisor; loading: boolean; currency: string }) {
+  return (
+    <Card padded>
+      <CardHeader title={<span className={styles.drawerTitle}><Sparkles size={15} /> Underwriting advisor</span>} subtitle="Grounded, rule-based decision support" />
+      {loading || !advisor ? (
+        <p className={styles.cellSub}>Analysing submission…</p>
+      ) : (
+        <div className={styles.advisor}>
+          <p className={styles.advisorSummary}>{advisor.executiveSummary}</p>
+
+          {advisor.flags.length > 0 && (
+            <div className={styles.advisorBlock}>
+              <div className={styles.advisorLabel}><AlertTriangle size={13} /> Attention flags</div>
+              <ul className={styles.flagList}>
+                {advisor.flags.map((f) => (
+                  <li key={f.code} className={styles.flagItem}>
+                    <Badge color={FLAG_COLOR[f.severity] ?? 'slate'}>{titleCase(f.severity)}</Badge>
+                    <span>{f.message}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {advisor.missingInfo.length > 0 && (
+            <div className={styles.advisorBlock}>
+              <div className={styles.advisorLabel}><ClipboardCheck size={13} /> Missing information</div>
+              <div className={styles.chipRow}>
+                {advisor.missingInfo.map((g) => (
+                  <span key={g.field} className={`${styles.infoChip} ${g.severity === 'required' ? styles.infoChipReq : ''}`}>{g.label}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className={styles.advisorBlock}>
+            <div className={styles.advisorLabel}><ScrollText size={13} /> Recommended clauses</div>
+            <div className={styles.chipRow}>
+              {advisor.clauses.map((c) => <span key={c.code} className={styles.clauseChip} title={c.rationale}>{c.title}</span>)}
+            </div>
+          </div>
+
+          {advisor.similar.length > 0 && (
+            <div className={styles.advisorBlock}>
+              <div className={styles.advisorLabel}><GitCompareArrows size={13} /> Similar risks in the book</div>
+              <ul className={styles.similarList}>
+                {advisor.similar.map((r) => (
+                  <li key={r.id} className={styles.similarItem}>
+                    <span className={styles.similarTitle}>{r.title}</span>
+                    <span className={styles.similarMeta}>
+                      {r.riskBand ? <Badge color={BAND_COLOR[r.riskBand] ?? 'gray'}>{r.riskScore}</Badge> : null}
+                      {r.lossRatioPct != null ? <span className={styles.cellSub}>LR {r.lossRatioPct}%</span> : null}
+                      <span className={styles.num}>{money(r.targetPremiumMinor ?? r.estPremiumMinor, r.currency || currency)}</span>
+                      <Badge color={STAGE_COLOR[r.stage] ?? 'slate'}>{titleCase(r.stage)}</Badge>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 

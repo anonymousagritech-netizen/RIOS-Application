@@ -142,6 +142,33 @@
 .approvalSlaBreached { color: var(--danger); font-weight: var(--weight-semibold); }
 .approvalActions { display: flex; gap: var(--space-2); flex-shrink: 0; }
 
+/* AI underwriting advisor */
+.advisor { display: flex; flex-direction: column; gap: var(--space-4); }
+.advisorSummary {
+  margin: 0; font-size: var(--text-sm); line-height: 1.55; color: var(--text);
+  padding: var(--space-3); border-radius: var(--radius-md);
+  background: var(--surface-2); border-left: 3px solid var(--accent-violet);
+}
+.advisorBlock { display: flex; flex-direction: column; gap: var(--space-2); }
+.advisorLabel { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-2xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
+.flagList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.flagItem { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: var(--space-2); font-size: var(--text-sm); color: var(--text); }
+.chipRow { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.clauseChip {
+  font-size: var(--text-xs); padding: 2px var(--space-2); border-radius: var(--radius-full);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-muted); cursor: default;
+}
+.infoChip {
+  font-size: var(--text-xs); padding: 2px var(--space-2); border-radius: var(--radius-full);
+  border: 1px dashed var(--border); background: var(--surface-2); color: var(--text-muted);
+}
+.infoChipReq { border-style: solid; border-color: color-mix(in srgb, var(--accent-orange) 45%, var(--border)); background: var(--c-amber-bg); color: var(--c-amber); }
+.similarList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.similarItem { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.similarItem:last-child { border-bottom: none; }
+.similarTitle { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.similarMeta { display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+
 /* Activity */
 .noteRow { display: flex; gap: var(--space-2); margin-bottom: var(--space-3); }
 .activity { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
