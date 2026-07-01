@@ -34,6 +34,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
       { label: 'Search', to: '/search', icon: Search },
       { label: 'Intelligence', to: '/intelligence', icon: Sparkles },
+      { label: 'Executive', to: '/executive', icon: TrendingUp, permission: 'reporting:read' },
       { label: 'Mobile', to: '/mobile', icon: Smartphone },
     ],
   },

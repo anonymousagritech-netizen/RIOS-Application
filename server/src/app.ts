@@ -68,6 +68,7 @@ import { clientsModule } from './modules/clients.js';
 import { treatyAdminModule } from './modules/treatyAdmin.js';
 import { organizationModule } from './modules/organization.js';
 import { scheduledReportsModule } from './modules/scheduledReports.js';
+import { executiveModule } from './modules/executive.js';
 import { productsModule } from './modules/products.js';
 import { platformModule } from './modules/platform.js';
 import { costModule } from './modules/cost.js';
@@ -250,6 +251,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(treatyAdminModule);
   await app.register(organizationModule);
   await app.register(scheduledReportsModule);
+  await app.register(executiveModule);
   await app.register(productsModule);
   await app.register(platformModule);
   await app.register(costModule);
