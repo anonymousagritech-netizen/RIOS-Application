@@ -1,0 +1,57 @@
+/* Copied helpers (kpis grid, num, cellMain, cellSub) — kept local per design system. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.cellMain { font-weight: var(--weight-semibold); color: var(--text); }
+.cellSub { font-size: var(--text-sm); color: var(--text-muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Dimension filter chips */
+.filterBar { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); }
+.filterChip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-full);
+  background: var(--surface-2); color: var(--text-muted);
+  font-size: var(--text-xs); font-weight: var(--weight-medium); cursor: pointer;
+  transition: border-color var(--motion-fast), background var(--motion-fast), color var(--motion-fast);
+}
+.filterChip:hover { border-color: var(--primary); color: var(--text); }
+.filterActive { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+
+.tableWrap { padding: 0 var(--space-2) var(--space-2); }
+
+/* Alerts list */
+.alertList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.alertItem {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius-md);
+  border-left: 3px solid var(--border); background: var(--surface-2);
+}
+.alertHigh { border-left-color: var(--accent-rose); background: var(--c-red-bg); }
+.alertMedium { border-left-color: var(--accent-orange); background: var(--c-amber-bg); }
+.alertIcon { flex-shrink: 0; display: inline-flex; }
+.alertHigh .alertIcon { color: var(--accent-rose); }
+.alertMedium .alertIcon { color: var(--accent-orange); }
+.alertMain { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.alertLabel { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--text); }
+.alertMsg { font-size: var(--text-xs); color: var(--text-muted); }
+.alertUtil { margin-left: auto; flex-shrink: 0; font-variant-numeric: tabular-nums; font-weight: var(--weight-semibold); }
+
+/* Utilisation cell mini-bar */
+.utilCell { display: flex; align-items: center; gap: var(--space-2); justify-content: flex-end; }
+.utilBar { width: 64px; height: 6px; border-radius: var(--radius-full); background: var(--surface-3); overflow: hidden; }
+.utilFill { display: block; height: 100%; border-radius: var(--radius-full); background: var(--c-green); }
+.utilFill[data-status='WATCH'] { background: var(--c-blue); }
+.utilFill[data-status='WARN'] { background: var(--c-orange); }
+.utilFill[data-status='BREACH'] { background: var(--c-red); }
+
+/* Forecast KPI breach indicator */
+.forecastBreach { color: var(--accent-rose); font-weight: var(--weight-semibold); display: inline-flex; align-items: center; gap: 3px; }
+.forecastOk { color: var(--accent-emerald); display: inline-flex; align-items: center; gap: 3px; }
+
+.chipRow { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }

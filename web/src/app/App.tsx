@@ -8,6 +8,10 @@ import { TreatiesPage } from '../pages/TreatiesPage';
 import { UnderwritingPage } from '../pages/UnderwritingPage';
 import { UnderwritingAnalyticsPage } from '../pages/UnderwritingAnalyticsPage';
 import { UnderwritingApprovalsPage } from '../pages/UnderwritingApprovalsPage';
+import { BrokerPage } from '../pages/BrokerPage';
+import { CedentPage } from '../pages/CedentPage';
+import { CapacityPage } from '../pages/CapacityPage';
+import { ExposureMgmtPage } from '../pages/ExposureMgmtPage';
 import { TreatyDetailPage } from '../pages/TreatyDetailPage';
 import { PartiesPage } from '../pages/PartiesPage';
 import { PartyDetailPage } from '../pages/PartyDetailPage';
@@ -89,6 +93,10 @@ export function App() {
         <Route path="/underwriting" element={<UnderwritingPage />} />
         <Route path="/underwriting/analytics" element={<UnderwritingAnalyticsPage />} />
         <Route path="/underwriting/approvals" element={<UnderwritingApprovalsPage />} />
+        <Route path="/brokers" element={<BrokerPage />} />
+        <Route path="/cedents" element={<CedentPage />} />
+        <Route path="/capacity" element={<CapacityPage />} />
+        <Route path="/exposure-management" element={<ExposureMgmtPage />} />
         <Route path="/treaties" element={<TreatiesPage />} />
         <Route path="/treaties/:id" element={<TreatyDetailPage />} />
         <Route path="/parties" element={<PartiesPage />} />
