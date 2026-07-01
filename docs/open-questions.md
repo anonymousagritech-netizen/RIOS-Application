@@ -34,8 +34,11 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   inwards+outwards are designed-for. (§7.4, §7.5)
 - **Placement & slip (MRC)** management, signing-down workflow, written-vs-signed reconciliation UI - schema
   supports participations; flows are designed-for. (§7.3, §29.4)
-- **Commutation, portfolio transfer, indexation/stability clauses, hours clauses, occurrence definitions** -
-  terminal states and event types are modelled; the calculation logic is designed-for.
+- **Commutation & portfolio transfer** valuation is now delivered (`@rios/domain/commutation`): `commute`
+  prices a commutation as the present value of outstanding plus a risk load and returns the economic
+  gain/loss to cedent and reinsurer; `lossPortfolioTransfer` builds the LPT premium (PV + risk margin +
+  expense load) and the ceding insurer's capital-relief benefit - unit-tested. **Indexation/stability
+  clauses, hours clauses and occurrence definitions** remain designed-for.
 - **Reinstatement schedules** beyond the simple cumulative-fraction model; **sliding scale** stepped (vs
   interpolated) variants - config-driven extensions.
 
