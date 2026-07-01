@@ -60,8 +60,10 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   application are now delivered** (`@rios/domain/aging`: `agingReport` buckets outstanding by days past due
   with an outstanding-weighted average; `applyReceipt` allocates a receipt oldest/largest/as-is with
   integer-exact minor units; `invoiceStatus` resolves settled/part-paid/overdue). Surfaced at
-  `GET /api/statements/aging?kind=AR|AP`. **Bank reconciliation, treasury, investments, fixed assets and
-  tax/levy** sub-ledgers remain designed-for. (§9.8)
+  `GET /api/statements/aging?kind=AR|AP`. **Tax & levy** is now delivered too (`@rios/domain/tax`): a
+  cascading levy stack (`computeLevies` with compounding lines), withholding tax, US **Federal Excise Tax**
+  with income-tax-treaty exemption (`federalExciseTax`) and a tax gross-up (`grossUp`). **Bank reconciliation,
+  treasury, investments and fixed assets** sub-ledgers remain designed-for. (§9.8)
 - **Statement-of-account lifecycle** (Open → Prepared → … → Settled) - **delivered**: guarded status
   transitions (`STATEMENT_TRANSITIONS`) with the AR/AP invoice spin-off on issue. (§28.5)
 - **Profit-commission jurisdictional variants** - one common basis delivered; others would be configuration.
