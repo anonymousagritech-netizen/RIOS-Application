@@ -1,0 +1,32 @@
+name: 🔁 Keep RIOS Backend Alive
+
+# Pings the deployed RIOS backend every 5 minutes so free-tier hosts
+# (e.g. Render) don't spin the service down for inactivity.
+#
+# Set the target URL once, then this needs no further edits:
+#   Repo → Settings → Secrets and variables → Actions → Variables →
+#   New variable  →  RIOS_BACKEND_URL = https://<your-rios-service>.onrender.com
+# If the variable is unset it falls back to the placeholder below.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping RIOS Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health endpoint
+        env:
+          BACKEND_URL: ${{ vars.RIOS_BACKEND_URL || 'https://rios-backend.onrender.com' }}
+        run: |
+          echo "Pinging ${BACKEND_URL}/health ..."
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 30 "${BACKEND_URL}/health")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" -eq 200 ]; then
+            echo "✅ RIOS backend is alive!"
+          else
+            echo "⚠️ RIOS backend returned status $STATUS"
+          fi
