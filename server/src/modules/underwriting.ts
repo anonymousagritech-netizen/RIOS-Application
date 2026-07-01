@@ -24,6 +24,7 @@ import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
 import { nextReference } from './parties.js';
+import { notify } from './notifications.js';
 
 const createSchema = z.object({
   title: z.string().min(1),
@@ -596,6 +597,14 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
            need.level === 'COMMITTEE' || need.level === 'CHIEF_UW' ? 'URGENT' : 'HIGH', String(need.slaHours), req.params.id, s.title, ctx.userId],
         );
       }
+      // Integration: notify the assigned underwriter (or requester) that a
+      // referral is open, with a deep link straight to the submission.
+      await notify(db, ctx.tenantId, {
+        userId: s.assigned_to ?? ctx.userId, kind: 'REFERRAL', severity: 'WARNING',
+        title: `${s.reference} referred to ${need.level.replace(/_/g, ' ')}`,
+        body: `${need.reason} — sign-off required before binding (SLA ${need.slaHours}h).`,
+        link: `/underwriting?submission=${req.params.id}`, entityType: 'submission', entityId: req.params.id,
+      });
       await writeAudit(db, ctx, { action: 'refer', entityType: 'submission', entityId: req.params.id, after: { level: need.level, reason: need.reason } });
       return { referralRequired: true, level: need.level, reason: need.reason, slaHours: need.slaHours, approvalId: ins.rows[0]!.id, slaDueAt: ins.rows[0]!.sla_due_at };
     });

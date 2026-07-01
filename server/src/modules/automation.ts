@@ -296,9 +296,9 @@ export async function automationModule(app: FastifyInstance): Promise<void> {
     const ctx = authContext(req);
     return runAs(ctx, async (db) => {
       const { rows } = await db.query(
-        `select id, channel, subject, body, entity_type as "entityType", entity_id as "entityId",
+        `select id, channel, subject, body, kind, severity, link, entity_type as "entityType", entity_id as "entityId",
                 is_read as "isRead", sent_at as "sentAt", created_at as "createdAt"
-           from notification where recipient_user_id = $1 order by created_at desc`,
+           from notification where recipient_user_id = $1 order by created_at desc limit 100`,
         [ctx.userId],
       );
       return { notifications: rows };

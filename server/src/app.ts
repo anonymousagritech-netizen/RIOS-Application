@@ -62,6 +62,8 @@ import { exposureMgmtModule } from './modules/exposureMgmt.js';
 import { territoriesModule } from './modules/territories.js';
 import { tasksModule } from './modules/tasks.js';
 import { auditLogModule } from './modules/auditLog.js';
+import { notificationsModule } from './modules/notifications.js';
+import { clientsModule } from './modules/clients.js';
 import { productsModule } from './modules/products.js';
 import { platformModule } from './modules/platform.js';
 import { costModule } from './modules/cost.js';
@@ -238,6 +240,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(territoriesModule);
   await app.register(tasksModule);
   await app.register(auditLogModule);
+  await app.register(notificationsModule);
+  await app.register(clientsModule);
   await app.register(productsModule);
   await app.register(platformModule);
   await app.register(costModule);
