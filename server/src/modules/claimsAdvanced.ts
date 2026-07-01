@@ -9,7 +9,9 @@
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { reinstatementPremium, fromMajor, money, type Layer } from '@rios/domain';
+import {
+  reinstatementPremium, fromMajor, money, recoveryPosition, type Layer, type RecoveryEntry, type RecoveryType,
+} from '@rios/domain';
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
@@ -318,13 +320,45 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
           reply.code(404);
           return { error: 'Claim not found' };
         }
+        const ccy = claim.currency;
+        // Compute the net position through the tested domain engine: expected vs
+        // received recoveries, a by-type breakdown and floored net incurred/paid.
+        const recs = await db.query<{ recovery_type: string; amount_minor: number; status: string; collected_date: string | null }>(
+          `select recovery_type, amount_minor, status, collected_date from recovery where claim_id = $1`,
+          [claim.id],
+        );
+        const entries: RecoveryEntry[] = recs.rows.map((r) => ({
+          type: r.recovery_type as RecoveryType,
+          amount: money(Number(r.amount_minor), ccy),
+          status:
+            String(r.status).toUpperCase() === 'RECEIVED' ||
+            String(r.status).toUpperCase() === 'COLLECTED' ||
+            r.collected_date != null
+              ? 'RECEIVED'
+              : 'EXPECTED',
+        }));
+        const pos = recoveryPosition(
+          money(Number(claim.gross_loss_minor), ccy),
+          money(Number(claim.paid_minor), ccy),
+          entries,
+        );
+        const byTypeMinor: Record<string, number> = {};
+        for (const [k, v] of Object.entries(pos.byType)) byTypeMinor[k] = v.amount;
         return {
           claimId: claim.id,
-          currency: claim.currency,
+          currency: ccy,
           grossLossMinor: claim.gross_loss_minor,
           paidMinor: claim.paid_minor,
           recoveredMinor: claim.recovered_minor,
+          // Backward-compatible net (gross - all recorded recoveries).
           netMinor: claim.gross_loss_minor - claim.recovered_minor,
+          // Domain-computed detail.
+          receivedRecoveredMinor: pos.receivedRecovered.amount,
+          expectedRecoveredMinor: pos.expectedRecovered.amount,
+          netIncurredMinor: pos.netIncurred.amount,
+          netPaidMinor: pos.netPaid.amount,
+          outstandingMinor: pos.outstanding.amount,
+          byTypeMinor,
         };
       });
     },
