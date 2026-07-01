@@ -75,6 +75,7 @@ import { workflowEngineModule } from './modules/workflowEngine.js';
 import { searchEnhancedModule } from './modules/searchEnhanced.js';
 import { aiInsightsModule } from './modules/aiInsights.js';
 import { productsModule } from './modules/products.js';
+import { formulasModule } from './modules/formulas.js';
 import { platformModule } from './modules/platform.js';
 import { costModule } from './modules/cost.js';
 import { messagingModule } from './modules/messaging.js';
@@ -263,6 +264,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(searchEnhancedModule);
   await app.register(aiInsightsModule);
   await app.register(productsModule);
+  await app.register(formulasModule);
   await app.register(platformModule);
   await app.register(costModule);
   await app.register(messagingModule);
