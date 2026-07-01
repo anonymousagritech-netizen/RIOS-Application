@@ -85,17 +85,16 @@ def text(s, x, y, w, h, runs, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP, sp_aft
     return tb
 
 
-def bullets(s, x, y, w, h, items, size=13, color=SLATE, gap=6, marker_color=BLUE):
-    tb = s.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
-    tf = tb.text_frame; tf.word_wrap = True
+def bullets(s, x, y, w, h, items, size=13, color=SLATE, gap=6, marker_color=BLUE, row=None):
+    """Bulleted list with a small drawn square marker per row (font-glyph free)."""
+    if row is None:
+        row = (size / 72.0) * 1.55 + gap / 72.0
     for i, it in enumerate(items):
-        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.space_after = Pt(gap); p.line_spacing = 1.05
-        rm = p.add_run(); rm.text = '▸  '
-        rm.font.size = Pt(size); rm.font.color.rgb = marker_color; rm.font.bold = True; rm.font.name = FONT
-        r = p.add_run(); r.text = it
-        r.font.size = Pt(size); r.font.color.rgb = color; r.font.name = FONT
-    return tb
+        ry = y + i * row
+        rect(s, x, ry + 0.055, 0.1, 0.1, fill=marker_color, radius=0.28)
+        text(s, x + 0.24, ry - 0.04, w - 0.24, row + 0.25,
+             [[(it, size, color, False)]], line_spacing=1.05)
+    return y + len(items) * row
 
 
 def chip(s, x, y, w, txt, fill=PALE, fg=BLUE, h=0.42, size=11, bold=True):
@@ -104,11 +103,22 @@ def chip(s, x, y, w, txt, fill=PALE, fg=BLUE, h=0.42, size=11, bold=True):
     return c
 
 
-def icon_tile(s, x, y, glyph, color=BLUE, size=0.62, gsize=22):
+def icon_tile(s, x, y, glyph=None, color=BLUE, size=0.62, gsize=22):
+    """A rounded accent tile with a clean drawn inner mark (no glyph fonts)."""
     t = rect(s, x, y, size, size, fill=None, radius=0.28)
     t.fill.solid(); t.fill.fore_color.rgb = _mix(color, WHITE, 0.14)
-    text(s, x, y, size, size, [[(glyph, gsize, color, True)]], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    inner = size * 0.34
+    ix = x + (size - inner) / 2
+    iy = y + (size - inner) / 2
+    rect(s, ix, iy, inner, inner, fill=color, radius=0.30)
     return t
+
+
+def ai_badge(s, x, y, color=INDIGO):
+    """Small 'AI' pill badge — letters only, safe in every font."""
+    rect(s, x, y, 0.52, 0.34, fill=color, radius=0.5)
+    text(s, x, y - 0.02, 0.52, 0.34, [[('AI', 12, WHITE, True)]],
+         align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
 
 def _mix(a, b, t):
