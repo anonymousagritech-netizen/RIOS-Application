@@ -42,6 +42,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Underwriting', to: '/underwriting', icon: Gavel, permission: 'treaty:read' },
       { label: 'UW Analytics', to: '/underwriting/analytics', icon: BarChart3, permission: 'treaty:read' },
+      { label: 'Approvals', to: '/underwriting/approvals', icon: ShieldCheck, permission: 'treaty:read' },
       { label: 'Treaties', to: '/treaties', icon: FileText, permission: 'treaty:read' },
       { label: 'Facultative', to: '/facultative', icon: FileCheck2, permission: 'facultative:read' },
       { label: 'Retrocession', to: '/retrocession', icon: ArrowLeftRight, permission: 'retro:read' },
