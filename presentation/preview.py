@@ -133,17 +133,28 @@ def render_slide(slide, idx):
             # autoshape / textbox
             fill = shape_fill(sh)
             line = shape_line(sh)
-            is_oval = False
+            sname = ''
             try:
-                is_oval = 'OVAL' in str(sh.auto_shape_type)
+                sname = str(sh.auto_shape_type)
             except Exception:
                 pass
             if fill or line:
-                if is_oval:
+                if 'OVAL' in sname:
                     dr.ellipse(box, fill=fill, outline=line, width=2 if line else 1)
+                elif 'DOWN_ARROW' in sname:
+                    cx = L + Wd/2; sw = Wd*0.42/2; hh = Hd*0.5
+                    dr.polygon([(cx-sw,T),(cx+sw,T),(cx+sw,T+Hd-hh),(L+Wd,T+Hd-hh),
+                                (cx,T+Hd),(L,T+Hd-hh),(cx-sw,T+Hd-hh)], fill=fill or (150,160,175))
+                elif 'RIGHT_ARROW' in sname:
+                    cy = T + Hd/2; sh2 = Hd*0.44/2; hw = Wd*0.5
+                    dr.polygon([(L,cy-sh2),(L+Wd-hw,cy-sh2),(L+Wd-hw,T),(L+Wd,cy),
+                                (L+Wd-hw,T+Hd),(L+Wd-hw,cy+sh2),(L,cy+sh2)], fill=fill or (150,160,175))
+                elif 'HEXAGON' in sname:
+                    q = Wd*0.25
+                    dr.polygon([(L+q,T),(L+Wd-q,T),(L+Wd,T+Hd/2),(L+Wd-q,T+Hd),
+                                (L+q,T+Hd),(L,T+Hd/2)], fill=fill, outline=line)
                 else:
-                    rounded(dr, box, min(Wd,Hd)//6, radius_fill(sh), fill, line, 2 if line else 1) if False else \
-                        rounded(dr, box, guess_radius(sh, Wd, Hd), fill, line, 2 if line else 1)
+                    rounded(dr, box, guess_radius(sh, Wd, Hd), fill, line, 2 if line else 1)
             if sh.has_text_frame and sh.text_frame.text.strip():
                 draw_text(dr, sh)
         except Exception as e:
