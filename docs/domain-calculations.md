@@ -2,7 +2,7 @@
 
 **Phase:** 10 (Backend Development - domain core) · **Domain:** Reinsurance Core / Accounting · **Version:** 1.0
 **Roles consulted:** Reinsurance Domain Expert, Enterprise Solution Architect, QA Lead, Technical Writer
-**Status:** Delivered (38 passing unit tests)
+**Status:** Delivered (461 passing unit tests)
 
 ## Purpose & scope
 
@@ -326,12 +326,12 @@ This same contract is exercised end-to-end by the server vertical-slice integrat
 - **Brief §7.2** (proportional/non-proportional terms) → §2, §3 here.
 - **Brief §7.3 / §7.6** (lifecycle, technical vs financial accounting) → §4 here and the bind→statement→post→reconcile chain.
 - **Brief §16.1, §20** (money correctness, no float) → §1 here.
-- **Brief §4.4** (correct before clever, explainable) → `workings` objects, pure functions, 38 unit tests.
+- **Brief §4.4** (correct before clever, explainable) → `workings` objects, pure functions, 461 unit tests.
 - Forward: the server treaties/accounting modules ([api-reference.md](./api-reference.md)) consume these functions.
 
 ## Cross-cutting compliance note
 
-Pure, deterministic, fully unit-tested (`npm test` → 38 passing). No hard-coded business values beyond
+Pure, deterministic, fully unit-tested (`npm test` → 461 passing). No hard-coded business values beyond
 ISO defaults that are configuration in the platform (§10.5). Every monetary result is integer-exact and
 reconcilable (§16, §20).
 

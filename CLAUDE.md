@@ -11,7 +11,7 @@ the product/engineering brief is `Reinsurance-ERP-Build-Brief.md` (its §-refere
 ## Repository layout (npm workspaces monorepo)
 
 ```
-packages/domain   @rios/domain   Pure reinsurance math. No I/O/framework/DB. 38 unit tests.
+packages/domain   @rios/domain   Pure reinsurance math. No I/O/framework/DB. 461 unit tests.
                                  money.ts, proportional.ts, nonproportional.ts, accounting.ts
 packages/shared   @rios/shared   API DTO contracts shared by server + web (stand-in for OpenAPI).
 server            @rios/server   Fastify + PostgreSQL. Modules: reference, parties, treaties,
@@ -57,7 +57,7 @@ curl -s localhost:4000/api/auth/login -H 'content-type: application/json' \
 
 ```bash
 npm test                                   # all workspaces
-npm test --workspace packages/domain       # 38 domain unit tests (no DB needed)
+npm test --workspace packages/domain       # 461 domain unit tests (no DB needed)
 npm test --workspace server                # integration: needs a migrated+seeded DB (run db:reset first)
 ```
 

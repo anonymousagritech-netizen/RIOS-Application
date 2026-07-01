@@ -16,7 +16,7 @@ RIOS is the foundation and a **working vertical slice** of a commercial-grade re
 
 This repository delivers a **genuinely runnable** system - not slideware:
 
-- A pure, unit-tested **reinsurance calculation core** (the "correct before clever" heart) - proportional & non-proportional math, commissions, reinstatements, and a reconcilable accounting chain. **38 passing tests.**
+- A pure, unit-tested **reinsurance calculation core** (the "correct before clever" heart) - proportional & non-proportional math, commissions, reinstatements, and a reconcilable accounting chain. **461 passing tests.**
 - A **multi-tenant PostgreSQL data layer** with row-level-security isolation, an immutable hash-chained audit log, and a party/role-centric model - **verified** (no tenant sees another's rows).
 - A **Fastify API** implementing the core lifecycle: parties, treaties (with a validated state machine), the bind→financial-event→statement→GL-posting→**reconciliation** chain, claims & reserve movements, and a permission-bound, confirmation-gated AI assistant.
 - A **premium React frontend** (tokenised design system, light/dark, command palette, dashboards, assistant drawer).

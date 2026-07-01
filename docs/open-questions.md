@@ -118,7 +118,11 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 
 ## 5. Security & trust
 
-- **SSO/SAML/OIDC, Azure AD, LDAP, MFA** - designed-for; schema-ready (nullable `password_hash`). (§14.1)
+- **TOTP MFA and OIDC SSO are delivered** (enrol/verify/disable endpoints and provider-configured OIDC,
+  both tested). **SAML** serves SP metadata but the assertion-consumer signature validation is
+  provider-wired per deployment; **Azure AD/LDAP** connectors and **WebAuthn** attestation verification
+  remain designed-for. **Login rate limiting is delivered** (fixed-window per IP+email lockout); token
+  refresh/revocation remains bounded by the 12h JWT. (§14.1)
 - **ABAC policy enforcement** - modelled (`user_role.scope`, `org_unit`), not applied in queries. **FLS /
   column masking** - designed-for. (§14.2)
 - **KMS / per-tenant keys / rotation, encryption-at-rest config, TLS termination** - deployment-layer,

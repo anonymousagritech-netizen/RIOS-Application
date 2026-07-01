@@ -112,16 +112,36 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.get('/health', async () => ({ status: 'ok', service: 'rios-server', time: new Date().toISOString() }));
 
   // --- Auth ---
+  // Login rate limiting (defect D-4): a fixed 15-minute window per IP+email.
+  // After 10 failed attempts the account/IP pair is locked out for the rest of
+  // the window; a successful login clears the counter. In-memory by design:
+  // multi-instance deployments should back this with Redis.
+  const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+  const LOGIN_MAX_FAILURES = 10;
+  const loginFailures = new Map<string, { count: number; windowStart: number }>();
+  const loginKey = (req: { ip: string }, email: string) => `${req.ip}|${email.toLowerCase()}`;
+
   app.post('/api/auth/login', async (req, reply) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
       reply.code(400);
       return { error: 'Invalid login', details: parsed.error.flatten() };
     }
+    const key = loginKey(req, parsed.data.email);
+    const now = Date.now();
+    const entry = loginFailures.get(key);
+    if (entry && now - entry.windowStart < LOGIN_WINDOW_MS && entry.count >= LOGIN_MAX_FAILURES) {
+      reply.code(429);
+      return { error: 'Too many failed login attempts. Try again later.' };
+    }
     try {
       // Returns either { token, user } or, when MFA is enabled, { mfaRequired, mfaToken }.
-      return await login(parsed.data.email, parsed.data.password, parsed.data.tenantCode);
+      const result = await login(parsed.data.email, parsed.data.password, parsed.data.tenantCode);
+      loginFailures.delete(key);
+      return result;
     } catch (err) {
+      const fresh = !entry || now - entry.windowStart >= LOGIN_WINDOW_MS;
+      loginFailures.set(key, fresh ? { count: 1, windowStart: now } : { count: entry.count + 1, windowStart: entry.windowStart });
       const e = err as AuthError;
       reply.code(e.status ?? 401);
       return { error: e.message };
@@ -281,13 +301,30 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(automationStudioModule);
   await app.register(assistantEvalModule);
 
-  app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
+  app.setErrorHandler((err: Error & { statusCode?: number; code?: string }, req, reply) => {
     app.log.error(err);
     if (err instanceof AuthError) {
       reply.code(err.status).send({ error: err.message });
       return;
     }
-    reply.code(err.statusCode ?? 500).send({ error: err.message ?? 'Internal error' });
+    // Database / driver errors carry a SQLSTATE `code` (e.g. 22P02, 23505).
+    // Never leak raw driver messages or SQLSTATE to clients (defect D-4):
+    // map common constraint/input classes to clean 400s, everything else to a
+    // generic 500. Full detail stays in the server log above.
+    const sqlState = typeof err.code === 'string' && /^[0-9A-Z]{5}$/.test(err.code) ? err.code : null;
+    if (sqlState) {
+      const badInput = sqlState.startsWith('22'); // data exception (bad uuid, bad date, ...)
+      const constraint = sqlState.startsWith('23'); // integrity violation (fk, unique, not null)
+      if (badInput || constraint) {
+        reply.code(400).send({ error: badInput ? 'Invalid input for one or more fields' : 'Request violates a data constraint' });
+        return;
+      }
+      reply.code(500).send({ error: 'Internal error' });
+      return;
+    }
+    const status = err.statusCode ?? 500;
+    // 4xx messages are intentional (validation, not-found); 5xx are sanitised.
+    reply.code(status).send({ error: status < 500 ? (err.message ?? 'Request failed') : 'Internal error' });
   });
 
   return app;

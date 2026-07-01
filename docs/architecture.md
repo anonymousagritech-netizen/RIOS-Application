@@ -62,7 +62,7 @@ history are append-only event records; full CQRS read models and a real event bu
 | Database | PostgreSQL 16 | system of record; pgcrypto + citext; RLS |
 | Cache/queue | Redis 7 | provisioned in compose; not yet wired |
 | Web | React 18, Vite 6, React Router, TanStack Query | tokenised design system |
-| Tests | vitest | 38 domain + 4 server integration |
+| Tests | vitest | 461 domain + 203 server integration |
 | Local infra | docker-compose (db, redis) | IaC/K8s designed-for |
 
 Designed-for substrate from §15.3 not yet present: Kafka/event bus, ElasticSearch/OpenSearch, object storage,

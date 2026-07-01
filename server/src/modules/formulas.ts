@@ -56,7 +56,7 @@ async function storedLatest(db: Db, key: string): Promise<FormulaDefinition | un
 
 export async function formulasModule(app: FastifyInstance): Promise<void> {
   // ---- List active formula definitions (fallback to the seed library) -------
-  app.get<{ Querystring: { category?: string } }>('/api/formulas', async (req) => {
+  app.get<{ Querystring: { category?: string } }>('/api/formulas', { preHandler: requirePermission() }, async (req) => {
     const ctx = authContext(req);
     const category = req.query.category;
     return runAs(ctx, async (db) => {
@@ -75,7 +75,7 @@ export async function formulasModule(app: FastifyInstance): Promise<void> {
   });
 
   // ---- Latest active version of a key + the list of stored versions ---------
-  app.get<{ Params: { key: string } }>('/api/formulas/:key', async (req, reply) => {
+  app.get<{ Params: { key: string } }>('/api/formulas/:key', { preHandler: requirePermission() }, async (req, reply) => {
     const ctx = authContext(req);
     const key = req.params.key;
     return runAs(ctx, async (db) => {
@@ -128,7 +128,7 @@ export async function formulasModule(app: FastifyInstance): Promise<void> {
 
   // ---- Evaluate a formula (pure calc; definition resolved body>stored>default) -
   app.post<{ Params: { key: string }; Body: { inputs?: Record<string, number>; definition?: FormulaDefinition } }>(
-    '/api/formulas/:key/evaluate', async (req, reply) => {
+    '/api/formulas/:key/evaluate', { preHandler: requirePermission() }, async (req, reply) => {
       const ctx = authContext(req);
       const key = req.params.key;
       const inputs = req.body?.inputs ?? {};
@@ -142,7 +142,7 @@ export async function formulasModule(app: FastifyInstance): Promise<void> {
     });
 
   // ---- Validate a candidate definition (sandbox; no persistence) ------------
-  app.post<{ Body: { definition?: FormulaDefinition } }>('/api/formulas/validate', async (req, reply) => {
+  app.post<{ Body: { definition?: FormulaDefinition } }>('/api/formulas/validate', { preHandler: requirePermission() }, async (req, reply) => {
     const parsed = definitionSchema.safeParse(req.body?.definition);
     if (!parsed.success) {
       return { ok: false, errors: parsed.error.flatten().formErrors.concat(
@@ -182,10 +182,13 @@ export async function formulasModule(app: FastifyInstance): Promise<void> {
          returning id, to_char(created_at,'YYYY-MM-DD"T"HH24:MI:SSZ') as "createdAt"`,
         [ctx.tenantId, b.entityType, b.entityId, b.field, b.formulaKey ?? null,
          b.originalMinor, b.overrideMinor, b.reason.trim(), ctx.userId]);
+      // The audited entity is the override row itself (audit_log.entity_id is
+      // uuid); the business target (which may be an external, non-uuid ref)
+      // travels in the before/after payload.
       await writeAudit(db, ctx, {
-        action: 'formula_override', entityType: b.entityType, entityId: b.entityId,
-        before: { field: b.field, valueMinor: b.originalMinor },
-        after: { field: b.field, valueMinor: b.overrideMinor, reason: b.reason.trim() },
+        action: 'formula_override', entityType: 'formula_override', entityId: rows[0]!.id,
+        before: { entityType: b.entityType, entityId: b.entityId, field: b.field, valueMinor: b.originalMinor },
+        after: { entityType: b.entityType, entityId: b.entityId, field: b.field, valueMinor: b.overrideMinor, reason: b.reason.trim() },
         actorLabel: req.auth?.displayName,
       });
       reply.code(201);
@@ -201,7 +204,7 @@ export async function formulasModule(app: FastifyInstance): Promise<void> {
   });
 
   // ---- List overrides for an entity -----------------------------------------
-  app.get<{ Querystring: { entityType?: string; entityId?: string } }>('/api/formulas/overrides', async (req, reply) => {
+  app.get<{ Querystring: { entityType?: string; entityId?: string } }>('/api/formulas/overrides', { preHandler: requirePermission() }, async (req, reply) => {
     const ctx = authContext(req);
     const { entityType, entityId } = req.query;
     if (!entityType || !entityId) { reply.code(400); return { error: 'entityType and entityId are required' }; }
@@ -237,10 +240,11 @@ export async function formulasModule(app: FastifyInstance): Promise<void> {
       await db.query(
         `update formula_override set status='RESTORED', restored_at=now(), restored_by=$2 where id = $1`,
         [req.params.id, ctx.userId]);
+      // Audit the override row (uuid); the business target may be a non-uuid ref.
       await writeAudit(db, ctx, {
-        action: 'formula_override_restore', entityType: row.entity_type, entityId: row.entity_id,
-        before: { field: row.field, status: 'ACTIVE' },
-        after: { field: row.field, status: 'RESTORED', valueMinor: row.original_minor == null ? null : Number(row.original_minor) },
+        action: 'formula_override_restore', entityType: 'formula_override', entityId: req.params.id,
+        before: { entityType: row.entity_type, entityId: row.entity_id, field: row.field, status: 'ACTIVE' },
+        after: { entityType: row.entity_type, entityId: row.entity_id, field: row.field, status: 'RESTORED', valueMinor: row.original_minor == null ? null : Number(row.original_minor) },
         actorLabel: req.auth?.displayName,
       });
       return { id: req.params.id, status: 'RESTORED' };
