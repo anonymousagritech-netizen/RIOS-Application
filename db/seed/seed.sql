@@ -694,3 +694,52 @@ insert into announcement (tenant_id, title, body, category, posted_by)
 select :'tenant_id'::uuid, 'New leave policy in effect', 'Annual leave entitlement is now 20 days. Submit requests through the HRMS leave workflow for manager approval.', 'hr', u.id
 from app_user u where u.tenant_id=:'tenant_id'::uuid and u.email='admin@demo.rios'
   and not exists (select 1 from announcement a where a.tenant_id=:'tenant_id'::uuid and a.title='New leave policy in effect');
+
+-- ---------------------------------------------------------------------------
+-- Underwriting counterparties, capacity & exposure demo data (migration 0042)
+-- ---------------------------------------------------------------------------
+
+-- Broker & cedent relationship profiles.
+insert into broker_profile (party_id, tenant_id, tier, region, default_commission_pct, relationship_score, notes)
+select p.id, :'tenant_id'::uuid, 'GLOBAL', 'EMEA', 12.5, 84, 'Strategic global partner.'
+from party p where p.tenant_id=:'tenant_id'::uuid and p.short_name='Meridian Brokers'
+on conflict (party_id) do nothing;
+
+insert into cedent_profile (party_id, tenant_id, domicile, rating_agency, rating, financial_strength_minor, relationship_score, capacity_allocated_minor, notes)
+select p.id, :'tenant_id'::uuid, 'US', 'AM Best', 'A+', 2500000000, 78, 5000000000, 'Long-standing cedent, strong renewals.'
+from party p where p.tenant_id=:'tenant_id'::uuid and p.short_name='Atlantic Mutual'
+on conflict (party_id) do nothing;
+
+insert into cedent_profile (party_id, tenant_id, domicile, rating_agency, rating, financial_strength_minor, relationship_score, capacity_allocated_minor, notes)
+select p.id, :'tenant_id'::uuid, 'BM', 'S&P', 'AA-', 4000000000, 71, 3000000000, 'Growing programme.'
+from party p where p.tenant_id=:'tenant_id'::uuid and p.short_name='Coral Bay'
+on conflict (party_id) do nothing;
+
+-- A broker terms-of-business contract.
+insert into broker_contract (tenant_id, broker_party_id, reference, kind, commission_pct, brokerage_pct, period_start, period_end, status)
+select :'tenant_id'::uuid, p.id, 'TOBA-2026-001', 'TOBA', 12.5, 10, date '2026-01-01', date '2026-12-31', 'ACTIVE'
+from party p where p.tenant_id=:'tenant_id'::uuid and p.short_name='Meridian Brokers'
+  and not exists (select 1 from broker_contract bc where bc.tenant_id=:'tenant_id'::uuid and bc.reference='TOBA-2026-001');
+
+-- Capacity register: overall + by peril / line / geography.
+insert into capacity_line (tenant_id, dimension, dim_key, label, period, available_minor, consumed_minor, warn_pct) values
+  (:'tenant_id'::uuid, 'OVERALL', 'ALL', 'Total book capacity', '2026', 50000000000, 34000000000, 80),
+  (:'tenant_id'::uuid, 'PERIL', 'WINDSTORM', 'US Windstorm', '2026', 12000000000, 11200000000, 80),
+  (:'tenant_id'::uuid, 'PERIL', 'EARTHQUAKE', 'JP Earthquake', '2026', 8000000000, 4200000000, 80),
+  (:'tenant_id'::uuid, 'PERIL', 'FLOOD', 'EU Flood', '2026', 5000000000, 2100000000, 80),
+  (:'tenant_id'::uuid, 'LINE_OF_BUSINESS', 'PROPERTY', 'Property', '2026', 20000000000, 15500000000, 80),
+  (:'tenant_id'::uuid, 'LINE_OF_BUSINESS', 'CASUALTY', 'Casualty', '2026', 10000000000, 4800000000, 80),
+  (:'tenant_id'::uuid, 'GEOGRAPHY', 'US', 'United States', '2026', 22000000000, 19800000000, 80),
+  (:'tenant_id'::uuid, 'GEOGRAPHY', 'JP', 'Japan', '2026', 9000000000, 3600000000, 80)
+on conflict do nothing;
+
+-- Exposure register: geolocated, peril/line-tagged insured values.
+insert into exposure_item (tenant_id, name, country, admin1, city, cresta, peril, line_of_business, tiv_minor, pml_minor) values
+  (:'tenant_id'::uuid, 'Miami commercial tower', 'US', 'FL', 'Miami', 'US-FL', 'Windstorm', 'PROPERTY', 45000000000, 9000000000),
+  (:'tenant_id'::uuid, 'Tampa industrial park', 'US', 'FL', 'Tampa', 'US-FL', 'Windstorm', 'PROPERTY', 28000000000, 5600000000),
+  (:'tenant_id'::uuid, 'Houston refinery', 'US', 'TX', 'Houston', 'US-TX', 'Windstorm', 'ENERGY', 62000000000, 15500000000),
+  (:'tenant_id'::uuid, 'Tokyo office complex', 'JP', 'Tokyo', 'Tokyo', 'JP-TK', 'Earthquake', 'PROPERTY', 51000000000, 20400000000),
+  (:'tenant_id'::uuid, 'Osaka logistics hub', 'JP', 'Osaka', 'Osaka', 'JP-OS', 'Earthquake', 'PROPERTY', 33000000000, 11500000000),
+  (:'tenant_id'::uuid, 'London riverside estate', 'GB', 'England', 'London', 'GB-LN', 'Flood', 'PROPERTY', 24000000000, 4800000000),
+  (:'tenant_id'::uuid, 'Rotterdam port cargo', 'NL', 'South Holland', 'Rotterdam', 'NL-RT', 'Flood', 'MARINE_CARGO', 18000000000, 3600000000)
+on conflict do nothing;

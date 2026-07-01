@@ -182,6 +182,82 @@ const INTENTS: Intent[] = [
     },
   },
 
+  // ---- Brokers: top performers -----------------------------------------
+  {
+    test: /top broker|broker (performance|ranking|league)|best broker|which broker/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'party:read')) return answer('You do not have permission to view brokers (party:read).');
+      const r = await db.query<{ id: string; name: string; gwp: number }>(
+        `select p.id, p.legal_name name, coalesce(sum(s.est_premium_minor),0)::bigint gwp
+           from party p join party_role pr on pr.party_id=p.id and pr.role_code='broker' and pr.is_active
+           left join submission s on s.broker_party_id=p.id
+          where not p.is_deleted group by p.id, p.legal_name order by gwp desc limit 6`,
+      );
+      if (!r.rows.length) return answer('No brokers on the book yet.');
+      const lines = r.rows.map((b) => `• ${b.name} - ${fmt(Number(b.gwp))} placed`).join('\n');
+      return answer(`Top brokers by premium placed:\n${lines}`, r.rows.map((b) => ({ entity: 'broker', id: b.id, label: b.name })));
+    },
+  },
+
+  // ---- Cedents: top relationships / loss ratio -------------------------
+  {
+    test: /top cedent|cedent (performance|ranking|loss ratio|league)|which cedent|best cedent/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'party:read')) return answer('You do not have permission to view cedents (party:read).');
+      const r = await db.query<{ id: string; name: string; gwp: number; incurred: number }>(
+        `select p.id, p.legal_name name, coalesce(sum(s.est_premium_minor),0)::bigint gwp,
+                coalesce((select sum(c.gross_loss_minor) from claim c join contract ct on ct.id=c.contract_id where ct.cedent_party_id=p.id and not c.is_deleted),0)::bigint incurred
+           from party p join party_role pr on pr.party_id=p.id and pr.role_code='cedent' and pr.is_active
+           left join submission s on s.cedent_party_id=p.id
+          where not p.is_deleted group by p.id, p.legal_name order by gwp desc limit 6`,
+      );
+      if (!r.rows.length) return answer('No cedents on the book yet.');
+      const lines = r.rows.map((c) => {
+        const lr = Number(c.gwp) > 0 ? Math.round((Number(c.incurred) / Number(c.gwp)) * 100) : 0;
+        return `• ${c.name} - ${fmt(Number(c.gwp))} GWP, ${lr}% loss ratio`;
+      }).join('\n');
+      return answer(`Top cedents by premium:\n${lines}`, r.rows.map((c) => ({ entity: 'cedent', id: c.id, label: c.name })));
+    },
+  },
+
+  // ---- Capacity: utilisation & breaches --------------------------------
+  {
+    test: /capacity (util|remaining|available|alert|breach|position)|remaining capacity|capacity utili|how much capacity/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'treaty:read')) return answer('You do not have permission to view capacity (treaty:read).');
+      const r = await db.query<{ dim_key: string; label: string | null; available_minor: number; consumed_minor: number }>(
+        `select dim_key, label, available_minor, consumed_minor from capacity_line`,
+      );
+      if (!r.rows.length) return answer('No capacity lines are configured yet.');
+      const avail = r.rows.reduce((a, l) => a + Number(l.available_minor), 0);
+      const consumed = r.rows.reduce((a, l) => a + Number(l.consumed_minor), 0);
+      const util = avail > 0 ? Math.round((consumed / avail) * 100) : 0;
+      const hot = r.rows
+        .map((l) => ({ k: l.label || l.dim_key, u: Number(l.available_minor) > 0 ? (Number(l.consumed_minor) / Number(l.available_minor)) * 100 : 0 }))
+        .filter((l) => l.u >= 80).sort((a, b) => b.u - a.u).slice(0, 5);
+      const hotLine = hot.length ? `\nRunning hot: ${hot.map((h) => `${h.k} ${Math.round(h.u)}%`).join(', ')}.` : '\nNo lines above 80% utilisation.';
+      return answer(`Capacity: ${fmt(consumed)} consumed of ${fmt(avail)} (${util}% utilised), ${fmt(avail - consumed)} remaining.${hotLine}`);
+    },
+  },
+
+  // ---- Exposure: peak accumulation -------------------------------------
+  {
+    test: /peak (zone|accumulation|exposure)|largest accumulation|exposure concentration|total insured value|where.*most exposed/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'exposure:read')) return answer('You do not have permission to view exposure (exposure:read).');
+      const r = await db.query<{ zone: string; tiv: number; items: number }>(
+        `select coalesce(cresta, country, 'Unknown') zone, sum(tiv_minor)::bigint tiv, count(*)::int items
+           from exposure_item group by coalesce(cresta, country, 'Unknown') order by tiv desc limit 6`,
+      );
+      if (!r.rows.length) return answer('No exposure items are registered yet.');
+      const total = r.rows.reduce((a, z) => a + Number(z.tiv), 0);
+      const peak = r.rows[0]!;
+      const share = total > 0 ? Math.round((Number(peak.tiv) / total) * 100) : 0;
+      const lines = r.rows.map((z) => `• ${z.zone} - ${fmt(Number(z.tiv))} TIV (${z.items} item(s))`).join('\n');
+      return answer(`Peak accumulation is ${peak.zone} at ${fmt(Number(peak.tiv))} TIV (${share}% of the top zones).\nTop zones:\n${lines}`);
+    },
+  },
+
   // ---- Navigation -------------------------------------------------------
   {
     test: /^(go to|open|show me|take me to|navigate to)\b/i,

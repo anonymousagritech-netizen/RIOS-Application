@@ -67,3 +67,6 @@ export * from './underwritingApproval.js';
 export * from './underwritingAdvisor.js';
 export * from './underwritingDocuments.js';
 export * from './underwritingRenewal.js';
+export * from './counterparty.js';
+export * from './capacityMgmt.js';
+export * from './exposureMgmt.js';
