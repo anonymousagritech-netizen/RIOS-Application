@@ -412,3 +412,59 @@ export function catLoadFromModel(input: CatLoadInput): CatLoadResult {
     shareOfAal: isZero(input.aalMinor) || aal === 0 ? 0 : catLoadMinor.amount / aal,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Swing (retrospectively) rated premium - brief §7.8, §29.5
+// ---------------------------------------------------------------------------
+
+export interface SwingRatedPremiumInput {
+  /** Subject (GNPI) premium the rate is applied to. */
+  subjectPremium: Money;
+  /** Provisional (deposit) rate on subject premium, as a percentage (e.g. 10 = 10%). */
+  provisionalRatePct: number;
+  /** Incurred losses to the layer used to retro-rate the final premium. */
+  incurredLosses: Money;
+  /** Loss conversion factor / loading (e.g. 1.25 = 100/80) applied to the burn. */
+  lossConversionFactor: number;
+  /** Minimum and maximum rate on subject premium, as percentages. */
+  minRatePct: number;
+  maxRatePct: number;
+}
+
+export interface SwingRatedPremiumResult {
+  provisionalPremium: Money;
+  /** Loaded burn rate = losses / subject x LCF, as a percentage (before the min/max collar). */
+  burnRatePct: number;
+  /** Final rate on subject premium after applying the [min, max] collar. */
+  adjustedRatePct: number;
+  adjustedPremium: Money;
+  /** Adjusted - provisional: positive = additional premium due, negative = return premium. */
+  adjustmentPremium: Money;
+  collared: boolean;
+}
+
+/**
+ * Swing-rated (retrospectively-rated) premium: a provisional/deposit premium is
+ * booked up front and the final premium is set from actual losses -
+ *   rate = (incurred losses / subject premium) x loss-conversion-factor,
+ * collared to [minRate, maxRate]. The difference to the provisional premium is
+ * the additional or return premium.
+ */
+export function swingRatedPremium(input: SwingRatedPremiumInput): SwingRatedPremiumResult {
+  if (input.minRatePct > input.maxRatePct) {
+    throw new RangeError(`minRatePct (${input.minRatePct}) must not exceed maxRatePct (${input.maxRatePct})`);
+  }
+  const subject = input.subjectPremium.amount;
+  const provisionalPremium = multiply(input.subjectPremium, input.provisionalRatePct / 100);
+  const burnRatePct = subject === 0 ? 0 : (input.incurredLosses.amount / subject) * input.lossConversionFactor * 100;
+  const adjustedRatePct = Math.min(input.maxRatePct, Math.max(input.minRatePct, burnRatePct));
+  const adjustedPremium = multiply(input.subjectPremium, adjustedRatePct / 100);
+  return {
+    provisionalPremium,
+    burnRatePct: Math.round(burnRatePct * 1000) / 1000,
+    adjustedRatePct: Math.round(adjustedRatePct * 1000) / 1000,
+    adjustedPremium,
+    adjustmentPremium: money(adjustedPremium.amount - provisionalPremium.amount, input.subjectPremium.currency),
+    collared: burnRatePct < input.minRatePct || burnRatePct > input.maxRatePct,
+  };
+}
