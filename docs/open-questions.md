@@ -47,10 +47,14 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   gain/loss with asset/liability sign correction, per-currency net open exposure, and balanced GL postings
   that reconcile to zero (unit-tested). What remains designed-for is the **live rate feed** into
   `exchange_rate` and wiring revaluation output into the period-close posting run. (§7.6, §16.1)
-- **AR/AP, cash management, bank reconciliation, treasury, investments, fixed assets, tax & levy** - the GL
-  core (journal/posting/reconcile) is delivered; these sub-ledgers are designed-for. (§9.8)
-- **Statement-of-account lifecycle** (Open → Prepared → … → Settled) - `statement_status` list seeded;
-  workflow is designed-for. (§28.5)
+- **AR/AP** - invoices spin off on statement issue (`ar_invoice`/`ap_invoice`), and **aging + cash
+  application are now delivered** (`@rios/domain/aging`: `agingReport` buckets outstanding by days past due
+  with an outstanding-weighted average; `applyReceipt` allocates a receipt oldest/largest/as-is with
+  integer-exact minor units; `invoiceStatus` resolves settled/part-paid/overdue). Surfaced at
+  `GET /api/statements/aging?kind=AR|AP`. **Bank reconciliation, treasury, investments, fixed assets and
+  tax/levy** sub-ledgers remain designed-for. (§9.8)
+- **Statement-of-account lifecycle** (Open → Prepared → … → Settled) - **delivered**: guarded status
+  transitions (`STATEMENT_TRANSITIONS`) with the AR/AP invoice spin-off on issue. (§28.5)
 - **Profit-commission jurisdictional variants** - one common basis delivered; others would be configuration.
 
 ## 3. Claims & recoveries

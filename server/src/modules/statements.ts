@@ -12,7 +12,9 @@
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { buildStatement, money, type FinancialEvent as DomainEvent } from '@rios/domain';
+import {
+  buildStatement, money, agingReport, type FinancialEvent as DomainEvent, type AgingItem,
+} from '@rios/domain';
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
@@ -234,6 +236,42 @@ export async function statementsModule(app: FastifyInstance): Promise<void> {
           actorLabel: req.auth?.displayName,
         });
         return { id: statement.id, status: to };
+      });
+    },
+  );
+
+  // AR/AP aging: bucket outstanding invoices by days past due through the tested
+  // domain engine. kind=AR (default) ages receivables, kind=AP ages payables.
+  app.get<{ Querystring: { kind?: string; asOf?: string } }>(
+    '/api/statements/aging',
+    { preHandler: requirePermission('statement:read') },
+    async (req) => {
+      const ctx = authContext(req);
+      const kind = String(req.query.kind ?? 'AR').toUpperCase() === 'AP' ? 'AP' : 'AR';
+      const table = kind === 'AP' ? 'ap_invoice' : 'ar_invoice';
+      const asOf = (req.query.asOf ?? new Date().toISOString()).slice(0, 10);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{
+          id: string;
+          party_id: string | null;
+          currency: string;
+          amount_minor: number;
+          settled_minor: number;
+          due_date: string | null;
+          status: string;
+        }>(
+          `select id, party_id, currency, amount_minor, settled_minor, due_date, status
+             from ${table} where status <> 'SETTLED'`,
+        );
+        const items: AgingItem[] = rows
+          .filter((r) => r.due_date != null)
+          .map((r) => ({
+            ref: r.id,
+            outstandingMinor: Number(r.amount_minor) - Number(r.settled_minor),
+            dueDate: String(r.due_date).slice(0, 10),
+          }));
+        const report = agingReport(items, asOf);
+        return { kind, ...report };
       });
     },
   );

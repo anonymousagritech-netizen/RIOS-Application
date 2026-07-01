@@ -12,6 +12,7 @@ export * from './accounting.js';
 export * from './fx.js';
 export * from './bordereaux.js';
 export * from './claimsRecovery.js';
+export * from './aging.js';
 export * from './pricing.js';
 export * from './ifrs17.js';
 export * from './solvency2.js';
