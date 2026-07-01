@@ -13,6 +13,7 @@ import { ingestBordereau, mapAndValidate, type BordereauMapping, type MappingSpe
 import { runAs } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { CsvParseError, parseCsvRecords } from '../csv.js';
 import { nextReference } from './parties.js';
 
 const createMappingSchema = z.object({
@@ -72,6 +73,67 @@ export async function bordereauxModule(app: FastifyInstance): Promise<void> {
       return { mappings: rows };
     });
   });
+
+  // Parse raw bordereau CSV text (the UI reads the file client-side and posts its
+  // text) into header-keyed string rows that feed POST /api/bordereaux (rows) and
+  // POST /api/import/validate. Pure parsing - no persistence, no type coercion.
+  const parseCsvSchema = z.object({
+    csv: z.string().min(1),
+    delimiter: z.string().length(1).optional(),
+  });
+  const MAX_PARSE_ROWS = 50_000;
+
+  app.post(
+    '/api/bordereaux/parse',
+    { preHandler: requirePermission('bordereaux:read'), bodyLimit: 16 * 1024 * 1024 },
+    async (req, reply) => {
+      const parsed = parseCsvSchema.safeParse(req.body);
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid parse request', details: parsed.error.flatten() };
+      }
+
+      let records: string[][];
+      try {
+        records = parseCsvRecords(parsed.data.csv, parsed.data.delimiter ?? ',');
+      } catch (err) {
+        reply.code(400);
+        return { error: `Malformed CSV: ${err instanceof CsvParseError ? err.message : String(err)}` };
+      }
+
+      if (records.length === 0) {
+        reply.code(400);
+        return { error: 'CSV has no header row' };
+      }
+      const headers = records[0]!.map((h) => h.trim());
+      if (headers.every((h) => h === '')) {
+        reply.code(400);
+        return { error: 'CSV header row is empty' };
+      }
+      const data = records.slice(1);
+      if (data.length > MAX_PARSE_ROWS) {
+        // 413-style refusal: the ingestion pipeline caps a single bordereau file.
+        reply.code(400);
+        return { error: `CSV too large: ${data.length} data rows exceed the ${MAX_PARSE_ROWS}-row limit` };
+      }
+
+      const rows: Record<string, string>[] = [];
+      for (let i = 0; i < data.length; i += 1) {
+        const cells = data[i]!;
+        if (cells.length > headers.length) {
+          reply.code(400);
+          // +2: 1-based, and the header occupies row 1.
+          return { error: `Malformed CSV: row ${i + 2} has ${cells.length} fields but the header has ${headers.length}` };
+        }
+        const rec: Record<string, string> = {};
+        headers.forEach((h, col) => {
+          if (h !== '') rec[h] = cells[col] ?? ''; // short rows pad with empty strings
+        });
+        rows.push(rec);
+      }
+      return { headers, rows, rowCount: rows.length };
+    },
+  );
 
   // Upload a bordereau: insert header + lines, validate each line, and set the
   // header status to VALIDATED (no errors) or REJECTED (one or more errors).
