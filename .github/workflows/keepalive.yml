@@ -10,7 +10,7 @@ name: 🔁 Keep RIOS Backend Alive
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Ping /health endpoint
         env:
-          BACKEND_URL: ${{ vars.RIOS_BACKEND_URL || 'https://rios-backend.onrender.com' }}
+          BACKEND_URL: ${{ vars.RIOS_BACKEND_URL || 'https://rios-application.onrender.com' }}
         run: |
           echo "Pinging ${BACKEND_URL}/health ..."
           # Best-effort keep-alive: a slow/asleep server (Render cold start) must
