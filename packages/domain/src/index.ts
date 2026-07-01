@@ -16,6 +16,7 @@ export * from './commutation.js';
 export * from './clauses.js';
 export * from './dataImport.js';
 export * from './reportPack.js';
+export * from './bankRec.js';
 export * from './aging.js';
 export * from './pricing.js';
 export * from './ifrs17.js';
