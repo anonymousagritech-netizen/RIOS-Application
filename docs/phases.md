@@ -77,9 +77,25 @@ queries run through `runAs`; mutations are audited.
 - **RBAC** — Chief/Senior Underwriter + Actuary roles and an `underwriting:{read,write,price,approve}`
   permission vocabulary (migration 0038); `underwriting:approve` gates senior sign-off.
 
-Migrations 0037–0040; server modules `underwriting`, `underwritingAnalytics`; domain modules `underwriting`,
+- **Broker & Cedent management** — `@rios/domain/counterparty` (profitability +
+  transparent relationship score, bands, broker tiers); server `brokers` /
+  `cedents` (list / analytics / detail-workspace with derived GWP, performance,
+  hierarchy / group structure, contracts, portfolio, loss & claims history,
+  communications); Broker and Cedent Management pages with detail drawers.
+- **Capacity management** — `@rios/domain/capacityMgmt` (utilisation / RAG status,
+  book roll-up, threshold alerts, straight-line forecast); server `capacityMgmt`
+  (`/api/underwriting/capacity`); Capacity page (available/consumed/remaining,
+  breach forecast, alerts, by-dimension lines).
+- **Exposure management** — `@rios/domain/exposureMgmt` (aggregation by any
+  dimension, peak-accumulation summary, peril×geo heatmap, concentration); server
+  `exposureMgmt` (`/api/underwriting/exposure`); Exposure Management page
+  (TIV/PML, peril mix, CRESTA accumulation, heatmap).
+
+Migrations 0037–0042; server modules `underwriting`, `underwritingAnalytics`,
+`brokers`, `cedents`, `capacityMgmt`, `exposureMgmt`; domain modules `underwriting`,
 `pricingScenarios`, `catModel`, `underwritingModels`, `underwritingApproval`, `underwritingAdvisor`,
-`underwritingDocuments`; integration tests in `server/test/underwriting.test.ts`.
+`underwritingDocuments`, `counterparty`, `capacityMgmt`, `exposureMgmt`; integration tests in
+`server/test/underwriting.test.ts` and `server/test/counterparties.test.ts` (298 domain + server UW tests).
 
 **DESIGNED-FOR (interfaces built, vendor/data to connect):** live commercial cat-model APIs (adapter present);
 real OCR/AI document extraction (stub interface present); blob storage for documents (`storage_ref` pointer);
