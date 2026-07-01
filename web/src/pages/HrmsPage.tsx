@@ -10,7 +10,7 @@ import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { KpiCard } from '../components/KpiCard';
 import { Modal, ConfirmDialog } from '../components/Modal';
-import { FormField, Input, Select, TextField, Textarea } from '../components/Form';
+import { FormField, FormSection, Input, Select, TextField, Textarea } from '../components/Form';
 import { formatDate, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
 import { UserRound, CalendarClock, Building2 } from 'lucide-react';
@@ -106,7 +106,7 @@ function useCreateEmployee() {
   return useMutation({
     mutationFn: (body: {
       firstName: string; lastName: string; email?: string; departmentId?: string;
-      position?: string; employmentType?: string; hireDate?: string; baseSalary?: number; currency?: string;
+      position?: string; managerId?: string; employmentType?: string; hireDate?: string; baseSalary?: number; currency?: string;
     }) => api<{ id: string; employeeNo: string }>('/api/hr/employees', { body }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['hr', 'employees'] });
@@ -592,11 +592,14 @@ function pickProfile(e: EmployeeProfile): EmployeeProfile {
 function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClose: () => void; departments: Department[] }) {
   const toast = useToast();
   const create = useCreateEmployee();
+  const { data: empData } = useEmployees({});
+  const managers = empData?.employees ?? [];
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [position, setPosition] = useState('');
+  const [managerId, setManagerId] = useState('');
   const [employmentType, setEmploymentType] = useState('full_time');
   const [hireDate, setHireDate] = useState('');
   const [baseSalary, setBaseSalary] = useState('');
@@ -605,7 +608,8 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
 
   const reset = () => {
     setFirstName(''); setLastName(''); setEmail(''); setDepartmentId('');
-    setPosition(''); setEmploymentType('full_time'); setHireDate(''); setBaseSalary(''); setCurrency('USD'); setError(null);
+    setPosition(''); setManagerId(''); setEmploymentType('full_time'); setHireDate('');
+    setBaseSalary(''); setCurrency('USD'); setError(null);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -621,6 +625,7 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
         email: email || undefined,
         departmentId: departmentId || undefined,
         position: position || undefined,
+        managerId: managerId || undefined,
         employmentType,
         hireDate: hireDate || undefined,
         baseSalary: salary,
@@ -638,8 +643,9 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
     <Modal
       open={open}
       onClose={() => { reset(); onClose(); }}
+      size="lg"
       title="New employee"
-      description="Register an employee. Base salary is entered in major currency units."
+      description="Register an employee: identity, reporting line and compensation. Base salary is entered in major currency units."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
@@ -647,13 +653,16 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Identity">
           <TextField label="First name" value={firstName} onChange={setFirstName} required placeholder="Jane" />
           <TextField label="Last name" value={lastName} onChange={setLastName} required placeholder="Doe" />
-        </div>
-        <TextField label="Email" value={email} onChange={setEmail} type="email" placeholder="jane.doe@example.com" />
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Work email" value={email} onChange={setEmail} type="email" placeholder="jane.doe@example.com" />
+          </div>
+        </FormSection>
+
+        <FormSection title="Role & reporting">
           <FormField label="Department">
             <Select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
               <option value="">Unassigned</option>
@@ -661,23 +670,33 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
             </Select>
           </FormField>
           <TextField label="Position" value={position} onChange={setPosition} placeholder="e.g. Underwriter" />
-        </div>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+          <FormField label="Manager" hint="Reporting line for the org chart">
+            <Select value={managerId} onChange={(e) => setManagerId(e.target.value)}>
+              <option value="">No manager</option>
+              {managers.map((m) => (
+                <option key={m.id} value={m.id}>{m.firstName} {m.lastName} ({m.employeeNo})</option>
+              ))}
+            </Select>
+          </FormField>
           <FormField label="Employment type">
             <Select value={employmentType} onChange={(e) => setEmploymentType(e.target.value)}>
               {EMPLOYMENT_TYPES.map((t) => <option key={t} value={t}>{titleCase(t.replace('_', ' '))}</option>)}
             </Select>
           </FormField>
           <TextField label="Hire date" value={hireDate} onChange={setHireDate} type="date" />
+        </FormSection>
+
+        <FormSection title="Compensation" description="Optional. Stored in minor units; enter major currency units.">
           <FormField label="Base salary (major units)">
-            <div className={shared.toolbar}>
-              <Input type="number" min="0" step="any" value={baseSalary} onChange={(e) => setBaseSalary(e.target.value)} placeholder="e.g. 85000" style={{ flex: 1 }} />
-              <Select value={currency} onChange={(e) => setCurrency(e.target.value)} aria-label="Currency">
-                {['USD', 'EUR', 'GBP', 'JPY'].map((c) => <option key={c} value={c}>{c}</option>)}
-              </Select>
-            </div>
+            <Input type="number" min="0" step="any" value={baseSalary} onChange={(e) => setBaseSalary(e.target.value)} placeholder="e.g. 85000" />
           </FormField>
-        </div>
+          <FormField label="Currency">
+            <Select value={currency} onChange={(e) => setCurrency(e.target.value)} aria-label="Currency">
+              {['USD', 'EUR', 'GBP', 'JPY'].map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+          </FormField>
+        </FormSection>
+
         {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
     </Modal>
@@ -911,7 +930,7 @@ function RequestLeaveModal({ open, onClose }: { open: boolean; onClose: () => vo
       open={open}
       onClose={() => { reset(); onClose(); }}
       title="Request leave"
-      description="File a leave request for an employee."
+      description="File a leave request for an employee. It starts pending until a manager decides."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
@@ -919,30 +938,39 @@ function RequestLeaveModal({ open, onClose }: { open: boolean; onClose: () => vo
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <FormField label="Employee" required>
-          <Select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
-            <option value="">Select an employee…</option>
-            {employees.map((emp) => (
-              <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.employeeNo})</option>
-            ))}
-          </Select>
-        </FormField>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Employee & type">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Employee" required>
+              <Select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
+                <option value="">Select an employee…</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.employeeNo})</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
           <FormField label="Kind" required>
             <Select value={kind} onChange={(e) => setKind(e.target.value)}>
               {LEAVE_KINDS.map((k) => <option key={k} value={k}>{titleCase(k)}</option>)}
             </Select>
           </FormField>
-          <TextField label="Days" value={days} onChange={setDays} type="number" required placeholder="e.g. 5" />
-        </div>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        </FormSection>
+
+        <FormSection title="Period" description="Working days may differ from calendar span; record the days claimed.">
           <TextField label="Start date" value={startDate} onChange={setStartDate} type="date" required />
           <TextField label="End date" value={endDate} onChange={setEndDate} type="date" required />
-        </div>
-        <FormField label="Reason">
-          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Optional note" rows={3} />
-        </FormField>
+          <TextField label="Days" value={days} onChange={setDays} type="number" required placeholder="e.g. 5" hint="Working days claimed" />
+        </FormSection>
+
+        <FormSection title="Justification">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Reason">
+              <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Optional note" rows={3} />
+            </FormField>
+          </div>
+        </FormSection>
+
         {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
     </Modal>

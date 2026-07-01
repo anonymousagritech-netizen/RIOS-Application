@@ -11,7 +11,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { FormField, Input, Select, TextField } from '../components/Form';
+import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
 import type { ClaimListItem } from '../lib/types';
@@ -115,6 +115,7 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
 
   const [contractId, setContractId] = useState('');
   const [description, setDescription] = useState('');
+  const [lossDate, setLossDate] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [grossLoss, setGrossLoss] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -122,7 +123,7 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
   const treatyList = treaties?.treaties ?? [];
   const currencies = ccy?.currencies ?? [];
 
-  const reset = () => { setContractId(''); setDescription(''); setCurrency('USD'); setGrossLoss(''); setError(null); };
+  const reset = () => { setContractId(''); setDescription(''); setLossDate(''); setCurrency('USD'); setGrossLoss(''); setError(null); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,6 +135,7 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
       const res = await create.mutateAsync({
         contractId,
         description: description || undefined,
+        lossDate: lossDate || undefined,
         currency,
         grossLoss: gross,
       });
@@ -150,8 +152,9 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
     <Modal
       open={open}
       onClose={() => { reset(); onClose(); }}
+      size="lg"
       title="Register claim"
-      description="Notify a loss against a treaty. Gross loss is entered in major currency units."
+      description="Notify a loss against a treaty (FNOL): identification, loss details and the gross reserve. Amounts are in major currency units."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
@@ -159,22 +162,33 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <FormField label="Treaty" required>
-          <Select value={contractId} onChange={(e) => {
-            const id = e.target.value;
-            setContractId(id);
-            const t = treatyList.find((x) => x.id === id);
-            if (t) setCurrency(t.currency);
-          }}>
-            <option value="">Select a treaty…</option>
-            {treatyList.map((t) => (
-              <option key={t.id} value={t.id}>{t.reference} - {t.name}</option>
-            ))}
-          </Select>
-        </FormField>
-        <TextField label="Description" value={description} onChange={setDescription} placeholder="e.g. Hurricane property damage" />
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Claim identification" description="The treaty the loss is notified against and a short narrative.">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Treaty" required>
+              <Select value={contractId} onChange={(e) => {
+                const id = e.target.value;
+                setContractId(id);
+                const t = treatyList.find((x) => x.id === id);
+                if (t) setCurrency(t.currency);
+              }}>
+                <option value="">Select a treaty…</option>
+                {treatyList.map((t) => (
+                  <option key={t.id} value={t.id}>{t.reference} - {t.name}</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Description" value={description} onChange={setDescription} placeholder="e.g. Hurricane property damage" hint="Cause / peril and a short description of the loss." />
+          </div>
+        </FormSection>
+
+        <FormSection title="Loss details">
+          <TextField label="Date of loss" type="date" value={lossDate} onChange={setLossDate} hint="When the loss occurred (the notified date is set to today)." />
+        </FormSection>
+
+        <FormSection title="Financials" description="The initial gross reserve opens the case reserve on registration.">
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
@@ -182,10 +196,11 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
               ))}
             </Select>
           </FormField>
-          <FormField label="Gross loss (major units)" required>
+          <FormField label={`Gross loss / initial reserve (major units of ${currency})`} required>
             <Input type="number" min="0" step="any" value={grossLoss} onChange={(e) => setGrossLoss(e.target.value)} placeholder="e.g. 250000" />
           </FormField>
-        </div>
+        </FormSection>
+
         {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
     </Modal>

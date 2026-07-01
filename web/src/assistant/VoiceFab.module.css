@@ -21,7 +21,7 @@
   height: 62px;
   border-radius: var(--radius-full);
   background: linear-gradient(135deg, var(--primary), var(--accent-violet));
-  color: #fff;
+  color: var(--primary-fg);
   box-shadow: 0 10px 26px color-mix(in srgb, var(--primary) 45%, transparent);
   transition: transform var(--motion-fast), box-shadow var(--motion-fast);
 }
@@ -45,7 +45,7 @@
   padding: 3px var(--space-3);
   border-radius: var(--radius-full);
   background: linear-gradient(135deg, var(--primary), var(--accent-violet));
-  color: #fff;
+  color: var(--primary-fg);
   font-size: var(--text-2xs);
   font-weight: var(--weight-bold);
   letter-spacing: 0.02em;

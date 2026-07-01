@@ -10,7 +10,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { FormField, Input, Select, TextField } from '../components/Form';
+import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { formatNumber, titleCase } from '../lib/format';
 import { Users, Building2, UserRound, CheckCircle2 } from 'lucide-react';
 import { ApiError } from '../lib/api';
@@ -18,7 +18,14 @@ import type { PartyListItem } from '../lib/types';
 import shared from './shared.module.css';
 import styles from './PartiesPage.module.css';
 
-const KINDS = ['ORGANISATION', 'INDIVIDUAL'];
+// The server's createPartySchema kind enum (lowercase on the wire).
+const KINDS = [
+  { code: 'organisation', label: 'Organisation' },
+  { code: 'individual', label: 'Individual' },
+  { code: 'syndicate', label: 'Syndicate' },
+  { code: 'pool', label: 'Pool' },
+  { code: 'captive', label: 'Captive' },
+];
 
 function initials(name: string): string {
   return name
@@ -144,13 +151,13 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
 
   const [legalName, setLegalName] = useState('');
   const [shortName, setShortName] = useState('');
-  const [kind, setKind] = useState('ORGANISATION');
+  const [kind, setKind] = useState('organisation');
   const [country, setCountry] = useState('');
   const [roles, setRoles] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
-    setLegalName(''); setShortName(''); setKind('ORGANISATION'); setCountry(''); setRoles([]); setError(null);
+    setLegalName(''); setShortName(''); setKind('organisation'); setCountry(''); setRoles([]); setError(null);
   };
 
   const toggleRole = (code: string) =>
@@ -159,12 +166,14 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    // Country is an ISO 3166-1 alpha-2 code on the wire (server enforces length 2).
+    const iso = country.trim().toUpperCase();
     try {
       const res = await create.mutateAsync({
-        legalName,
-        shortName: shortName || undefined,
+        legalName: legalName.trim(),
+        shortName: shortName.trim() || undefined,
         kind,
-        country: country || undefined,
+        country: iso || undefined,
         roles,
       });
       toast.success(`Party ${res.reference} created`);
@@ -180,8 +189,9 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
     <Modal
       open={open}
       onClose={() => { reset(); onClose(); }}
+      size="lg"
       title="New party"
-      description="Register a counterparty and assign its roles."
+      description="Register a counterparty: identification, classification, domicile and the roles it can play across contracts."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
@@ -189,31 +199,49 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <TextField label="Legal name" value={legalName} onChange={setLegalName} required placeholder="e.g. Aurora Reinsurance Ltd" />
-        <div className={shared.grid2} style={{ display: 'grid' }}>
-          <TextField label="Short name" value={shortName} onChange={setShortName} placeholder="Aurora Re" />
-          <FormField label="Kind" required>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Identification" description="How this counterparty is named in the system.">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Legal name" value={legalName} onChange={setLegalName} required placeholder="e.g. Aurora Reinsurance Ltd" hint="Full registered legal name." />
+          </div>
+          <TextField label="Short name" value={shortName} onChange={setShortName} placeholder="Aurora Re" hint="Display name in lists and tables." />
+          <FormField label="Kind" required hint="Legal classification of the counterparty.">
             <Select value={kind} onChange={(e) => setKind(e.target.value)}>
-              {KINDS.map((k) => <option key={k} value={k}>{titleCase(k)}</option>)}
+              {KINDS.map((k) => <option key={k.code} value={k.code}>{k.label}</option>)}
             </Select>
           </FormField>
-        </div>
-        <TextField label="Country" value={country} onChange={setCountry} placeholder="ISO code, e.g. GB" />
-        <FormField label="Roles">
-          <div className={shared.checkGroup}>
-            {roleOptions.length === 0 && <span className={shared.cellSub}>No roles configured.</span>}
-            {roleOptions.map((o) => {
-              const active = roles.includes(o.code);
-              return (
-                <label key={o.code} className={`${shared.check} ${active ? shared.checkActive : ''}`}>
-                  <input type="checkbox" checked={active} onChange={() => toggleRole(o.code)} />
-                  {o.label}
-                </label>
-              );
-            })}
+        </FormSection>
+
+        <FormSection title="Domicile">
+          <FormField label="Country" hint="ISO 3166-1 alpha-2 code, e.g. GB, US, BM.">
+            <Input
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              placeholder="GB"
+              maxLength={2}
+              autoCapitalize="characters"
+              style={{ textTransform: 'uppercase' }}
+            />
+          </FormField>
+        </FormSection>
+
+        <FormSection title="Roles" description="A party can hold several roles at once (e.g. both cedent and reinsurer).">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div className={shared.checkGroup}>
+              {roleOptions.length === 0 && <span className={shared.cellSub}>No roles configured.</span>}
+              {roleOptions.map((o) => {
+                const active = roles.includes(o.code);
+                return (
+                  <label key={o.code} className={`${shared.check} ${active ? shared.checkActive : ''}`}>
+                    <input type="checkbox" checked={active} onChange={() => toggleRole(o.code)} />
+                    {o.label}
+                  </label>
+                );
+              })}
+            </div>
           </div>
-        </FormField>
+        </FormSection>
+
         {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
     </Modal>

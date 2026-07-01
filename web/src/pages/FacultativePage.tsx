@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
-import { useStatusColors, useCurrencies } from '../lib/queries';
+import { useStatusColors, useCurrencies, useCodeLists, useParties } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -10,7 +10,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { FormField, Input, Select, TextField } from '../components/Form';
+import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
 import { formatNumber, formatPercent, titleCase } from '../lib/format';
 import { FileCheck2, Briefcase, CircleCheckBig, PenLine, Layers } from 'lucide-react';
@@ -169,20 +169,32 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
   const toast = useToast();
   const create = useCreateFacultative();
   const { data: ccy } = useCurrencies();
+  const { data: codeLists } = useCodeLists();
+  const { data: partyData } = useParties({});
 
+  // Identification
   const [name, setName] = useState('');
   const [basis, setBasis] = useState('PROPORTIONAL');
+  const [lineOfBusiness, setLineOfBusiness] = useState('');
   const [currency, setCurrency] = useState('USD');
+  // Parties & risk
+  const [cedentPartyId, setCedentPartyId] = useState('');
   const [insuredName, setInsuredName] = useState('');
+  // Sum insured & premium
   const [sumInsured, setSumInsured] = useState('');
   const [premium, setPremium] = useState('');
   const [cededShare, setCededShare] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const currencies = ccy?.currencies ?? [];
+  const lobOptions = codeLists?.lists?.line_of_business ?? [];
+  const parties = partyData?.parties ?? [];
+  const isProportional = basis === 'PROPORTIONAL';
+  const partyName = (p: { shortName?: string | null; legalName: string }) => p.shortName || p.legalName;
 
   const reset = () => {
-    setName(''); setBasis('PROPORTIONAL'); setCurrency('USD'); setInsuredName('');
+    setName(''); setBasis('PROPORTIONAL'); setLineOfBusiness(''); setCurrency('USD');
+    setCedentPartyId(''); setInsuredName('');
     setSumInsured(''); setPremium(''); setCededShare(''); setError(null);
   };
 
@@ -191,13 +203,18 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
     setError(null);
     if (!name.trim()) { setError('Enter a cession name.'); return; }
     const body: Record<string, unknown> = { name: name.trim(), basis, currency };
+    if (lineOfBusiness) body.lineOfBusiness = lineOfBusiness;
+    if (cedentPartyId) body.cedentPartyId = cedentPartyId;
     if (insuredName.trim()) body.insuredName = insuredName.trim();
     const si = Number(sumInsured);
     if (sumInsured && !Number.isNaN(si)) body.sumInsured = si;
     const prem = Number(premium);
     if (premium && !Number.isNaN(prem)) body.premium = prem;
-    const share = Number(cededShare);
-    if (cededShare && !Number.isNaN(share)) body.cededShare = share;
+    // Ceded share only bites for proportional cessions (server multiplies premium by it).
+    if (isProportional) {
+      const share = Number(cededShare);
+      if (cededShare && !Number.isNaN(share)) body.cededShare = share;
+    }
     try {
       const res = await create.mutateAsync(body);
       toast.success(`Cession ${res.reference} created`);
@@ -212,8 +229,9 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
     <Modal
       open={open}
       onClose={() => { reset(); onClose(); }}
+      size="lg"
       title="New cession"
-      description="Create a facultative cession. Amounts are entered in major currency units; ceded share is a fraction (e.g. 0.4)."
+      description="Capture the facultative slip: identification, cedent, the underlying risk, sum insured and premium. A supplied premium books the ceded deposit on creation. Amounts are in major currency units."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
@@ -221,38 +239,61 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
         </>
       }
     >
-      <form onSubmit={submit} className={shared.grid2} style={{ display: 'grid' }}>
-        <div style={{ gridColumn: '1 / -1' }}>
-          <TextField label="Cession name" value={name} onChange={setName} required placeholder="e.g. Acme Refinery Property Fac 2026" />
-        </div>
-        <FormField label="Basis" required>
-          <Select value={basis} onChange={(e) => setBasis(e.target.value)}>
-            <option value="PROPORTIONAL">Proportional</option>
-            <option value="NON_PROPORTIONAL">Non-proportional</option>
-          </Select>
-        </FormField>
-        <FormField label="Currency" required>
-          <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </Select>
-        </FormField>
-        <div style={{ gridColumn: '1 / -1' }}>
-          <TextField label="Insured name" value={insuredName} onChange={setInsuredName} placeholder="e.g. Acme Industrial Ltd" />
-        </div>
-        <FormField label="Sum insured (major units)" hint={`In ${currency}`}>
-          <Input type="number" min="0" step="any" value={sumInsured} onChange={(e) => setSumInsured(e.target.value)} placeholder="e.g. 50000000" />
-        </FormField>
-        <FormField label="Premium (major units)" hint={`In ${currency}`}>
-          <Input type="number" min="0" step="any" value={premium} onChange={(e) => setPremium(e.target.value)} placeholder="e.g. 250000" />
-        </FormField>
-        <div style={{ gridColumn: '1 / -1' }}>
-          <FormField label="Ceded share" hint="Fraction between 0 and 1 (e.g. 0.4 = 40%)">
-            <Input type="number" min="0" max="1" step="any" value={cededShare} onChange={(e) => setCededShare(e.target.value)} placeholder="e.g. 0.4" />
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Identification">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Cession name" value={name} onChange={setName} required placeholder="e.g. Acme Refinery Property Fac 2026" />
+          </div>
+          <FormField label="Basis" required>
+            <Select value={basis} onChange={(e) => setBasis(e.target.value)}>
+              <option value="PROPORTIONAL">Proportional</option>
+              <option value="NON_PROPORTIONAL">Non-proportional (excess of loss)</option>
+            </Select>
           </FormField>
-        </div>
-        {error && <p style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+          <FormField label="Line of business">
+            <Select value={lineOfBusiness} onChange={(e) => setLineOfBusiness(e.target.value)}>
+              <option value="">Unspecified</option>
+              {lobOptions.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Currency" required>
+            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </Select>
+          </FormField>
+        </FormSection>
+
+        <FormSection title="Cedent & risk" description="The reinsured ceding the risk and the underlying insured.">
+          <FormField label="Cedent / reinsured">
+            <Select value={cedentPartyId} onChange={(e) => setCedentPartyId(e.target.value)}>
+              <option value="">Select a party…</option>
+              {parties.map((p) => <option key={p.id} value={p.id}>{partyName(p)}</option>)}
+            </Select>
+          </FormField>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Insured name" value={insuredName} onChange={setInsuredName} placeholder="e.g. Acme Industrial Ltd" />
+          </div>
+        </FormSection>
+
+        <FormSection title="Sum insured & premium" description={isProportional ? 'The ceded share is applied to the premium when booking the deposit.' : 'For non-proportional cessions the full premium is booked as the ceded deposit.'}>
+          <FormField label="Sum insured (major units)" hint={`In ${currency}`}>
+            <Input type="number" min="0" step="any" value={sumInsured} onChange={(e) => setSumInsured(e.target.value)} placeholder="e.g. 50000000" />
+          </FormField>
+          <FormField label="Premium (major units)" hint={`In ${currency}. Books the ceded deposit on creation.`}>
+            <Input type="number" min="0" step="any" value={premium} onChange={(e) => setPremium(e.target.value)} placeholder="e.g. 250000" />
+          </FormField>
+          {isProportional && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <FormField label="Ceded share" hint="Fraction between 0 and 1 (e.g. 0.4 = 40%)">
+                <Input type="number" min="0" max="1" step="any" value={cededShare} onChange={(e) => setCededShare(e.target.value)} placeholder="e.g. 0.4" />
+              </FormField>
+            </div>
+          )}
+        </FormSection>
+
+        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
     </Modal>
   );

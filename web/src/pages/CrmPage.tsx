@@ -11,7 +11,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { FormField, Input, Select, TextField, Textarea } from '../components/Form';
+import { FormField, FormSection, Input, Select, TextField, Textarea } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
 import { Target, ClipboardList } from 'lucide-react';
 import shared from './shared.module.css';
@@ -54,9 +54,16 @@ interface ActivitiesResponse { activities: Activity[]; }
 interface PartyOption { id: string; shortName: string | null; legalName: string; }
 interface PartiesResponse { parties: PartyOption[]; }
 
-const STAGES = ['LEAD', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'WON', 'LOST'];
-const OPP_STATUSES = ['OPEN', 'WON', 'LOST'];
+// Stage codes must match the server's createOpportunitySchema enum exactly.
+const STAGES = ['PROSPECT', 'QUALIFIED', 'QUOTED', 'BOUND', 'LOST'];
+// Status filter values match the server's updateOpportunitySchema enum (lowercase on the wire).
+const OPP_STATUSES = [
+  { code: 'open', label: 'Open' },
+  { code: 'won', label: 'Won' },
+  { code: 'lost', label: 'Lost' },
+];
 const ACTIVITY_KINDS = ['call', 'email', 'meeting', 'note', 'task'];
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF'];
 
 /* ---------------- Data hooks ---------------- */
 function usePipeline() {
@@ -246,7 +253,7 @@ function PipelineTab() {
           <span className={shared.filterLabel}>Status</span>
           <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
             <option value="">All</option>
-            {OPP_STATUSES.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
+            {OPP_STATUSES.map((s) => <option key={s.code} value={s.code}>{s.label}</option>)}
           </Select>
         </div>
         <div className={shared.spacer} />
@@ -304,7 +311,7 @@ function NewOpportunityModal({ open, onClose }: { open: boolean; onClose: () => 
 
   const [partyId, setPartyId] = useState('');
   const [name, setName] = useState('');
-  const [stage, setStage] = useState('LEAD');
+  const [stage, setStage] = useState('PROSPECT');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [probability, setProbability] = useState('');
@@ -312,7 +319,7 @@ function NewOpportunityModal({ open, onClose }: { open: boolean; onClose: () => 
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
-    setPartyId(''); setName(''); setStage('LEAD'); setAmount('');
+    setPartyId(''); setName(''); setStage('PROSPECT'); setAmount('');
     setCurrency('USD'); setProbability(''); setExpectedClose(''); setError(null);
   };
 
@@ -346,8 +353,9 @@ function NewOpportunityModal({ open, onClose }: { open: boolean; onClose: () => 
     <Modal
       open={open}
       onClose={() => { reset(); onClose(); }}
+      size="lg"
       title="New opportunity"
-      description="Amount is entered in major currency units."
+      description="Capture the deal: the counterparty, its pipeline stage, expected value and close date."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
@@ -355,39 +363,43 @@ function NewOpportunityModal({ open, onClose }: { open: boolean; onClose: () => 
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <FormField label="Party" required>
-          <Select value={partyId} onChange={(e) => setPartyId(e.target.value)}>
-            <option value="">Select a party…</option>
-            {partyList.map((p) => (
-              <option key={p.id} value={p.id}>{p.shortName ?? p.legalName}</option>
-            ))}
-          </Select>
-        </FormField>
-        <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. 2026 property cat renewal" />
-        <div className={shared.grid2} style={{ display: 'grid' }}>
-          <FormField label="Stage" required>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Opportunity" description="What the deal is and who it is with.">
+          <FormField label="Party" required>
+            <Select value={partyId} onChange={(e) => setPartyId(e.target.value)}>
+              <option value="">Select a party…</option>
+              {partyList.map((p) => (
+                <option key={p.id} value={p.id}>{p.shortName ?? p.legalName}</option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Stage" required hint="Position in the sales funnel.">
             <Select value={stage} onChange={(e) => setStage(e.target.value)}>
               {STAGES.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
             </Select>
           </FormField>
-          <FormField label="Currency" required>
-            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {['USD', 'EUR', 'GBP', 'JPY', 'CHF'].map((c) => <option key={c} value={c}>{c}</option>)}
-            </Select>
-          </FormField>
-        </div>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. 2026 property cat renewal" />
+          </div>
+        </FormSection>
+
+        <FormSection title="Value & probability" description="Amount is entered in major currency units and weighted by win probability in the pipeline.">
           <FormField label="Amount (major units)" required>
             <Input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 500000" />
           </FormField>
-          <FormField label="Probability (%)">
+          <FormField label="Currency" required>
+            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Probability (%)" hint="Chance of winning; drives the weighted pipeline.">
             <Input type="number" min="0" max="100" step="any" value={probability} onChange={(e) => setProbability(e.target.value)} placeholder="e.g. 60" />
           </FormField>
-        </div>
-        <FormField label="Expected close">
-          <Input type="date" value={expectedClose} onChange={(e) => setExpectedClose(e.target.value)} />
-        </FormField>
+          <FormField label="Expected close">
+            <Input type="date" value={expectedClose} onChange={(e) => setExpectedClose(e.target.value)} />
+          </FormField>
+        </FormSection>
+
         {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
     </Modal>
@@ -515,8 +527,9 @@ function LogActivityModal({ open, onClose }: { open: boolean; onClose: () => voi
     <Modal
       open={open}
       onClose={() => { reset(); onClose(); }}
+      size="lg"
       title="Log activity"
-      description="Record a call, email, meeting, note or task against a party."
+      description="Record a call, email, meeting, note or task against a party, with an optional follow-up due date."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
@@ -524,8 +537,8 @@ function LogActivityModal({ open, onClose }: { open: boolean; onClose: () => voi
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Activity">
           <FormField label="Party" required>
             <Select value={partyId} onChange={(e) => setPartyId(e.target.value)}>
               <option value="">Select a party…</option>
@@ -537,14 +550,22 @@ function LogActivityModal({ open, onClose }: { open: boolean; onClose: () => voi
               {ACTIVITY_KINDS.map((k) => <option key={k} value={k}>{titleCase(k)}</option>)}
             </Select>
           </FormField>
-        </div>
-        <TextField label="Subject" value={subject} onChange={setSubject} required placeholder="e.g. Renewal call with broker" />
-        <FormField label="Notes">
-          <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Optional details…" />
-        </FormField>
-        <FormField label="Due date">
-          <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-        </FormField>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Subject" value={subject} onChange={setSubject} required placeholder="e.g. Renewal call with broker" />
+          </div>
+        </FormSection>
+
+        <FormSection title="Details & follow-up">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Notes">
+              <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Optional details…" />
+            </FormField>
+          </div>
+          <FormField label="Due date" hint="Optional follow-up date for tasks and reminders.">
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </FormField>
+        </FormSection>
+
         {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
     </Modal>

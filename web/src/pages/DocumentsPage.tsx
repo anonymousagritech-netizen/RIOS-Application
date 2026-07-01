@@ -8,7 +8,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { FormField, Input, Select, Textarea, TextField } from '../components/Form';
+import { FormField, FormSection, Input, Select, Textarea, TextField } from '../components/Form';
 import { Tabs } from '../components/Tabs';
 import { KpiCard } from '../components/KpiCard';
 import { formatDate, formatNumber, titleCase } from '../lib/format';
@@ -60,7 +60,8 @@ function useGenerateDocument() {
   return useMutation({
     mutationFn: (body: {
       templateKey?: string; templateId?: string; title: string;
-      docType?: string; context: Record<string, unknown>;
+      docType?: string; entityType?: string; entityId?: string;
+      context: Record<string, unknown>;
     }) => api<{ id: string; content: string }>('/api/documents/generate', { body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['documents'] }),
   });
@@ -260,6 +261,9 @@ function GenerateTab({ canWrite }: { canWrite: boolean }) {
   const generate = useGenerateDocument();
   const [templateKey, setTemplateKey] = useState('');
   const [title, setTitle] = useState('');
+  const [docType, setDocType] = useState('');
+  const [entityType, setEntityType] = useState('');
+  const [entityId, setEntityId] = useState('');
   const [context, setContext] = useState('{\n  \n}');
   const [rendered, setRendered] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -284,7 +288,14 @@ function GenerateTab({ canWrite }: { canWrite: boolean }) {
       return;
     }
     try {
-      const res = await generate.mutateAsync({ templateKey, title: title.trim(), context: ctx });
+      const res = await generate.mutateAsync({
+        templateKey,
+        title: title.trim(),
+        docType: docType || undefined,
+        entityType: entityType.trim() || undefined,
+        entityId: entityId.trim() || undefined,
+        context: ctx,
+      });
       setRendered(res.content);
       toast.success('Document generated');
     } catch (err) {
@@ -309,23 +320,49 @@ function GenerateTab({ canWrite }: { canWrite: boolean }) {
       <Card>
         <CardHeader title="Generate a document" subtitle="Merge a template body with a context object." />
         <form onSubmit={submit} className={styles.form}>
-          <FormField label="Template" required>
-            <Select value={templateKey} onChange={(e) => setTemplateKey(e.target.value)}>
-              <option value="">Select a template…</option>
-              {tpls.map((t) => <option key={t.id} value={t.key}>{t.name} ({t.key})</option>)}
-            </Select>
-          </FormField>
-          <TextField label="Title" value={title} onChange={setTitle} required placeholder="e.g. Cover note - NAP QS 2026" />
-          <FormField label="Context (JSON)" hint="Object whose keys back the {{ dotted.path }} placeholders.">
-            <Textarea
-              value={context}
-              onChange={(e) => setContext(e.target.value)}
-              rows={10}
-              spellCheck={false}
-              className={styles.mono}
-              placeholder={'{\n  "contract": { "reference": "C-0001" }\n}'}
-            />
-          </FormField>
+          <FormSection title="Template & title">
+            <div style={{ gridColumn: '1 / -1' }}>
+              <FormField label="Template" required>
+                <Select value={templateKey} onChange={(e) => setTemplateKey(e.target.value)}>
+                  <option value="">Select a template…</option>
+                  {tpls.map((t) => <option key={t.id} value={t.key}>{t.name} ({t.key})</option>)}
+                </Select>
+              </FormField>
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <TextField label="Title" value={title} onChange={setTitle} required placeholder="e.g. Cover note - NAP QS 2026" />
+            </div>
+            <FormField label="Document type" hint="Overrides the template's default type">
+              <Select value={docType} onChange={(e) => setDocType(e.target.value)}>
+                <option value="">Use template default</option>
+                {DOC_TYPES.map((d) => <option key={d} value={d}>{titleCase(d)}</option>)}
+              </Select>
+            </FormField>
+          </FormSection>
+
+          <FormSection title="Entity link" description="Optionally attach the document to a source record so it surfaces on that entity.">
+            <FormField label="Entity type" hint="Optional, e.g. contract, party, claim">
+              <Input value={entityType} onChange={(e) => setEntityType(e.target.value)} placeholder="e.g. contract" />
+            </FormField>
+            <FormField label="Entity ID" hint="Optional (UUID)">
+              <Input value={entityId} onChange={(e) => setEntityId(e.target.value)} placeholder="e.g. contract id" />
+            </FormField>
+          </FormSection>
+
+          <FormSection title="Merge context">
+            <div style={{ gridColumn: '1 / -1' }}>
+              <FormField label="Context (JSON)" hint="Object whose keys back the {{ dotted.path }} placeholders.">
+                <Textarea
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  rows={10}
+                  spellCheck={false}
+                  className={styles.mono}
+                  placeholder={'{\n  "contract": { "reference": "C-0001" }\n}'}
+                />
+              </FormField>
+            </div>
+          </FormSection>
           {error && <p className={styles.error} role="alert">{error}</p>}
           <div>
             <Button variant="primary" onClick={submit} loading={generate.isPending} disabled={!templateKey || !title.trim()}>

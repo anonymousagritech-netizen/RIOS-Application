@@ -10,12 +10,14 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
-import { FormField, Input, Select, TextField } from '../components/Form';
+import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
 import { formatPercent, formatNumber } from '../lib/format';
 import { PenLine, FileSignature, Percent, TrendingUp, AlertTriangle } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './PlacementPage.module.css';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface SlipItem {
   id: string;
@@ -70,6 +72,8 @@ function useAddLine(slipId: string) {
   return useMutation({
     mutationFn: (body: { partyId: string; layerId?: string; writtenLine: number }) =>
       api(`/api/placement/slips/${slipId}/lines`, { body }),
+    // The backend also computes signed_line and status server-side on sign-down,
+    // so market lines only carry party, optional layer, and the written line.
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['placement', 'slip', slipId] });
       qc.invalidateQueries({ queryKey: ['placement', 'slips'] });
@@ -201,6 +205,7 @@ function SlipDetailCard({ slipId, canWrite, statusColors }: { slipId: string; ca
 
   const [confirmSign, setConfirmSign] = useState(false);
   const [partyId, setPartyId] = useState('');
+  const [layerId, setLayerId] = useState('');
   const [writtenLine, setWrittenLine] = useState('');
   const [lineError, setLineError] = useState<string | null>(null);
 
@@ -219,10 +224,12 @@ function SlipDetailCard({ slipId, canWrite, statusColors }: { slipId: string; ca
     if (!partyId) { setLineError('Select a market.'); return; }
     const wl = Number(writtenLine);
     if (Number.isNaN(wl) || wl <= 0) { setLineError('Enter a written line as a fraction (e.g. 0.1).'); return; }
+    const trimmedLayer = layerId.trim();
+    if (trimmedLayer && !UUID_RE.test(trimmedLayer)) { setLineError('Layer ID must be a valid UUID, or leave it blank.'); return; }
     try {
-      await addLine.mutateAsync({ partyId, writtenLine: wl });
+      await addLine.mutateAsync({ partyId, layerId: trimmedLayer || undefined, writtenLine: wl });
       toast.success('Market line added');
-      setPartyId(''); setWrittenLine('');
+      setPartyId(''); setLayerId(''); setWrittenLine('');
     } catch (err) {
       setLineError(err instanceof ApiError ? err.message : 'Could not add the line.');
     }
@@ -282,6 +289,11 @@ function SlipDetailCard({ slipId, canWrite, statusColors }: { slipId: string; ca
             <Input type="number" min="0" max="1" step="any" value={writtenLine} onChange={(e) => setWrittenLine(e.target.value)} placeholder="e.g. 0.1" />
           </FormField>
           <Button variant="primary" onClick={submitLine} loading={addLine.isPending} disabled={!partyId || !writtenLine}>Add line</Button>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Layer" hint="Optional layer ID (UUID) for multi-layer XL programmes. Leave blank for a single layer.">
+              <Input value={layerId} onChange={(e) => setLayerId(e.target.value)} placeholder="e.g. 3f1c…-…-…" />
+            </FormField>
+          </div>
           {lineError && <p className={styles.formError} role="alert">{lineError}</p>}
         </form>
       )}
@@ -302,21 +314,27 @@ function SlipDetailCard({ slipId, canWrite, statusColors }: { slipId: string; ca
 function NewSlipModal({ open, onClose, contractId }: { open: boolean; onClose: () => void; contractId: string }) {
   const toast = useToast();
   const create = useCreateSlip();
+  const { data: treaties } = useTreaties({});
+  const contract = treaties?.treaties.find((t) => t.id === contractId);
 
   const [umr, setUmr] = useState('');
-  const [orderPct, setOrderPct] = useState('');
+  const [orderPct, setOrderPct] = useState('1.0');
   const [error, setError] = useState<string | null>(null);
 
-  const reset = () => { setUmr(''); setOrderPct(''); setError(null); };
+  const reset = () => { setUmr(''); setOrderPct('1.0'); setError(null); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!contractId) { setError('Select a contract first.'); return; }
+    // Schema accepts contractId, umr and orderPct (a positive fraction, default 1.0).
     const body: { contractId: string; umr?: string; orderPct?: number } = { contractId };
     if (umr.trim()) body.umr = umr.trim();
-    const order = Number(orderPct);
-    if (orderPct && !Number.isNaN(order)) body.orderPct = order;
+    if (orderPct.trim()) {
+      const order = Number(orderPct);
+      if (Number.isNaN(order) || order <= 0) { setError('Order must be a positive fraction (e.g. 1.0).'); return; }
+      body.orderPct = order;
+    }
     try {
       const res = await create.mutateAsync(body);
       toast.success(`Slip ${res.reference} created`);
@@ -331,8 +349,9 @@ function NewSlipModal({ open, onClose, contractId }: { open: boolean; onClose: (
     <Modal
       open={open}
       onClose={() => { reset(); onClose(); }}
+      size="lg"
       title="New slip"
-      description="Open a broker slip for the selected contract. Order is a fraction (e.g. 1.0 = 100%)."
+      description="Open a broker slip against the selected contract, ready to capture market lines and sign down."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
@@ -340,11 +359,22 @@ function NewSlipModal({ open, onClose, contractId }: { open: boolean; onClose: (
         </>
       }
     >
-      <form onSubmit={submit} className={`${shared.grid2} ${styles.modalForm}`}>
-        <TextField label="UMR" value={umr} onChange={setUmr} placeholder="e.g. B1234ABCDEF" />
-        <FormField label="Order" hint="Fraction 0..1 (e.g. 1.0)">
-          <Input type="number" min="0" step="any" value={orderPct} onChange={(e) => setOrderPct(e.target.value)} placeholder="e.g. 1.0" />
-        </FormField>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Contract">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Placing" hint="Slips inherit their currency and structure from this contract.">
+              <Input value={contract ? `${contract.reference} — ${contract.name}` : 'No contract selected'} readOnly disabled />
+            </FormField>
+          </div>
+        </FormSection>
+
+        <FormSection title="Slip terms" description="Order is the share being marketed as a fraction (1.0 = 100%). Written lines may oversubscribe it and are reconciled on sign-down.">
+          <TextField label="UMR" value={umr} onChange={setUmr} placeholder="e.g. B1234ABCDEF" hint="Unique Market Reference for the London market slip." />
+          <FormField label="Order" hint="Fraction 0..1 (e.g. 1.0 = 100%)">
+            <Input type="number" min="0" step="any" value={orderPct} onChange={(e) => setOrderPct(e.target.value)} placeholder="e.g. 1.0" />
+          </FormField>
+        </FormSection>
+
         {error && <p className={styles.modalError} role="alert">{error}</p>}
       </form>
     </Modal>

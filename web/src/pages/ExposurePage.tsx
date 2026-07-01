@@ -9,7 +9,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { FormField, Input, Select } from '../components/Form';
+import { FormField, FormSection, Input, Select } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { KpiCard } from '../components/KpiCard';
 import { formatMoney, formatNumber, formatPercent, titleCase } from '../lib/format';
@@ -319,6 +319,7 @@ function NewAccumulationModal({ open, onClose }: { open: boolean; onClose: () =>
     <Modal
       open={open}
       onClose={close}
+      size="lg"
       title="New accumulation"
       description="Declare capacity for a peril and zone. Entries accumulate net exposure against it."
       footer={
@@ -330,24 +331,29 @@ function NewAccumulationModal({ open, onClose }: { open: boolean; onClose: () =>
         </>
       }
     >
-      <form onSubmit={submit} className={shared.grid2} style={{ display: 'grid' }}>
-        <FormField label="Peril" required>
-          <Select value={peril} onChange={(e) => setPeril(e.target.value)}>
-            {PERILS.map((p) => <option key={p} value={p}>{titleCase(p)}</option>)}
-          </Select>
-        </FormField>
-        <FormField label="Zone" required>
-          <Input value={zone} onChange={(e) => setZone(e.target.value)} placeholder="e.g. CA-SoCal" required />
-        </FormField>
-        <FormField label="Currency" required>
-          <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </Select>
-        </FormField>
-        <FormField label="Capacity" required hint={`Major units of ${currency}.`}>
-          <Input type="number" min="0" step="any" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="e.g. 50000000" required />
-        </FormField>
-        {error && <p style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Peril & zone" description="The accumulation point aggregates gross/net exposure for a peril within a geographic zone.">
+          <FormField label="Peril" required>
+            <Select value={peril} onChange={(e) => setPeril(e.target.value)}>
+              {PERILS.map((p) => <option key={p} value={p}>{titleCase(p)}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Zone" required>
+            <Input value={zone} onChange={(e) => setZone(e.target.value)} placeholder="e.g. CA-SoCal" required />
+          </FormField>
+        </FormSection>
+
+        <FormSection title="Capacity" description="Declared zonal capacity. Utilisation and breaches are measured against this limit.">
+          <FormField label="Currency" required>
+            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Capacity" required hint={`Major units of ${currency}.`}>
+            <Input type="number" min="0" step="any" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="e.g. 50000000" required />
+          </FormField>
+        </FormSection>
+        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
     </Modal>
   );
@@ -409,20 +415,24 @@ function AddEntryModal({ accumulation, onClose }: { accumulation: Accumulation |
         </>
       }
     >
-      <form onSubmit={submit} className={shared.grid2} style={{ display: 'grid', marginBottom: 'var(--space-5)' }}>
-        <FormField label="Risk ID" hint="Optional">
-          <Input value={riskId} onChange={(e) => setRiskId(e.target.value)} placeholder="e.g. RSK-001" />
-        </FormField>
-        <FormField label="Contract ID" hint="Optional">
-          <Input value={contractId} onChange={(e) => setContractId(e.target.value)} placeholder="e.g. contract id" />
-        </FormField>
-        <FormField label="Gross exposure" required hint={`Major units of ${currency}.`}>
-          <Input type="number" min="0" step="any" value={gross} onChange={(e) => setGross(e.target.value)} required />
-        </FormField>
-        <FormField label="Net exposure" required hint={`Major units of ${currency}.`}>
-          <Input type="number" min="0" step="any" value={net} onChange={(e) => setNet(e.target.value)} required />
-        </FormField>
-        {error && <p style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', marginBottom: 'var(--space-5)' }}>
+        <FormSection title="Source" description="Optionally link this exposure to the originating risk and/or contract.">
+          <FormField label="Risk ID" hint="Optional (UUID)">
+            <Input value={riskId} onChange={(e) => setRiskId(e.target.value)} placeholder="e.g. RSK-001" />
+          </FormField>
+          <FormField label="Contract ID" hint="Optional (UUID)">
+            <Input value={contractId} onChange={(e) => setContractId(e.target.value)} placeholder="e.g. contract id" />
+          </FormField>
+        </FormSection>
+        <FormSection title="Exposure" description="Net exposure drives utilisation against declared capacity.">
+          <FormField label="Gross exposure" required hint={`Major units of ${currency}.`}>
+            <Input type="number" min="0" step="any" value={gross} onChange={(e) => setGross(e.target.value)} required />
+          </FormField>
+          <FormField label="Net exposure" required hint={`Major units of ${currency}.`}>
+            <Input type="number" min="0" step="any" value={net} onChange={(e) => setNet(e.target.value)} required />
+          </FormField>
+        </FormSection>
+        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
 
       {detail.isLoading ? (

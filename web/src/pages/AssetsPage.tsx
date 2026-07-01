@@ -12,7 +12,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { FormField, Input, Select, TextField } from '../components/Form';
+import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { formatMoney, formatDate, formatNumber, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
@@ -102,6 +102,8 @@ interface CreateAssetBody {
   value?: number;
   currency?: string;
 }
+
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY'];
 function useCreateAsset() {
   const qc = useQueryClient();
   return useMutation({
@@ -259,16 +261,19 @@ function AssetsTab({ canWrite, createSignal }: { canWrite: boolean; createSignal
 function NewAssetModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const create = useCreateAsset();
+  const { data: empData, isLoading: loadingEmployees } = useEmployees(open);
+  const employees = empData?.employees ?? [];
   const [tag, setTag] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  const [assignedTo, setAssignedTo] = useState('');
   const [purchaseDate, setPurchaseDate] = useState('');
   const [value, setValue] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
-    setTag(''); setName(''); setCategory(''); setPurchaseDate('');
+    setTag(''); setName(''); setCategory(''); setAssignedTo(''); setPurchaseDate('');
     setValue(''); setCurrency('USD'); setError(null);
   };
   const close = () => { reset(); onClose(); };
@@ -279,6 +284,7 @@ function NewAssetModal({ open, onClose }: { open: boolean; onClose: () => void }
     if (!tag.trim() || !name.trim()) { setError('Tag and name are required.'); return; }
     const body: CreateAssetBody = { tag: tag.trim(), name: name.trim() };
     if (category.trim()) body.category = category.trim();
+    if (assignedTo) body.assignedTo = assignedTo;
     if (purchaseDate) body.purchaseDate = purchaseDate;
     if (value) {
       const n = Number(value);
@@ -299,8 +305,9 @@ function NewAssetModal({ open, onClose }: { open: boolean; onClose: () => void }
     <Modal
       open={open}
       onClose={close}
+      size="lg"
       title="New asset"
-      description="Register a hardware or tracked asset for this tenant."
+      description="Register a hardware or tracked asset: identification, assignment and purchase detail."
       footer={
         <>
           <Button variant="ghost" onClick={close}>Cancel</Button>
@@ -308,23 +315,40 @@ function NewAssetModal({ open, onClose }: { open: boolean; onClose: () => void }
         </>
       }
     >
-      <form onSubmit={submit} className={css.form}>
-        <div className={shared.grid2}>
-          <TextField label="Tag" value={tag} onChange={setTag} required placeholder="e.g. LAP-0012" />
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Identification">
+          <TextField label="Tag" value={tag} onChange={setTag} required placeholder="e.g. LAP-0012" hint="Unique asset tag / barcode" />
           <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. MacBook Pro 16" />
-        </div>
-        <div className={shared.grid2}>
-          <TextField label="Category" value={category} onChange={setCategory} placeholder="e.g. laptop" />
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Category" value={category} onChange={setCategory} placeholder="e.g. laptop, monitor, phone" />
+          </div>
+        </FormSection>
+
+        <FormSection title="Assignment" description="Optionally assign the asset to an employee on creation.">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Assigned to" hint={loadingEmployees ? 'Loading employees…' : 'Leave unassigned to keep the asset available'}>
+              <Select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} disabled={loadingEmployees}>
+                <option value="">Unassigned</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.employeeNo})</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+        </FormSection>
+
+        <FormSection title="Purchase & value">
           <TextField label="Purchase date" type="date" value={purchaseDate} onChange={setPurchaseDate} />
-        </div>
-        <div className={shared.grid2}>
           <FormField label="Value" hint="Major units (optional)">
             <Input type="number" min="0" step="any" value={value} onChange={(e) => setValue(e.target.value)} placeholder="e.g. 2500" />
           </FormField>
           <FormField label="Currency">
-            <Input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={3} placeholder="USD" />
+            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
           </FormField>
-        </div>
+        </FormSection>
+
         {error && <p className={css.error} role="alert">{error}</p>}
       </form>
     </Modal>
@@ -476,8 +500,9 @@ function NewLicenseModal({ open, onClose }: { open: boolean; onClose: () => void
     <Modal
       open={open}
       onClose={close}
+      size="lg"
       title="New license"
-      description="Track a software license and its seat allocation."
+      description="Track a software license: vendor, seat allocation and renewal window."
       footer={
         <>
           <Button variant="ghost" onClick={close}>Cancel</Button>
@@ -485,25 +510,30 @@ function NewLicenseModal({ open, onClose }: { open: boolean; onClose: () => void
         </>
       }
     >
-      <form onSubmit={submit} className={css.form}>
-        <div className={shared.grid2}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Identification">
           <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. Figma Enterprise" />
           <TextField label="Vendor" value={vendor} onChange={setVendor} placeholder="e.g. Figma Inc." />
-        </div>
-        <div className={shared.grid2}>
-          <FormField label="Seats" required>
+        </FormSection>
+
+        <FormSection title="Seats & renewal">
+          <FormField label="Seats" required hint="Total seats provisioned">
             <Input type="number" min="0" step="1" value={seatsTotal} onChange={(e) => setSeatsTotal(e.target.value)} placeholder="e.g. 50" />
           </FormField>
-          <TextField label="Expiry date" type="date" value={expiryDate} onChange={setExpiryDate} />
-        </div>
-        <div className={shared.grid2}>
+          <TextField label="Expiry date" type="date" value={expiryDate} onChange={setExpiryDate} hint="Renewal / expiry (optional)" />
+        </FormSection>
+
+        <FormSection title="Cost">
           <FormField label="Cost" hint="Major units (optional)">
             <Input type="number" min="0" step="any" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="e.g. 12000" />
           </FormField>
           <FormField label="Currency">
-            <Input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={3} placeholder="USD" />
+            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
           </FormField>
-        </div>
+        </FormSection>
+
         {error && <p className={css.error} role="alert">{error}</p>}
       </form>
     </Modal>
@@ -591,17 +621,26 @@ function AddEntitlementModal({ open, onClose }: { open: boolean; onClose: () => 
   const upsert = useUpsertEntitlement();
   const [featureKey, setFeatureKey] = useState('');
   const [enabled, setEnabled] = useState('true');
+  const [plan, setPlan] = useState('');
+  const [limitValue, setLimitValue] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const reset = () => { setFeatureKey(''); setEnabled('true'); setError(null); };
+  const reset = () => { setFeatureKey(''); setEnabled('true'); setPlan(''); setLimitValue(''); setError(null); };
   const close = () => { reset(); onClose(); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!featureKey.trim()) { setError('Feature key is required.'); return; }
+    const body: UpsertEntitlementBody = { isEnabled: enabled === 'true' };
+    if (plan.trim()) body.plan = plan.trim();
+    if (limitValue.trim()) {
+      const n = Number(limitValue);
+      if (Number.isNaN(n) || n < 0 || !Number.isInteger(n)) { setError('Enter a non-negative whole number limit.'); return; }
+      body.limitValue = n;
+    }
     try {
-      await upsert.mutateAsync({ featureKey: featureKey.trim(), body: { isEnabled: enabled === 'true' } });
+      await upsert.mutateAsync({ featureKey: featureKey.trim(), body });
       toast.success(`Saved entitlement “${featureKey.trim()}”`);
       close();
     } catch (err) {
@@ -615,7 +654,6 @@ function AddEntitlementModal({ open, onClose }: { open: boolean; onClose: () => 
       onClose={close}
       title="Add entitlement"
       description="Define a feature flag for this tenant - it takes effect immediately."
-      size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={close}>Cancel</Button>
@@ -623,14 +661,26 @@ function AddEntitlementModal({ open, onClose }: { open: boolean; onClose: () => 
         </>
       }
     >
-      <form onSubmit={submit} className={css.form}>
-        <TextField label="Feature key" value={featureKey} onChange={setFeatureKey} required placeholder="e.g. advanced_analytics" />
-        <FormField label="Initial state">
-          <Select value={enabled} onChange={(e) => setEnabled(e.target.value)}>
-            <option value="true">Enabled</option>
-            <option value="false">Disabled</option>
-          </Select>
-        </FormField>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Feature">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Feature key" value={featureKey} onChange={setFeatureKey} required placeholder="e.g. advanced_analytics" hint="Stable key referenced by the entitlement engine" />
+          </div>
+          <FormField label="Initial state">
+            <Select value={enabled} onChange={(e) => setEnabled(e.target.value)}>
+              <option value="true">Enabled</option>
+              <option value="false">Disabled</option>
+            </Select>
+          </FormField>
+        </FormSection>
+
+        <FormSection title="Plan & limits" description="Optional plan tier and numeric usage cap for this feature.">
+          <TextField label="Plan" value={plan} onChange={setPlan} placeholder="e.g. pro, enterprise" />
+          <FormField label="Limit" hint="Numeric cap (optional, e.g. seats or API calls)">
+            <Input type="number" min="0" step="1" value={limitValue} onChange={(e) => setLimitValue(e.target.value)} placeholder="e.g. 100" />
+          </FormField>
+        </FormSection>
+
         {error && <p className={css.error} role="alert">{error}</p>}
       </form>
     </Modal>

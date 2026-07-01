@@ -11,7 +11,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { FormField, Input, Select, TextField } from '../components/Form';
+import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
 import { DefinitionList } from '../components/Feedback';
 import { formatMoney, formatMoneyCompact, formatNumber, formatPercent, formatDate, titleCase } from '../lib/format';
@@ -75,6 +75,7 @@ function useCreateGroup() {
   });
 }
 interface MeasureBody {
+  asAt?: string;
   premiumReceived: number;
   acquisitionCashFlows: number;
   coverageElapsed: number;
@@ -97,6 +98,7 @@ function useSolvency2Runs() {
 }
 interface Solvency2RunBody {
   currency: string;
+  asAt?: string;
   modules: { name: string; scr: number }[];
   correlation: number[][];
   operationalRisk: number;
@@ -113,7 +115,8 @@ function useRunSolvency2() {
   });
 }
 
-const MEASUREMENT_MODELS = ['PAA', 'GMM', 'VFA'];
+// The server currently accepts only the Premium Allocation Approach (PAA).
+const MEASUREMENT_MODELS = ['PAA'];
 const HELD_OR_ISSUED = ['ISSUED', 'HELD'];
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF'];
 
@@ -268,31 +271,36 @@ function NewGroupModal({ open, onClose }: { open: boolean; onClose: () => void }
         </>
       }
     >
-      <form onSubmit={submit} className={`${shared.grid2} ${local.formGrid}`}>
-        <div className={local.fullSpan}>
-          <TextField label="Group name" value={name} onChange={setName} required placeholder="e.g. Property QS 2026 - Onerous" />
-        </div>
-        <FormField label="Measurement model">
-          <Select value={measurementModel} onChange={(e) => setMeasurementModel(e.target.value)}>
-            {MEASUREMENT_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
-          </Select>
-        </FormField>
-        <FormField label="Held / Issued">
-          <Select value={heldOrIssued} onChange={(e) => setHeldOrIssued(e.target.value)}>
-            {HELD_OR_ISSUED.map((h) => <option key={h} value={h}>{titleCase(h)}</option>)}
-          </Select>
-        </FormField>
-        <FormField label="Portfolio">
-          <Input value={portfolio} onChange={(e) => setPortfolio(e.target.value)} placeholder="Optional" />
-        </FormField>
-        <FormField label="Cohort year">
-          <Input type="number" value={cohortYear} onChange={(e) => setCohortYear(e.target.value)} />
-        </FormField>
-        <FormField label="Currency" required>
-          <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </Select>
-        </FormField>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Identification">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Group name" value={name} onChange={setName} required placeholder="e.g. Property QS 2026 - Onerous" />
+          </div>
+          <FormField label="Held / Issued">
+            <Select value={heldOrIssued} onChange={(e) => setHeldOrIssued(e.target.value)}>
+              {HELD_OR_ISSUED.map((h) => <option key={h} value={h}>{titleCase(h)}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Currency" required>
+            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+          </FormField>
+        </FormSection>
+
+        <FormSection title="Measurement & aggregation" description="IFRS 17 requires grouping by portfolio and annual cohort. The server measures under the Premium Allocation Approach.">
+          <FormField label="Measurement model">
+            <Select value={measurementModel} onChange={(e) => setMeasurementModel(e.target.value)}>
+              {MEASUREMENT_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Portfolio" hint="Optional grouping of similar risks">
+            <Input value={portfolio} onChange={(e) => setPortfolio(e.target.value)} placeholder="e.g. Property Treaty" />
+          </FormField>
+          <FormField label="Cohort year" hint="Annual cohort of contracts">
+            <Input type="number" value={cohortYear} onChange={(e) => setCohortYear(e.target.value)} />
+          </FormField>
+        </FormSection>
         {error && <p className={local.errorSpan} role="alert">{error}</p>}
       </form>
     </Modal>
@@ -302,6 +310,7 @@ function NewGroupModal({ open, onClose }: { open: boolean; onClose: () => void }
 function MeasureModal({ group, onClose }: { group: Ifrs17Group | null; onClose: () => void }) {
   const toast = useToast();
   const measure = useMeasureGroup(group?.id);
+  const [asAt, setAsAt] = useState('');
   const [premiumReceived, setPremiumReceived] = useState('');
   const [acquisitionCashFlows, setAcquisitionCashFlows] = useState('');
   const [coverageElapsed, setCoverageElapsed] = useState('');
@@ -312,7 +321,7 @@ function MeasureModal({ group, onClose }: { group: Ifrs17Group | null; onClose: 
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
-    setPremiumReceived(''); setAcquisitionCashFlows(''); setCoverageElapsed('');
+    setAsAt(''); setPremiumReceived(''); setAcquisitionCashFlows(''); setCoverageElapsed('');
     setExpectedClaims(''); setDiscountFactor('0.97'); setRiskAdjustmentPct('5');
     setResult(null); setError(null);
   };
@@ -324,6 +333,7 @@ function MeasureModal({ group, onClose }: { group: Ifrs17Group | null; onClose: 
     if (!group) return;
     try {
       const res = await measure.mutateAsync({
+        asAt: asAt || undefined,
         premiumReceived: Number(premiumReceived) || 0,
         acquisitionCashFlows: Number(acquisitionCashFlows) || 0,
         coverageElapsed: Number(coverageElapsed) || 0,
@@ -354,25 +364,36 @@ function MeasureModal({ group, onClose }: { group: Ifrs17Group | null; onClose: 
         </>
       }
     >
-      <form onSubmit={submit} className={`${shared.grid2} ${local.formGrid}`}>
-        <FormField label="Premium received" hint={`Major units of ${ccy}.`}>
-          <Input type="number" step="any" value={premiumReceived} onChange={(e) => setPremiumReceived(e.target.value)} placeholder="e.g. 1000000" />
-        </FormField>
-        <FormField label="Acquisition cash flows" hint={`Major units of ${ccy}.`}>
-          <Input type="number" step="any" value={acquisitionCashFlows} onChange={(e) => setAcquisitionCashFlows(e.target.value)} placeholder="e.g. 50000" />
-        </FormField>
-        <FormField label="Coverage elapsed" hint="Fraction 0–1, e.g. 0.5">
-          <Input type="number" step="any" value={coverageElapsed} onChange={(e) => setCoverageElapsed(e.target.value)} placeholder="0.5" />
-        </FormField>
-        <FormField label="Expected claims" hint={`Major units of ${ccy}.`}>
-          <Input type="number" step="any" value={expectedClaims} onChange={(e) => setExpectedClaims(e.target.value)} placeholder="e.g. 700000" />
-        </FormField>
-        <FormField label="Discount factor" hint="e.g. 0.97">
-          <Input type="number" step="any" value={discountFactor} onChange={(e) => setDiscountFactor(e.target.value)} />
-        </FormField>
-        <FormField label="Risk adjustment %" hint="e.g. 5">
-          <Input type="number" step="any" value={riskAdjustmentPct} onChange={(e) => setRiskAdjustmentPct(e.target.value)} />
-        </FormField>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Reporting date">
+          <FormField label="As at" hint="Measurement date (defaults to today)">
+            <Input type="date" value={asAt} onChange={(e) => setAsAt(e.target.value)} />
+          </FormField>
+        </FormSection>
+
+        <FormSection title="Liability for remaining coverage (LRC)" description="Premium Allocation Approach inputs.">
+          <FormField label="Premium received" hint={`Major units of ${ccy}.`}>
+            <Input type="number" step="any" value={premiumReceived} onChange={(e) => setPremiumReceived(e.target.value)} placeholder="e.g. 1000000" />
+          </FormField>
+          <FormField label="Acquisition cash flows" hint={`Major units of ${ccy}.`}>
+            <Input type="number" step="any" value={acquisitionCashFlows} onChange={(e) => setAcquisitionCashFlows(e.target.value)} placeholder="e.g. 50000" />
+          </FormField>
+          <FormField label="Coverage elapsed" hint="Fraction 0–1, e.g. 0.5">
+            <Input type="number" step="any" value={coverageElapsed} onChange={(e) => setCoverageElapsed(e.target.value)} placeholder="0.5" />
+          </FormField>
+        </FormSection>
+
+        <FormSection title="Liability for incurred claims (LIC)" description="Fulfilment cash flows drive the onerous test.">
+          <FormField label="Expected claims" hint={`Major units of ${ccy}.`}>
+            <Input type="number" step="any" value={expectedClaims} onChange={(e) => setExpectedClaims(e.target.value)} placeholder="e.g. 700000" />
+          </FormField>
+          <FormField label="Discount factor" hint="e.g. 0.97">
+            <Input type="number" step="any" value={discountFactor} onChange={(e) => setDiscountFactor(e.target.value)} />
+          </FormField>
+          <FormField label="Risk adjustment %" hint="e.g. 5">
+            <Input type="number" step="any" value={riskAdjustmentPct} onChange={(e) => setRiskAdjustmentPct(e.target.value)} />
+          </FormField>
+        </FormSection>
         {error && <p className={local.errorSpan} role="alert">{error}</p>}
       </form>
 
@@ -406,11 +427,13 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
   const toast = useToast();
 
   const [currency, setCurrency] = useState('USD');
+  const [asAt, setAsAt] = useState('');
   const [modules, setModules] = useState<{ name: string; scr: string }[]>([
     { name: 'Market', scr: '' },
     { name: 'Underwriting', scr: '' },
   ]);
   const [operationalRisk, setOperationalRisk] = useState('');
+  const [adjustment, setAdjustment] = useState('');
   const [ownFunds, setOwnFunds] = useState('');
   const [linearMcr, setLinearMcr] = useState('');
   const [absoluteFloor, setAbsoluteFloor] = useState('');
@@ -420,6 +443,8 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
   const setModule = (i: number, patch: Partial<{ name: string; scr: string }>) => {
     setModules((m) => m.map((row, idx) => idx === i ? { ...row, ...patch } : row));
   };
+  const addModule = () => setModules((m) => [...m, { name: '', scr: '' }]);
+  const removeModule = (i: number) => setModules((m) => (m.length <= 1 ? m : m.filter((_, idx) => idx !== i)));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -427,14 +452,17 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
     const mods = modules
       .filter((m) => m.name.trim())
       .map((m) => ({ name: m.name.trim(), scr: Number(m.scr) || 0 }));
+    if (!mods.length) { setError('Add at least one risk module.'); return; }
     // Identity correlation matrix sized to the modules.
     const correlation = mods.map((_, i) => mods.map((_, j) => (i === j ? 1 : 0)));
     try {
       const res = await run.mutateAsync({
         currency,
+        asAt: asAt || undefined,
         modules: mods,
         correlation,
         operationalRisk: Number(operationalRisk) || 0,
+        adjustment: adjustment.trim() ? Number(adjustment) : undefined,
         linearMcr: Number(linearMcr) || 0,
         absoluteFloor: Number(absoluteFloor) || 0,
         ownFunds: Number(ownFunds) || 0,
@@ -463,23 +491,38 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
           <CardHeader title="Run SCR" subtitle="Standard formula - values in major units. Correlation defaults to identity." />
           {canRun ? (
             <form onSubmit={submit} className={local.formStack}>
-              <div className={`${shared.grid2} ${local.formGrid}`}>
+              <FormSection title="Run parameters">
                 <FormField label="Currency" required>
                   <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
                     {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </Select>
                 </FormField>
-                <div />
+                <FormField label="As at" hint="Valuation date (defaults to today)">
+                  <Input type="date" value={asAt} onChange={(e) => setAsAt(e.target.value)} />
+                </FormField>
+              </FormSection>
+
+              <FormSection title="Risk modules" description="Standard-formula risk modules and their SCR (major units). Correlation defaults to identity.">
                 {modules.map((m, i) => (
                   <FormField key={i} label={`Module ${i + 1}`} hint="Name and SCR (major)">
                     <div className={`${shared.rowGap} ${local.moduleRow}`}>
                       <Input value={m.name} onChange={(e) => setModule(i, { name: e.target.value })} placeholder="Module name" />
                       <Input type="number" step="any" value={m.scr} onChange={(e) => setModule(i, { scr: e.target.value })} placeholder="SCR" />
+                      <Button type="button" size="sm" variant="ghost" onClick={() => removeModule(i)} disabled={modules.length <= 1}>Remove</Button>
                     </div>
                   </FormField>
                 ))}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Button type="button" size="sm" variant="secondary" onClick={addModule}>Add module</Button>
+                </div>
+              </FormSection>
+
+              <FormSection title="Aggregation & capital" description="Operational risk and adjustment feed the basic SCR; own funds and floors size the MCR and solvency ratio.">
                 <FormField label="Operational risk" hint={`Major units of ${currency}.`}>
                   <Input type="number" step="any" value={operationalRisk} onChange={(e) => setOperationalRisk(e.target.value)} />
+                </FormField>
+                <FormField label="Adjustment" hint={`Optional. Major units of ${currency} (e.g. loss-absorbing capacity).`}>
+                  <Input type="number" step="any" value={adjustment} onChange={(e) => setAdjustment(e.target.value)} />
                 </FormField>
                 <FormField label="Own funds" hint={`Major units of ${currency}.`}>
                   <Input type="number" step="any" value={ownFunds} onChange={(e) => setOwnFunds(e.target.value)} />
@@ -490,7 +533,7 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
                 <FormField label="Absolute floor" hint={`Major units of ${currency}.`}>
                   <Input type="number" step="any" value={absoluteFloor} onChange={(e) => setAbsoluteFloor(e.target.value)} />
                 </FormField>
-              </div>
+              </FormSection>
               {error && <p className={local.error} role="alert">{error}</p>}
               <div>
                 <Button variant="primary" onClick={submit} loading={run.isPending}>Run SCR</Button>

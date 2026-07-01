@@ -32,7 +32,7 @@
   border-radius: var(--radius-full);
   border: none;
   cursor: pointer;
-  color: #fff;
+  color: var(--primary-fg);
   background: linear-gradient(135deg, var(--primary), var(--accent-violet));
   box-shadow: 0 10px 28px color-mix(in srgb, var(--primary) 40%, transparent);
   transition: transform var(--motion-fast);

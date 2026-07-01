@@ -11,7 +11,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { Button } from '../components/Button';
 import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
-import { FormField, Input, Select } from '../components/Form';
+import { FormField, FormSection, Input, Select } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
 import { DefinitionList } from '../components/Feedback';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
@@ -312,6 +312,7 @@ function AddRecoveryModal({ claim, open, onClose }: { claim: ClaimPickItem; open
     <Modal
       open={open}
       onClose={close}
+      size="lg"
       title="Add recovery"
       description={`Book a recovery against ${claim.reference ?? 'the claim'}. Amount is in major units of ${claim.currency}.`}
       footer={
@@ -322,22 +323,28 @@ function AddRecoveryModal({ claim, open, onClose }: { claim: ClaimPickItem; open
       }
     >
       <form onSubmit={submit} className={local.modalForm}>
-        <FormField label="Recovery type" required>
-          <Select value={recoveryType} onChange={(e) => setRecoveryType(e.target.value as RecoveryType)}>
-            {RECOVERY_TYPES.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
-          </Select>
-        </FormField>
-        <FormField label={`Amount (major units of ${claim.currency})`} required>
-          <Input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 50000" />
-        </FormField>
-        <FormField label="Recovery contract" hint="Optional - the inuring contract the recovery flows from.">
-          <Select value={recoveryContractId} onChange={(e) => setRecoveryContractId(e.target.value)}>
-            <option value="">None</option>
-            {(treaty?.id ? [{ id: treaty.id, name: 'This claim’s treaty' }] : []).map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </Select>
-        </FormField>
+        <FormSection title="Recovery" description="Reinsurance, salvage or subrogation recovered against the loss.">
+          <FormField label="Recovery type" required>
+            <Select value={recoveryType} onChange={(e) => setRecoveryType(e.target.value as RecoveryType)}>
+              {RECOVERY_TYPES.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
+            </Select>
+          </FormField>
+          <FormField label={`Amount (major units of ${claim.currency})`} required>
+            <Input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 50000" />
+          </FormField>
+        </FormSection>
+        <FormSection title="Links">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Recovery contract" hint="Optional - the inuring contract the recovery flows from.">
+              <Select value={recoveryContractId} onChange={(e) => setRecoveryContractId(e.target.value)}>
+                <option value="">None</option>
+                {(treaty?.id ? [{ id: treaty.id, name: 'This claim’s treaty' }] : []).map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+        </FormSection>
         {error && <p className={local.error} role="alert">{error}</p>}
       </form>
     </Modal>
@@ -431,6 +438,7 @@ function RaiseCashCallModal({ claim, open, onClose, onRaise, pending }: {
     <Modal
       open={open}
       onClose={close}
+      size="lg"
       title="Raise cash call"
       description={`Request an advance against ${claim.reference ?? 'the claim'}. Amount is in major units of ${claim.currency}.`}
       footer={
@@ -441,9 +449,11 @@ function RaiseCashCallModal({ claim, open, onClose, onRaise, pending }: {
       }
     >
       <form onSubmit={submit} className={local.modalForm}>
-        <FormField label={`Amount (major units of ${claim.currency})`} required>
-          <Input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 100000" />
-        </FormField>
+        <FormSection title="Cash call" description="An advance requested against the loss, booked as a CASH_LOSS financial event.">
+          <FormField label={`Amount (major units of ${claim.currency})`} required>
+            <Input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 100000" />
+          </FormField>
+        </FormSection>
         {error && <p className={local.error} role="alert">{error}</p>}
       </form>
     </Modal>

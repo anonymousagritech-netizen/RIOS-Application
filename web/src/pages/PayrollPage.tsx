@@ -8,7 +8,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { FormField, Input, Select } from '../components/Form';
+import { FormField, FormSection, Input, Select } from '../components/Form';
 import { formatMoney, formatDate, formatNumber, titleCase } from '../lib/format';
 import { Banknote, Users, Wallet, Landmark } from 'lucide-react';
 import { KpiCard } from '../components/KpiCard';
@@ -264,6 +264,7 @@ function RunPayrollModal({ open, onClose }: { open: boolean; onClose: () => void
     <Modal
       open={open}
       onClose={close}
+      size="lg"
       title="Run payroll"
       description="Compute payslips for every active, salaried employee. Tax-band thresholds are in major currency units."
       footer={
@@ -275,25 +276,23 @@ function RunPayrollModal({ open, onClose }: { open: boolean; onClose: () => void
         </>
       }
     >
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Run period">
           <FormField label="Period" required hint="e.g. 2026-06">
             <Input value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="2026-06" />
           </FormField>
-          <FormField label="Pay date">
+          <FormField label="Pay date" hint="Defaults to today if unset">
             <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
           </FormField>
-        </div>
-        <div className={shared.grid2} style={{ display: 'grid' }}>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
           </FormField>
-        </div>
+        </FormSection>
 
-        <FormField label="Tax bands" hint="Progressive income tax. Threshold in major units of the selected currency; rate as a fraction (e.g. 0.25).">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <FormSection title="Income tax bands" description="Progressive income tax. Threshold in major units of the selected currency; rate as a fraction (e.g. 0.25).">
+          <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {bands.map((b, i) => (
               <div key={i} className={shared.toolbar}>
                 <Input
@@ -331,16 +330,16 @@ function RunPayrollModal({ open, onClose }: { open: boolean; onClose: () => void
               <Button type="button" size="sm" variant="secondary" onClick={addBand}>Add band</Button>
             </div>
           </div>
-        </FormField>
+        </FormSection>
 
-        <div className={shared.grid2} style={{ display: 'grid' }}>
+        <FormSection title="Social contributions" description="Contribution rates as a fraction of gross pay.">
           <FormField label="Employee social rate" hint="Fraction, e.g. 0.08">
             <Input type="number" min="0" step="any" value={employeeSocialRate} onChange={(e) => setEmployeeSocialRate(e.target.value)} placeholder="0.08" />
           </FormField>
           <FormField label="Employer social rate" hint="Fraction, e.g. 0.12">
             <Input type="number" min="0" step="any" value={employerSocialRate} onChange={(e) => setEmployerSocialRate(e.target.value)} placeholder="0.12" />
           </FormField>
-        </div>
+        </FormSection>
         {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
     </Modal>

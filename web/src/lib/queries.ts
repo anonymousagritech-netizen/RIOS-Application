@@ -163,7 +163,7 @@ export function useClaim(id: string | undefined) {
 export function useCreateClaim() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { contractId: string; description?: string; currency: string; grossLoss: number }) =>
+    mutationFn: (body: { contractId: string; description?: string; lossDate?: string; currency: string; grossLoss: number }) =>
       api<{ id: string; reference: string }>('/api/claims', { body }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['claims'] });

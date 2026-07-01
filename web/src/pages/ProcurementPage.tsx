@@ -11,7 +11,8 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
-import { FormField, Input, Select, TextField, Textarea } from '../components/Form';
+import { FormField, FormSection, Input, Select, TextField, Textarea } from '../components/Form';
+import { useParties } from '../lib/queries';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatMoneyCompact, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
@@ -92,7 +93,7 @@ function useOrder(id: string | undefined) {
 function useCreateVendor() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { code: string; name: string; category?: string; email?: string }) =>
+    mutationFn: (body: { code: string; name: string; category?: string; email?: string; partyId?: string }) =>
       api<{ id: string; code: string }>('/api/procurement/vendors', { body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['procurement', 'vendors'] }),
   });
@@ -100,7 +101,7 @@ function useCreateVendor() {
 function useCreateRequisition() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { description: string; currency?: string; total?: number }) =>
+    mutationFn: (body: { description: string; currency?: string; total?: number; departmentId?: string }) =>
       api<{ id: string; reference: string; status: string }>('/api/procurement/requisitions', { body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['procurement', 'requisitions'] }),
   });
@@ -117,7 +118,7 @@ function useCreateOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: {
-      vendorId: string; currency?: string;
+      vendorId: string; currency?: string; requisitionId?: string;
       lines: { description: string; quantity: number; unitPrice: number }[];
     }) => api<{ id: string; reference: string; totalMinor: number }>('/api/procurement/orders', { body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['procurement', 'orders'] }),
@@ -151,6 +152,7 @@ const PO_TRANSITIONS: Record<string, string[]> = {
 const PO_STATUSES = ['draft', 'issued', 'received', 'closed', 'cancelled'];
 const REQ_STATUSES = ['draft', 'submitted'];
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY'];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function ProcurementPage() {
   const { hasPermission } = useAuth();
@@ -344,14 +346,18 @@ function NewOrderModal({ open, onClose }: { open: boolean; onClose: () => void }
   const create = useCreateOrder();
   const { data } = useVendors();
   const vendors = data?.vendors ?? [];
+  const { data: reqData } = useRequisitions({});
+  const requisitions = reqData?.requisitions ?? [];
 
   const [vendorId, setVendorId] = useState('');
   const [currency, setCurrency] = useState('USD');
+  const [requisitionId, setRequisitionId] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([{ description: '', quantity: '1', unitPrice: '' }]);
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
-    setVendorId(''); setCurrency('USD'); setLines([{ description: '', quantity: '1', unitPrice: '' }]); setError(null);
+    setVendorId(''); setCurrency('USD'); setRequisitionId('');
+    setLines([{ description: '', quantity: '1', unitPrice: '' }]); setError(null);
   };
 
   const updateLine = (i: number, patch: Partial<DraftLine>) =>
@@ -380,7 +386,12 @@ function NewOrderModal({ open, onClose }: { open: boolean; onClose: () => void }
       parsed.push({ description: l.description, quantity: q, unitPrice: p });
     }
     try {
-      const res = await create.mutateAsync({ vendorId, currency, lines: parsed });
+      const res = await create.mutateAsync({
+        vendorId,
+        currency,
+        requisitionId: requisitionId || undefined,
+        lines: parsed,
+      });
       toast.success(`Purchase order ${res.reference} created`);
       reset();
       onClose();
@@ -404,7 +415,7 @@ function NewOrderModal({ open, onClose }: { open: boolean; onClose: () => void }
       }
     >
       <form onSubmit={submit} className={styles.form}>
-        <div className={shared.grid2}>
+        <FormSection title="Order" description="A purchase order commits spend to a vendor. Optionally link the requisition it fulfils.">
           <FormField label="Vendor" required>
             <Select value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
               <option value="">Select a vendor…</option>
@@ -416,7 +427,17 @@ function NewOrderModal({ open, onClose }: { open: boolean; onClose: () => void }
               {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
           </FormField>
-        </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Requisition" hint="Optionally fulfil an approved requisition.">
+              <Select value={requisitionId} onChange={(e) => setRequisitionId(e.target.value)}>
+                <option value="">None / ad-hoc order</option>
+                {requisitions.map((r) => (
+                  <option key={r.id} value={r.id}>{r.reference} - {r.description}</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+        </FormSection>
 
         <FormField label="Lines">
           <div className={styles.lineList}>
@@ -541,9 +562,10 @@ function NewRequisitionModal({ open, onClose }: { open: boolean; onClose: () => 
   const [description, setDescription] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [total, setTotal] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const reset = () => { setDescription(''); setCurrency('USD'); setTotal(''); setError(null); };
+  const reset = () => { setDescription(''); setCurrency('USD'); setTotal(''); setDepartmentId(''); setError(null); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -551,8 +573,15 @@ function NewRequisitionModal({ open, onClose }: { open: boolean; onClose: () => 
     if (!description.trim()) { setError('Enter a description.'); return; }
     const amount = total ? Number(total) : undefined;
     if (amount !== undefined && (Number.isNaN(amount) || amount < 0)) { setError('Enter a valid total.'); return; }
+    const trimmedDept = departmentId.trim();
+    if (trimmedDept && !UUID_RE.test(trimmedDept)) { setError('Department ID must be a valid UUID, or leave it blank.'); return; }
     try {
-      const res = await create.mutateAsync({ description, currency, total: amount });
+      const res = await create.mutateAsync({
+        description,
+        currency,
+        total: amount,
+        departmentId: trimmedDept || undefined,
+      });
       toast.success(`Requisition ${res.reference} created`);
       reset();
       onClose();
@@ -575,19 +604,26 @@ function NewRequisitionModal({ open, onClose }: { open: boolean; onClose: () => 
       }
     >
       <form onSubmit={submit} className={styles.form}>
-        <FormField label="Description" required>
-          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Office laptops for the underwriting team" rows={3} />
-        </FormField>
-        <div className={shared.grid2}>
+        <FormSection title="Requisition">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Description" required>
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Office laptops for the underwriting team" rows={3} />
+            </FormField>
+          </div>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
           </FormField>
-          <FormField label="Total (major units)">
+          <FormField label="Total (major units)" hint="Estimated spend to authorise.">
             <Input type="number" min="0" step="any" value={total} onChange={(e) => setTotal(e.target.value)} placeholder="e.g. 12000" />
           </FormField>
-        </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormField label="Department" hint="Optional cost-centre / department ID (UUID) the spend belongs to.">
+              <Input value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} placeholder="e.g. 3f1c…-…-…" />
+            </FormField>
+          </div>
+        </FormSection>
         {error && <p className={styles.error} role="alert">{error}</p>}
       </form>
     </Modal>
@@ -634,13 +670,16 @@ function VendorsTab({ canWrite }: { canWrite: boolean }) {
 function NewVendorModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const create = useCreateVendor();
+  const { data: partyData } = useParties({});
+  const parties = partyData?.parties ?? [];
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [email, setEmail] = useState('');
+  const [partyId, setPartyId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const reset = () => { setCode(''); setName(''); setCategory(''); setEmail(''); setError(null); };
+  const reset = () => { setCode(''); setName(''); setCategory(''); setEmail(''); setPartyId(''); setError(null); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -652,6 +691,7 @@ function NewVendorModal({ open, onClose }: { open: boolean; onClose: () => void 
         name,
         category: category || undefined,
         email: email || undefined,
+        partyId: partyId || undefined,
       });
       toast.success(`Vendor ${res.code} created`);
       reset();
@@ -675,12 +715,20 @@ function NewVendorModal({ open, onClose }: { open: boolean; onClose: () => void 
       }
     >
       <form onSubmit={submit} className={styles.form}>
-        <div className={shared.grid2}>
+        <FormSection title="Vendor">
           <TextField label="Code" value={code} onChange={setCode} required placeholder="e.g. ACME" />
           <TextField label="Category" value={category} onChange={setCategory} placeholder="e.g. IT services" />
-        </div>
-        <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. Acme Supplies Ltd" />
-        <TextField label="Email" value={email} onChange={setEmail} type="email" placeholder="contact@acme.example" />
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Name" value={name} onChange={setName} required placeholder="e.g. Acme Supplies Ltd" />
+          </div>
+          <TextField label="Email" value={email} onChange={setEmail} type="email" placeholder="contact@acme.example" />
+          <FormField label="Linked party" hint="Optionally link this vendor to an existing party record.">
+            <Select value={partyId} onChange={(e) => setPartyId(e.target.value)}>
+              <option value="">None</option>
+              {parties.map((p) => <option key={p.id} value={p.id}>{p.shortName ?? p.legalName}</option>)}
+            </Select>
+          </FormField>
+        </FormSection>
         {error && <p className={styles.error} role="alert">{error}</p>}
       </form>
     </Modal>

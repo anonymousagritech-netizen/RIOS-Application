@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { DollarSign, ArrowLeftRight, ShieldHalf, Layers } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
-import { useStatusColors, useCurrencies } from '../lib/queries';
+import { useStatusColors, useCurrencies, useParties } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -11,7 +11,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { FormField, Select, TextField } from '../components/Form';
+import { FormField, FormSection, Select, TextField } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
 import { formatMoney, formatMoneyCompact, titleCase } from '../lib/format';
 import shared from './shared.module.css';
@@ -153,21 +153,39 @@ export function RetrocessionPage() {
   );
 }
 
+// XL codes match the server's npType enum (PER_RISK_XL / CAT_XL / AGG_XL / STOP_LOSS).
+const NP_TYPES = [
+  { code: 'PER_RISK_XL', label: 'Per-risk excess of loss (Risk XL)' },
+  { code: 'CAT_XL', label: 'Catastrophe excess of loss (Cat XL)' },
+  { code: 'AGG_XL', label: 'Aggregate excess of loss' },
+  { code: 'STOP_LOSS', label: 'Stop loss' },
+];
+
 function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const create = useCreateRetrocession();
   const { data: ccy } = useCurrencies();
+  const { data: partyData } = useParties({});
 
+  // Identification
   const [name, setName] = useState('');
   const [basis, setBasis] = useState('NON_PROPORTIONAL');
-  const [npType, setNpType] = useState('XL');
+  const [npType, setNpType] = useState('PER_RISK_XL');
   const [currency, setCurrency] = useState('USD');
+  // Parties
+  const [cedentPartyId, setCedentPartyId] = useState('');
+  const [retrocessionairePartyId, setRetrocessionairePartyId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const currencies = ccy?.currencies ?? [];
+  const parties = partyData?.parties ?? [];
   const isNonProp = basis === 'NON_PROPORTIONAL';
+  const partyName = (p: { shortName?: string | null; legalName: string }) => p.shortName || p.legalName;
 
-  const reset = () => { setName(''); setBasis('NON_PROPORTIONAL'); setNpType('XL'); setCurrency('USD'); setError(null); };
+  const reset = () => {
+    setName(''); setBasis('NON_PROPORTIONAL'); setNpType('PER_RISK_XL'); setCurrency('USD');
+    setCedentPartyId(''); setRetrocessionairePartyId(''); setError(null);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,6 +193,8 @@ function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () =>
     if (!name.trim()) { setError('Enter a retrocession name.'); return; }
     const body: Record<string, unknown> = { name: name.trim(), basis, currency };
     if (isNonProp) body.npType = npType;
+    if (cedentPartyId) body.cedentPartyId = cedentPartyId;
+    if (retrocessionairePartyId) body.retrocessionairePartyId = retrocessionairePartyId;
     try {
       const res = await create.mutateAsync(body);
       toast.success(`Retrocession ${res.reference} created`);
@@ -189,8 +209,9 @@ function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () =>
     <Modal
       open={open}
       onClose={() => { reset(); onClose(); }}
+      size="lg"
       title="New retrocession"
-      description="Create a draft outwards retrocession protection."
+      description="Create a draft outwards retrocession protection: identification, structure and the retrocedent / retrocessionaire parties."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
@@ -198,33 +219,49 @@ function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () =>
         </>
       }
     >
-      <form onSubmit={submit} className={shared.grid2} style={{ display: 'grid' }}>
-        <div style={{ gridColumn: '1 / -1' }}>
-          <TextField label="Retrocession name" value={name} onChange={setName} required placeholder="e.g. Whole Account Retro XL 2026" />
-        </div>
-        <FormField label="Basis" required>
-          <Select value={basis} onChange={(e) => setBasis(e.target.value)}>
-            <option value="NON_PROPORTIONAL">Non-proportional</option>
-            <option value="PROPORTIONAL">Proportional</option>
-          </Select>
-        </FormField>
-        {isNonProp && (
-          <FormField label="NP type">
-            <Select value={npType} onChange={(e) => setNpType(e.target.value)}>
-              <option value="XL">Excess of loss</option>
-              <option value="STOP_LOSS">Stop loss</option>
-              <option value="CATXL">Cat XL</option>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <FormSection title="Identification & structure">
+          <div style={{ gridColumn: '1 / -1' }}>
+            <TextField label="Retrocession name" value={name} onChange={setName} required placeholder="e.g. Whole Account Retro XL 2026" />
+          </div>
+          <FormField label="Basis" required>
+            <Select value={basis} onChange={(e) => setBasis(e.target.value)}>
+              <option value="NON_PROPORTIONAL">Non-proportional (excess of loss)</option>
+              <option value="PROPORTIONAL">Proportional</option>
             </Select>
           </FormField>
-        )}
-        <FormField label="Currency" required>
-          <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </Select>
-        </FormField>
-        {error && <p style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
+          {isNonProp && (
+            <FormField label="Excess-of-loss type">
+              <Select value={npType} onChange={(e) => setNpType(e.target.value)}>
+                {NP_TYPES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+              </Select>
+            </FormField>
+          )}
+          <FormField label="Currency" required>
+            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </Select>
+          </FormField>
+        </FormSection>
+
+        <FormSection title="Parties" description="The retrocedent ceding the outwards line and the retrocessionaire taking it.">
+          <FormField label="Retrocedent / cedent">
+            <Select value={cedentPartyId} onChange={(e) => setCedentPartyId(e.target.value)}>
+              <option value="">Select a party…</option>
+              {parties.map((p) => <option key={p.id} value={p.id}>{partyName(p)}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Retrocessionaire">
+            <Select value={retrocessionairePartyId} onChange={(e) => setRetrocessionairePartyId(e.target.value)}>
+              <option value="">Select a party…</option>
+              {parties.map((p) => <option key={p.id} value={p.id}>{partyName(p)}</option>)}
+            </Select>
+          </FormField>
+        </FormSection>
+
+        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>
     </Modal>
   );
