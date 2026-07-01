@@ -6,6 +6,18 @@ export default defineConfig({
   // different Vite version than web's local install (structurally identical,
   // nominally distinct Plugin types).
   plugins: [react() as unknown as PluginOption],
+  build: {
+    rollupOptions: {
+      output: {
+        // Keep the stable framework code in one long-cacheable vendor chunk so
+        // the (now route-split, D-4) app chunks stay small and change without
+        // re-downloading React et al.
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query', 'lucide-react'],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     // Bind all interfaces so the dev server is reachable on both 127.0.0.1 and

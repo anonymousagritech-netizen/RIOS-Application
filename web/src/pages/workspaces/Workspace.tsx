@@ -1,6 +1,7 @@
-import type { ComponentType } from 'react';
+import { Suspense, type ComponentType } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
+import { PageLoader } from '../../components/Feedback';
 import styles from './Workspace.module.css';
 
 export interface WorkspaceTab {
@@ -59,7 +60,10 @@ export function Workspace({ title, subtitle, tabs }: WorkspaceProps) {
       </div>
 
       <div className={styles.body}>
-        <Active />
+        {/* Tab pages are code-split; keep the loading state local to the tab body. */}
+        <Suspense fallback={<PageLoader label="Loading…" />}>
+          <Active />
+        </Suspense>
       </div>
     </div>
   );
