@@ -22,7 +22,7 @@ export async function clientsModule(app: FastifyInstance): Promise<void> {
     return runAs(ctx, async (db) => {
       const { rows } = await db.query(
         `select p.id, p.legal_name as "legalName", p.short_name as "shortName", p.kind, p.country, p.status,
-                coalesce(array_agg(distinct pr.role_code) filter (where pr.is_active), '{}') as roles,
+                coalesce(array_agg(distinct pr.role_code::text) filter (where pr.is_active), '{}'::text[]) as roles,
                 (select count(*) from submission s where s.cedent_party_id = p.id or s.broker_party_id = p.id)::int as submissions,
                 (select count(*) from contract c where (c.cedent_party_id = p.id or c.broker_party_id = p.id) and not c.is_deleted)::int as contracts
            from party p
@@ -50,7 +50,7 @@ export async function clientsModule(app: FastifyInstance): Promise<void> {
     return runAs(ctx, async (db) => {
       const p = await db.query(
         `select p.id, p.legal_name as "legalName", p.short_name as "shortName", p.kind, p.country, p.status, p.reference, p.identifiers,
-                coalesce(array_agg(distinct pr.role_code) filter (where pr.is_active), '{}') as roles
+                coalesce(array_agg(distinct pr.role_code::text) filter (where pr.is_active), '{}'::text[]) as roles
            from party p left join party_role pr on pr.party_id = p.id
           where p.id = $1 and not p.is_deleted group by p.id`, [req.params.id]);
       if (!p.rows[0]) { reply.code(404); return { error: 'Client not found' }; }

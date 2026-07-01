@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { initials } from '../lib/format';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Button } from '../components/Button';
+import { NotificationBell } from '../components/NotificationBell';
 import styles from './TopBar.module.css';
 
 interface TopBarProps {
@@ -44,6 +45,7 @@ export function TopBar({ onOpenPalette, onOpenAssistant, onToggleNav }: TopBarPr
         <Button variant="subtle" size="sm" onClick={onOpenAssistant} icon={<Sparkles size={16} />}>
           Assistant
         </Button>
+        <NotificationBell />
         <ThemeToggle />
         <div className={styles.userWrap} ref={menuRef}>
           <button

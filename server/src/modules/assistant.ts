@@ -341,6 +341,30 @@ const INTENTS: Intent[] = [
     },
   },
 
+  // ---- What needs my attention (notifications + tasks) -----------------
+  {
+    test: /needs? my attention|what should i|my (notifications|alerts|tasks|to.?do)|anything (urgent|for me|pending for me)|attention/i,
+    handler: async (db, ctx, _message, _perms) => {
+      const notif = await db.query<{ n: string; crit: string }>(
+        `select count(*)::int n, count(*) filter (where severity='CRITICAL')::int crit
+           from notification where recipient_user_id = $1 and not is_read`, [ctx.userId],
+      );
+      const tasks = await db.query<{ overdue: string; open: string }>(
+        `select count(*) filter (where status not in ('DONE','CANCELLED') and due_at is not null and due_at < now())::int overdue,
+                count(*) filter (where status not in ('DONE','CANCELLED') and assignee = $1)::int open
+           from task`, [ctx.userId],
+      );
+      const nn = Number(notif.rows[0]!.n), crit = Number(notif.rows[0]!.crit);
+      const overdue = Number(tasks.rows[0]!.overdue), mine = Number(tasks.rows[0]!.open);
+      if (!nn && !overdue && !mine) return answer('You are all caught up — no unread alerts or open tasks assigned to you.');
+      const parts: string[] = [];
+      if (nn) parts.push(`${nn} unread notification(s)${crit ? ` (${crit} critical)` : ''}`);
+      if (mine) parts.push(`${mine} open task(s) assigned to you`);
+      if (overdue) parts.push(`${overdue} task(s) past SLA`);
+      return answer(`Needs your attention: ${parts.join(', ')}. Open the notification bell or the Tasks board to action them.`);
+    },
+  },
+
   // ---- Navigation -------------------------------------------------------
   {
     test: /^(go to|open|show me|take me to|navigate to)\b/i,

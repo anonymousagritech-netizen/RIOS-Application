@@ -60,6 +60,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Users,
     items: [
       { label: 'Parties', to: '/parties', icon: Users, permission: 'party:read' },
+      { label: 'Clients', to: '/clients', icon: Contact, permission: 'party:read' },
       { label: 'Brokers', to: '/brokers', icon: Briefcase, permission: 'party:read' },
       { label: 'Cedents', to: '/cedents', icon: Building2, permission: 'party:read' },
       { label: 'CRM', to: '/crm', icon: Contact, permission: 'crm:read' },
