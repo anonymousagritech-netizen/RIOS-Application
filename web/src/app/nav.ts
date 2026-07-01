@@ -10,6 +10,7 @@ import {
   ShoppingCart, Package,
   Activity, CalendarClock, Plug, Network, Store, Bot, Mail, PanelsTopLeft, Lock, Shield, ListChecks,
   Archive, EyeOff, Building2, Flag, Gauge, Settings, Globe2, Fingerprint,
+  Map as MapIcon,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -46,6 +47,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Capacity', to: '/capacity', icon: Gauge, permission: 'treaty:read' },
       { label: 'Exposure Mgmt', to: '/exposure-management', icon: Radar, permission: 'exposure:read' },
       { label: 'Territories', to: '/territories', icon: Globe2, permission: 'exposure:read' },
+      { label: 'Territory Mgmt', to: '/territory-management', icon: MapIcon, permission: 'exposure:read' },
       { label: 'Treaties', to: '/treaties', icon: FileText, permission: 'treaty:read' },
       { label: 'Treaty Admin', to: '/treaty-admin', icon: FileSpreadsheet, permission: 'treaty:read' },
       { label: 'Facultative', to: '/facultative', icon: FileCheck2, permission: 'facultative:read' },
@@ -94,6 +96,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: BarChart3,
     items: [
       { label: 'Reports', to: '/reports', icon: BarChart3, permission: 'reporting:read' },
+      { label: 'Scheduled Reports', to: '/scheduled-reports', icon: CalendarClock, permission: 'reporting:read' },
       { label: 'Analytics', to: '/analytics', icon: LineChart, permission: 'reporting:read' },
       { label: 'Risk & Capital', to: '/risk-capital', icon: ShieldCheck, permission: 'risk:read' },
       { label: 'Regulatory', to: '/regulatory', icon: Scale, permission: 'regulatory:read' },

@@ -1,0 +1,61 @@
+/* KPI grid + shared cell helpers, patterned after CapacityPage.module.css. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.cellMain { font-weight: var(--weight-semibold); color: var(--text); }
+.cellSub { font-size: var(--text-sm); color: var(--text-muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Recipients count cell (icon + number) */
+.recipCell {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  justify-content: flex-end; color: var(--text);
+}
+.recipCell svg { color: var(--text-muted); }
+
+.moreTag { color: var(--text-muted); font-weight: var(--weight-medium); }
+
+/* Row action buttons — keep them from wrapping and stealing the row click */
+.rowActions { display: inline-flex; gap: var(--space-1); justify-content: flex-end; }
+
+/* Tabs bar inside the card header region */
+.tabsBar { padding: var(--space-3) var(--space-4) 0; border-bottom: 1px solid var(--border); }
+
+.tableWrap { padding: var(--space-2) var(--space-2) var(--space-2); }
+
+/* ---------------- Drawer ---------------- */
+.drawerBody { display: flex; flex-direction: column; gap: var(--space-5); }
+
+.drawerActions { display: flex; justify-content: flex-end; }
+
+.facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+.fact { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.fact dt { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.fact dd { margin: 0; font-size: var(--text-sm); color: var(--text); font-weight: var(--weight-medium); }
+
+.sectionHeading {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--text);
+}
+.sectionHeading svg { color: var(--text-muted); }
+
+/* Recipient chips */
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip {
+  display: inline-flex; align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border); border-radius: var(--radius-full);
+  background: var(--surface-2); color: var(--text);
+  font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}

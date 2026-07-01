@@ -73,3 +73,5 @@ export * from './exposureMgmt.js';
 export * from './lossAnalytics.js';
 export * from './tasks.js';
 export * from './treatyLayer.js';
+export * from './territory.js';
+export * from './reportCadence.js';

@@ -798,3 +798,101 @@ insert into exposure_item (tenant_id, name, country, admin1, city, cresta, peril
   (:'tenant_id'::uuid, 'London riverside estate', 'GB', 'England', 'London', 'GB-LN', 'Flood', 'PROPERTY', 24000000000, 4800000000),
   (:'tenant_id'::uuid, 'Rotterdam port cargo', 'NL', 'South Holland', 'Rotterdam', 'NL-RT', 'Flood', 'MARINE_CARGO', 18000000000, 3600000000)
 on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Territory Management (§17): geographic master hierarchy + accumulation zones.
+-- ---------------------------------------------------------------------------
+-- Territory Management demo data. Idempotent. Expects :tenant_id set.
+-- Countries -----------------------------------------------------------------
+insert into territory (tenant_id, kind, code, name, country_code, risk_grade) values
+ (:'tenant_id'::uuid,'COUNTRY','US','United States','US','HIGH'),
+ (:'tenant_id'::uuid,'COUNTRY','JP','Japan','JP','SEVERE'),
+ (:'tenant_id'::uuid,'COUNTRY','GB','United Kingdom','GB','MODERATE'),
+ (:'tenant_id'::uuid,'COUNTRY','NL','Netherlands','NL','ELEVATED'),
+ (:'tenant_id'::uuid,'COUNTRY','DE','Germany','DE','LOW'),
+ (:'tenant_id'::uuid,'COUNTRY','AU','Australia','AU','ELEVATED')
+on conflict (tenant_id, kind, code) do nothing;
+
+-- States / prefectures (parented to their country) --------------------------
+insert into territory (tenant_id, kind, code, name, country_code, parent_id, risk_grade)
+select :'tenant_id'::uuid, v.kind, v.code, v.name, v.cc, c.id, v.grade
+from (values
+ ('STATE','US-FL','Florida','US','SEVERE'),
+ ('STATE','US-TX','Texas','US','HIGH'),
+ ('STATE','US-CA','California','US','HIGH'),
+ ('STATE','JP-OS','Osaka','JP','SEVERE'),
+ ('STATE','JP-TK','Tokyo','JP','SEVERE'),
+ ('STATE','GB-LDN','Greater London','GB','MODERATE'),
+ ('STATE','NL-ZH','Zuid-Holland','NL','ELEVATED')
+) as v(kind,code,name,cc,grade)
+join territory c on c.tenant_id=:'tenant_id'::uuid and c.kind='COUNTRY' and c.code=v.cc
+on conflict (tenant_id, kind, code) do nothing;
+
+-- Cities (parented to their state) ------------------------------------------
+insert into territory (tenant_id, kind, code, name, country_code, parent_id)
+select :'tenant_id'::uuid, 'CITY', v.code, v.name, v.cc, s.id
+from (values
+ ('CITY-MIA','Miami','US','US-FL'),
+ ('CITY-TPA','Tampa','US','US-FL'),
+ ('CITY-HOU','Houston','US','US-TX'),
+ ('CITY-LAX','Los Angeles','US','US-CA'),
+ ('CITY-OSA','Osaka City','JP','JP-OS'),
+ ('CITY-TYO','Tokyo','JP','JP-TK'),
+ ('CITY-LON','London','GB','GB-LDN'),
+ ('CITY-RTM','Rotterdam','NL','NL-ZH')
+) as v(code,name,cc,parent)
+join territory s on s.tenant_id=:'tenant_id'::uuid and s.kind='STATE' and s.code=v.parent
+on conflict (tenant_id, kind, code) do nothing;
+
+-- CRESTA accumulation zones -------------------------------------------------
+insert into territory (tenant_id, kind, code, name, country_code, risk_grade, perils) values
+ (:'tenant_id'::uuid,'CRESTA','US-FL','Florida (Atlantic/Gulf)','US','SEVERE','{WIND,FLOOD}'),
+ (:'tenant_id'::uuid,'CRESTA','US-TX','Texas Coast','US','HIGH','{WIND,FLOOD}'),
+ (:'tenant_id'::uuid,'CRESTA','JP-OS','Osaka Basin','JP','SEVERE','{EQ}'),
+ (:'tenant_id'::uuid,'CRESTA','JP-TK','Kanto (Tokyo)','JP','SEVERE','{EQ}'),
+ (:'tenant_id'::uuid,'CRESTA','GB-LN','Greater London','GB','MODERATE','{FLOOD}'),
+ (:'tenant_id'::uuid,'CRESTA','NL-RT','Rotterdam Delta','NL','ELEVATED','{FLOOD}')
+on conflict (tenant_id, kind, code) do nothing;
+
+-- Peril zones ---------------------------------------------------------------
+insert into territory (tenant_id, kind, code, name, risk_grade, perils) values
+ (:'tenant_id'::uuid,'PERIL','ATL-HU','North Atlantic Hurricane','HIGH','{WIND}'),
+ (:'tenant_id'::uuid,'PERIL','PAC-EQ','Pacific Ring of Fire','SEVERE','{EQ}'),
+ (:'tenant_id'::uuid,'PERIL','EU-FL','NW Europe Flood','ELEVATED','{FLOOD}')
+on conflict (tenant_id, kind, code) do nothing;
+
+-- Risk zones (portfolio accumulation belts) ---------------------------------
+insert into territory (tenant_id, kind, code, name, risk_grade, perils) values
+ (:'tenant_id'::uuid,'RISK','GULF-BELT','Gulf Coast Wind Belt','HIGH','{WIND,FLOOD}'),
+ (:'tenant_id'::uuid,'RISK','RING-FIRE','Pacific Ring of Fire','SEVERE','{EQ}'),
+ (:'tenant_id'::uuid,'RISK','NWEU-PLAIN','NW Europe Flood Plain','ELEVATED','{FLOOD}')
+on conflict (tenant_id, kind, code) do nothing;
+
+-- Postal zones (illustrative) ----------------------------------------------
+insert into territory (tenant_id, kind, code, name, country_code) values
+ (:'tenant_id'::uuid,'POSTAL','33101','Miami FL 33101','US'),
+ (:'tenant_id'::uuid,'POSTAL','77002','Houston TX 77002','US'),
+ (:'tenant_id'::uuid,'POSTAL','EC1','London EC1','GB')
+on conflict (tenant_id, kind, code) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Scheduled Reports (§13.6): distribution lists + one schedule per cadence.
+-- ---------------------------------------------------------------------------
+insert into distribution_list (tenant_id, name, description, recipients) values
+ (:'tenant_id'::uuid,'Executive Committee','CEO, CFO, Chief UW','{ceo@demo.rios,cfo@demo.rios,uw@demo.rios}'),
+ (:'tenant_id'::uuid,'Finance Team','Accounting & finance','{acct@demo.rios,cfo@demo.rios}'),
+ (:'tenant_id'::uuid,'Regulators','External regulatory filings','{returns@regulator.example}')
+on conflict (tenant_id, name) do nothing;
+
+insert into report_schedule (tenant_id, name, cadence, format, distribution_list_id, next_run_at)
+select :'tenant_id'::uuid, v.name, v.cadence, v.format,
+       (select id from distribution_list where tenant_id=:'tenant_id'::uuid and name=v.list),
+       now() + (v.days || ' days')::interval
+from (values
+ ('Daily Bordereaux Summary','DAILY','CSV','Finance Team','1'),
+ ('Weekly Underwriting Pipeline','WEEKLY','EXCEL','Executive Committee','5'),
+ ('Monthly Board Pack','MONTHLY','PDF','Executive Committee','20'),
+ ('Quarterly Solvency Return','QUARTERLY','PDF','Regulators','60'),
+ ('Annual Statutory Accounts','ANNUAL','PDF','Regulators','200')
+) as v(name,cadence,format,list,days)
+on conflict do nothing;

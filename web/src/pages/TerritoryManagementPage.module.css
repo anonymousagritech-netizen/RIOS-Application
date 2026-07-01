@@ -1,0 +1,97 @@
+/* Territory Management — geographic accumulation & zone risk. */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.cellMain { font-weight: var(--weight-semibold); color: var(--text); }
+.cellSub { font-size: var(--text-sm); color: var(--text-muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+.sectionHead { padding: var(--space-1) var(--space-4) 0; }
+.tableWrap { padding: 0 var(--space-2) var(--space-2); }
+
+/* Zone peril badges */
+.perilRow { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+
+/* Tabs bar */
+.tabsBar { padding: 0 var(--space-4) var(--space-2); }
+
+/* CRESTA book summary line */
+.bookSummary {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  margin: 0 var(--space-4) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-size: var(--text-sm); color: var(--text-muted);
+}
+.bookSummary strong { color: var(--text); font-weight: var(--weight-semibold); margin-right: var(--space-1); }
+.dotSep { width: 3px; height: 3px; border-radius: var(--radius-full); background: var(--border-strong, var(--border)); }
+
+/* ---------------- Tree ---------------- */
+.treeWrap { padding: var(--space-2) var(--space-2) var(--space-3); }
+.tree { list-style: none; margin: 0; padding: 0; }
+
+.treeNode {
+  display: flex; align-items: center; gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none; background: transparent; cursor: pointer;
+  border-radius: var(--radius-md);
+  text-align: left; color: var(--text);
+  transition: background var(--motion-fast);
+}
+.treeNode:hover { background: var(--surface-2); }
+
+.treeIcon {
+  display: inline-flex; flex-shrink: 0;
+  color: var(--text-muted);
+}
+.treeIcon[data-has-children='true'] { color: var(--primary); }
+
+.treeName { font-weight: var(--weight-medium); color: var(--text); }
+.treeCode {
+  font-size: var(--text-xs); color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.treeGrade { margin-left: auto; flex-shrink: 0; }
+.treeChevron { color: var(--text-subtle, var(--text-muted)); flex-shrink: 0; }
+
+/* Score cell mini-bar */
+.scoreCell { display: flex; align-items: center; gap: var(--space-2); justify-content: flex-end; }
+.scoreBar { width: 56px; height: 6px; border-radius: var(--radius-full); background: var(--surface-3); overflow: hidden; }
+.scoreFill { display: block; height: 100%; border-radius: var(--radius-full); background: var(--c-slate); }
+.scoreFill[data-band='MODERATE'] { background: var(--c-blue); }
+.scoreFill[data-band='ELEVATED'] { background: var(--c-amber); }
+.scoreFill[data-band='HIGH'] { background: var(--c-orange); }
+.scoreFill[data-band='SEVERE'] { background: var(--c-red); }
+
+/* ---------------- Drawer ---------------- */
+.drawerBody { display: flex; flex-direction: column; gap: var(--space-5); }
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+.metaRow { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.childName { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-muted); }
+.drawerHeading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm); font-weight: var(--weight-semibold);
+  color: var(--text); text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+/* ---------------- Form ---------------- */
+.form { display: flex; flex-direction: column; gap: var(--space-5); }
+.formError { color: var(--danger); font-size: var(--text-sm); margin: 0; }
