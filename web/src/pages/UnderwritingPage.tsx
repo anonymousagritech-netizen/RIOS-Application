@@ -1,10 +1,12 @@
 import { Fragment, useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Gavel, Inbox, TrendingUp, Gauge, CheckCircle2, Target, Percent,
+  Gavel, Inbox, TrendingUp, Gauge, CheckCircle2, Percent,
   FileText, Calculator, Send, Play, XCircle, StickyNote,
+  Download, Printer, FileSignature, FileBarChart,
 } from 'lucide-react';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, downloadFile } from '../lib/api';
+import { printReport } from '../lib/uwReports';
 import { useParties, useCurrencies } from '../lib/queries';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -126,7 +128,10 @@ export function UnderwritingPage() {
         title="Underwriting Workbench"
         description="Submission-to-bind lifecycle: triage, risk score, price, refer, quote and bind — with a full audit trail."
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Underwriting' }]}
-        actions={<Button variant="primary" icon={<Gavel size={16} />} onClick={() => setShowNew(true)}>New submission</Button>}
+        actions={<>
+          <Button variant="secondary" icon={<Download size={16} />} onClick={() => downloadFile(`/api/underwriting/export.csv${stage ? `?stage=${stage}` : ''}`, 'underwriting-pipeline.csv')}>Export CSV</Button>
+          <Button variant="primary" icon={<Gavel size={16} />} onClick={() => setShowNew(true)}>New submission</Button>
+        </>}
       />
 
       <div className={styles.kpis}>
@@ -478,6 +483,16 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
                 })}
               </div>
             ) : <p className={styles.cellSub}>This submission is {titleCase(s.stage)} — no further moves.</p>}
+          </Card>
+
+          {/* Documents — printable slip / quote / summary */}
+          <Card padded>
+            <CardHeader title="Documents" subtitle="Generate a market-ready slip, quote or summary (print → PDF)" />
+            <div className={styles.actions}>
+              <Button size="sm" variant="secondary" icon={<FileSignature size={14} />} onClick={() => printReport('slip', s, catalog, scenario)}>Slip</Button>
+              <Button size="sm" variant="secondary" icon={<Printer size={14} />} onClick={() => printReport('quote', s, catalog, scenario)}>Quote</Button>
+              <Button size="sm" variant="secondary" icon={<FileBarChart size={14} />} onClick={() => printReport('summary', s, catalog, scenario)}>UW summary</Button>
+            </div>
           </Card>
 
           {/* Pricing scenarios (what-if) */}

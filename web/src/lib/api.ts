@@ -87,6 +87,31 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
   return payload as T;
 }
 
+/**
+ * Fetch a file (CSV, etc.) with bearer auth and trigger a browser download.
+ * Used for server-generated exports that aren't JSON.
+ */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(apiUrl(path), { headers });
+  if (!res.ok) {
+    if (res.status === 401) emitAuth('unauthorized');
+    if (res.status === 403) emitAuth('forbidden');
+    throw new ApiError(res.status, res.statusText || 'Download failed');
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /** Build a query string from a record, skipping empty values. */
 export function qs(params: Record<string, string | undefined | null>): string {
   const entries = Object.entries(params).filter(([, v]) => v != null && v !== '');

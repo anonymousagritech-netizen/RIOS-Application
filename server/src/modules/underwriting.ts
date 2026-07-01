@@ -151,6 +151,53 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // ---- Pipeline export (CSV, opens in Excel) -------------------------------
+  app.get('/api/underwriting/export.csv', { preHandler: requirePermission('reporting:read') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const stage = (req.query as { stage?: string }).stage;
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{
+        reference: string; title: string; kind: string; structure: string | null; line_of_business: string | null;
+        currency: string; stage: string; risk_score: number | null; risk_band: string | null;
+        est_premium_minor: number | null; target_premium_minor: number | null;
+        cedentName: string | null; brokerName: string | null; inception: string | null; expiry: string | null;
+      }>(
+        `select s.reference, s.title, s.kind, s.structure, s.line_of_business,
+                s.currency, s.stage, s.risk_score, s.risk_band,
+                s.est_premium_minor, s.target_premium_minor,
+                ced.short_name as "cedentName", brk.short_name as "brokerName",
+                to_char(s.inception,'YYYY-MM-DD') as inception, to_char(s.expiry,'YYYY-MM-DD') as expiry
+           from submission s
+           left join party ced on ced.id = s.cedent_party_id
+           left join party brk on brk.id = s.broker_party_id
+          where ($1::text is null or s.stage = $1)
+          order by s.created_at desc`,
+        [stage ?? null],
+      );
+      const headers = [
+        'Reference', 'Title', 'Kind', 'Structure', 'Line of business', 'Cedent', 'Broker',
+        'Currency', 'Inception', 'Expiry', 'Stage', 'Risk score', 'Risk band',
+        'EPI (major)', 'Technical premium (major)',
+      ];
+      const esc = (v: unknown) => {
+        const s = v === null || v === undefined ? '' : String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const major = (m: number | null) => (m == null ? '' : (Number(m) / 100).toFixed(2));
+      const lines = [headers.join(',')];
+      for (const r of rows) {
+        lines.push([
+          r.reference, r.title, r.kind, r.structure ?? '', r.line_of_business ?? '', r.cedentName ?? '', r.brokerName ?? '',
+          r.currency, r.inception ?? '', r.expiry ?? '', r.stage, r.risk_score ?? '', r.risk_band ?? '',
+          major(r.est_premium_minor), major(r.target_premium_minor),
+        ].map(esc).join(','));
+      }
+      reply.header('content-type', 'text/csv; charset=utf-8');
+      reply.header('content-disposition', 'attachment; filename="underwriting-pipeline.csv"');
+      return lines.join('\n');
+    });
+  });
+
   // ---- Create --------------------------------------------------------------
   app.post('/api/underwriting/submissions', { preHandler: requirePermission('treaty:write') }, async (req, reply) => {
     const ctx = authContext(req);

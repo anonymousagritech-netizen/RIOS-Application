@@ -149,6 +149,20 @@ describe('Underwriting: analytics, scenarios & approval matrix', () => {
     expect(detail.json().termsCheck.ok).toBe(true);
   });
 
+  it('exports the pipeline as CSV', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    const res = await app.inject({ method: 'GET', url: '/api/underwriting/export.csv', headers: auth });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/csv');
+    const body = res.body as string;
+    const header = body.split('\n')[0];
+    expect(header).toContain('Reference');
+    expect(header).toContain('Technical premium (major)');
+    // At least a header + one data row from earlier submissions.
+    expect(body.split('\n').length).toBeGreaterThan(1);
+  });
+
   it('builds a pricing scenario grid for a submission', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
