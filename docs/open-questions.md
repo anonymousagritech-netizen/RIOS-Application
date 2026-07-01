@@ -65,8 +65,9 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   with income-tax-treaty exemption (`federalExciseTax`) and a tax gross-up (`grossUp`). **Bank reconciliation**
   is now delivered too (`@rios/domain/bankRec.reconcileBank`): reference-then-amount/date matching of book vs
   bank lines, surfacing deposits-in-transit / outstanding items and bank-only charges, and proving the
-  reconciliation identity to zero. **Treasury, investments and fixed assets** sub-ledgers remain
-  designed-for. (§9.8)
+  reconciliation identity to zero. **Fixed assets** is now delivered too (`@rios/domain/fixedAssets`):
+  straight-line and reducing-balance `depreciationSchedule` (never below residual, ties to cost - residual),
+  `netBookValue` and disposal gain/loss. **Treasury and investments** sub-ledgers remain designed-for. (§9.8)
 - **Statement-of-account lifecycle** (Open → Prepared → … → Settled) - **delivered**: guarded status
   transitions (`STATEMENT_TRANSITIONS`) with the AR/AP invoice spin-off on issue. (§28.5)
 - **Profit-commission jurisdictional variants** - one common basis delivered; others would be configuration.
