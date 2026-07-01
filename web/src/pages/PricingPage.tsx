@@ -12,6 +12,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { FormField, Input, Select } from '../components/Form';
+import { CalculatedValue, type CalculationStep } from '../components/CalculatedValue';
 import { formatMoney, formatPercent, formatDateTime, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './PricingPage.module.css';
@@ -274,18 +275,44 @@ function BurningCostCard({ canWrite }: { canWrite: boolean }) {
       </form>
 
       {result && (
-        <ResultPanel
-          accent="var(--accent-orange)"
-          icon={<Flame size={20} />}
-          headlineLabel="Technical premium"
-          headlineValue={formatMoney(result.technicalPremium.amount, result.technicalPremium.currency)}
-          items={[
-            { term: 'Rate on line', value: formatPercent(result.rateOnLine) },
-            { term: 'Pure burning cost', value: formatPercent(result.pureBurningCost) },
-            { term: 'Loaded burning cost', value: formatPercent(result.loadedBurningCost) },
-            { term: 'Total layer losses', value: formatMoney(result.totalLayerLosses.amount, result.totalLayerLosses.currency) },
-          ]}
-        />
+        <>
+          {(() => {
+            // Invoice-style breakdown of how the technical premium is built up,
+            // rendered through the shared CalculatedValue provenance component.
+            const ccy = result.technicalPremium.currency;
+            const fmt = (n: number) => formatMoney(Math.round(n), ccy);
+            const layerLosses = result.totalLayerLosses.amount;
+            const premium = result.technicalPremium.amount;
+            const loading = premium - layerLosses;
+            const steps: CalculationStep[] = [
+              { name: 'expectedLoss', label: 'Expected layer loss (pure burning cost)', value: layerLosses },
+              { name: 'loading', label: `Loading & risk margin (×${(result.loadedBurningCost && result.pureBurningCost ? result.loadedBurningCost / result.pureBurningCost : 1).toFixed(2)})`, value: loading },
+            ];
+            return (
+              <div className={styles.calcRow}>
+                <CalculatedValue
+                  label="Technical premium"
+                  value={premium}
+                  status="SYSTEM"
+                  steps={steps}
+                  formatValue={fmt}
+                />
+              </div>
+            );
+          })()}
+          <ResultPanel
+            accent="var(--accent-orange)"
+            icon={<Flame size={20} />}
+            headlineLabel="Technical premium"
+            headlineValue={formatMoney(result.technicalPremium.amount, result.technicalPremium.currency)}
+            items={[
+              { term: 'Rate on line', value: formatPercent(result.rateOnLine) },
+              { term: 'Pure burning cost', value: formatPercent(result.pureBurningCost) },
+              { term: 'Loaded burning cost', value: formatPercent(result.loadedBurningCost) },
+              { term: 'Total layer losses', value: formatMoney(result.totalLayerLosses.amount, result.totalLayerLosses.currency) },
+            ]}
+          />
+        </>
       )}
     </Card>
   );

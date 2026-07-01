@@ -9,6 +9,7 @@ import {
   Boxes, Database, FolderOpen, Library,
   Plug, Mail, Bot, PanelsTopLeft,
   Settings, Activity, GitBranch, Lock, Shield, EyeOff, Archive, Gauge, Flag,
+  FunctionSquare,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -150,6 +151,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Settings,
     items: [
       { label: 'Admin', to: '/admin', icon: Settings, permission: 'admin:manage' },
+      { label: 'Formula Engine', to: '/formulas', icon: FunctionSquare },
       { label: 'Legal Entities', to: '/organisation', icon: Building2, permission: 'platform:read' },
       { label: 'Ops Console', to: '/operations', icon: Activity, permission: 'ops:read' },
       { label: 'Delegation', to: '/delegation', icon: GitBranch },
