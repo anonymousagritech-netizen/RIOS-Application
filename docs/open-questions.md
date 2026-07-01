@@ -20,8 +20,10 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 - **Cat modelling / exposure & aggregate management** - `risk.peril_zone` exists and the assistant can
   aggregate by zone, but zonal aggregates, PML/MFL, RDS, and third-party cat-model integration (Verisk/Moody's
   RMS) are designed-for. (§7.8, §9.9)
-- **Pricing & rating** - burning-cost/experience rating, exposure rating, swing rating, capacity/authority
-  checks are not in the domain library. (§7.8, §29.5)
+- **Pricing & rating** - burning-cost/experience rating, exposure rating (exposure curves + ILFs),
+  capacity/authority checks and now **swing (retrospectively) rating** (`swingRatedPremium`: provisional vs
+  loss-driven adjusted premium collared to [min, max]) are delivered in `@rios/domain/rating` and
+  `@rios/domain/pricing`. Stochastic/credibility pricing blends remain designed-for. (§7.8, §29.5)
 - **Bordereaux ingestion** - **delivered** as a pure engine (`@rios/domain/bordereaux`) wired into
   `POST /api/bordereaux`: a stored column-mapping projects arbitrary source headers onto canonical fields,
   each line is validated (amount present/positive, loss-date shape), amounts quantise to integer minor units,
@@ -42,8 +44,9 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   `indexedRecovery` re-express an XL layer in settlement-date money (full index, franchise and
   severe-inflation variants) and `hoursClauseOccurrences` groups dated cat losses into occurrences bounded
   by a time window. Optimal hours-window placement and richer occurrence definitions remain designed-for.
-- **Reinstatement schedules** beyond the simple cumulative-fraction model; **sliding scale** stepped (vs
-  interpolated) variants - config-driven extensions.
+- **Sliding scale** now offers both stepped (`slidingScaleCommission`) and **interpolated**
+  (`slidingScaleInterpolated`) variants. **Reinstatement schedules** beyond the simple cumulative-fraction
+  model remain a config-driven extension.
 
 ## 2. Accounting & finance breadth
 

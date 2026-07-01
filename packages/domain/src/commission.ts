@@ -83,9 +83,9 @@ export interface SlidingScaleInput {
    * commission rate decreases per 1 percentage point of loss ratio above the
    * point where `maxRate` applies. Expressed as a fraction per LR-point
    * (e.g. 0.5 means commission drops 0.5% for each 1% of loss ratio).
-   * Ignored when `bands` is supplied.
+   * Ignored when `bands` is supplied; defaults to 0.
    */
-  slideRatePerLossRatioPoint: number;
+  slideRatePerLossRatioPoint?: number;
   /**
    * Optional explicit loss-ratio bands (preferred). When present the effective
    * rate is the rate of the lowest band whose `lossRatioUpTo` is >= the actual
@@ -147,7 +147,7 @@ export function slidingScaleCommission(input: SlidingScaleInput): SlidingScaleRe
   } else {
     // Linear slide: rate falls from maxRate by slideRatePerLossRatioPoint per LR-point.
     // lossRatio is a fraction; * 100 gives loss-ratio points.
-    const slid = maxRate - slideRatePerLossRatioPoint * (lossRatio * 100) / 100;
+    const slid = maxRate - (slideRatePerLossRatioPoint ?? 0) * (lossRatio * 100) / 100;
     effectiveRate = clampRate(slid, minRate, maxRate);
   }
 
@@ -293,4 +293,54 @@ export function brokerage(premiumMinor: Money, brokerageRate: number): Money {
     throw new RangeError(`brokerage brokerageRate must be a non-negative number, got ${brokerageRate}`);
   }
   return multiply(premiumMinor, brokerageRate);
+}
+
+// ---------------------------------------------------------------------------
+// Sliding scale - interpolated (vs stepped) variant
+// ---------------------------------------------------------------------------
+
+/**
+ * Interpolated sliding-scale commission: the rate is linearly interpolated
+ * between the band knots (each band's `lossRatioUpTo` is treated as a knot at
+ * `commissionRate`), rather than stepping to a band's flat rate. Below the first
+ * knot the first rate applies; above the last knot the last rate applies; the
+ * result is collared to [minRate, maxRate].
+ */
+export function slidingScaleInterpolated(input: SlidingScaleInput): SlidingScaleResult {
+  const { premiumMinor, incurredLossMinor, provisionalRate, minRate, maxRate, bands } = input;
+  if (minRate > maxRate) {
+    throw new RangeError(`slidingScaleInterpolated minRate (${minRate}) must not exceed maxRate (${maxRate})`);
+  }
+  if (!bands || bands.length === 0) {
+    throw new RangeError('slidingScaleInterpolated requires at least one band knot');
+  }
+  const lossRatio = premiumMinor.amount === 0 ? 0 : incurredLossMinor.amount / premiumMinor.amount;
+  const effectiveRate = clampRate(interpolateBands(lossRatio, bands), minRate, maxRate);
+  const provisionalCommission = multiply(premiumMinor, provisionalRate);
+  const finalCommission = multiply(premiumMinor, effectiveRate);
+  return {
+    lossRatio,
+    effectiveRate,
+    provisionalCommission,
+    finalCommission,
+    adjustment: subtract(finalCommission, provisionalCommission),
+  };
+}
+
+function interpolateBands(lossRatio: number, bands: SlidingScaleBand[]): number {
+  const knots = [...bands].sort((a, b) => a.lossRatioUpTo - b.lossRatioUpTo);
+  const first = knots[0]!;
+  const last = knots[knots.length - 1]!;
+  if (lossRatio <= first.lossRatioUpTo) return first.commissionRate;
+  if (lossRatio >= last.lossRatioUpTo) return last.commissionRate;
+  for (let i = 0; i < knots.length - 1; i++) {
+    const lo = knots[i]!;
+    const hi = knots[i + 1]!;
+    if (lossRatio >= lo.lossRatioUpTo && lossRatio <= hi.lossRatioUpTo) {
+      const span = hi.lossRatioUpTo - lo.lossRatioUpTo;
+      const t = span === 0 ? 0 : (lossRatio - lo.lossRatioUpTo) / span;
+      return lo.commissionRate + t * (hi.commissionRate - lo.commissionRate);
+    }
+  }
+  return last.commissionRate;
 }
