@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Gavel, Inbox, TrendingUp, Gauge, CheckCircle2, Target, Percent,
@@ -61,6 +61,21 @@ interface SubmissionDetail extends SubmissionRow {
   sumInsuredMinor: number | null; attachmentMinor: number | null; limitMinor: number | null;
   lossRatioPct: number | null; catExposed: boolean; classHazard: number | null; priorClaims: number | null; yearsWithCedent: number | null;
   scoreBreakdown: ScoreContribution[]; activity: Activity[];
+}
+
+interface ScenarioBase {
+  lossRatioPct: number; expenseRatioPct: number; combinedRatioPct: number; underwritingResultMinor: number; marginPct: number;
+}
+interface ScenarioCell {
+  rateChange: number; lossShock: number; premiumMinor: number; expectedLossMinor: number; combinedRatioPct: number; underwritingResultMinor: number;
+}
+interface SensitivityPoint { driver: string; value: number; combinedRatioPct: number; }
+interface ScenarioResult {
+  basePremiumMinor: number; expectedLossMinor: number;
+  base: ScenarioBase;
+  grid: ScenarioCell[];
+  sensitivity: { rate: SensitivityPoint[]; loss: SensitivityPoint[] };
+  rateChanges: number[]; lossShocks: number[];
 }
 
 const money = (minor: number | null | undefined, ccy = 'USD') =>
@@ -258,6 +273,14 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
   const qc = useQueryClient();
   const { data: s, isLoading } = useSubmission(id);
   const [note, setNote] = useState('');
+  const [scenario, setScenario] = useState<ScenarioResult | null>(null);
+
+  const runScenarios = useMutation({
+    mutationFn: () => api<ScenarioResult>(`/api/underwriting/submissions/${id}/scenarios`, { body: {} }),
+    onSuccess: (r) => { setScenario(r); toast.success('Pricing scenarios computed'); },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not run scenarios'),
+  });
+  useEffect(() => { setScenario(null); }, [id]);
 
   const invalidate = () => { qc.invalidateQueries({ queryKey: ['uw'] }); };
   const act = <T,>(path: string, body: unknown, ok: string) =>
@@ -347,6 +370,66 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
             ) : <p className={styles.cellSub}>This submission is {titleCase(s.stage)} — no further moves.</p>}
           </Card>
 
+          {/* Pricing scenarios (what-if) */}
+          <Card padded>
+            <CardHeader
+              title="Pricing scenarios"
+              subtitle="What-if combined ratio across rate & loss shocks"
+              actions={<Button size="sm" variant="secondary" icon={<Calculator size={14} />} loading={runScenarios.isPending} onClick={() => runScenarios.mutate()}>Run</Button>}
+            />
+            {!scenario ? (
+              <p className={styles.cellSub}>Run scenarios to model combined ratio sensitivity to rate change and loss shocks.</p>
+            ) : (
+              <div className={styles.scenario}>
+                {/* Base ratio chips */}
+                <div className={styles.statChips}>
+                  <StatChip label="Loss ratio" value={`${scenario.base.lossRatioPct}%`} />
+                  <StatChip label="Expense ratio" value={`${scenario.base.expenseRatioPct}%`} />
+                  <StatChip label="Combined ratio" value={`${scenario.base.combinedRatioPct}%`} headline band={crBand(scenario.base.combinedRatioPct)} />
+                  <StatChip label="Margin" value={`${scenario.base.marginPct}%`} />
+                </div>
+
+                {/* Combined-ratio matrix */}
+                <div className={styles.matrixWrap}>
+                  <div className={styles.matrixLabel}>Combined ratio · rate change × loss shock</div>
+                  <div
+                    className={styles.matrix}
+                    style={{ gridTemplateColumns: `auto repeat(${scenario.rateChanges.length}, minmax(48px, 1fr))` }}
+                  >
+                    <span className={styles.matrixCorner} />
+                    {scenario.rateChanges.map((rc) => (
+                      <span key={`col-${rc}`} className={styles.matrixHead}>{fmtRate(rc)}</span>
+                    ))}
+                    {scenario.lossShocks.map((ls) => (
+                      <Fragment key={`row-${ls}`}>
+                        <span className={styles.matrixRowHead}>{fmtShock(ls)}</span>
+                        {scenario.rateChanges.map((rc) => {
+                          const cell = scenario.grid.find((g) => g.rateChange === rc && g.lossShock === ls);
+                          const cr = cell?.combinedRatioPct;
+                          return (
+                            <span
+                              key={`cell-${rc}-${ls}`}
+                              className={styles.matrixCell}
+                              data-band={cr == null ? undefined : crBand(cr)}
+                            >
+                              {cr == null ? '—' : `${cr}%`}
+                            </span>
+                          );
+                        })}
+                      </Fragment>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sensitivity readout */}
+                <div className={styles.sensBlock}>
+                  <SensRow label="Rate change" points={scenario.sensitivity.rate} fmt={fmtRate} />
+                  <SensRow label="Loss shock" points={scenario.sensitivity.loss} fmt={fmtShock} />
+                </div>
+              </div>
+            )}
+          </Card>
+
           {/* Activity trail */}
           <Card padded>
             <CardHeader title="Activity" subtitle="Audited underwriting trail" />
@@ -378,6 +461,39 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
     <div className={styles.fact}>
       <span className={styles.factLabel}>{label}</span>
       <span className={styles.factValue}>{value}</span>
+    </div>
+  );
+}
+
+/* ---------------- Pricing scenario helpers ---------------- */
+// combinedRatioPct band: <100 green, 100–110 amber, >110 red
+const crBand = (cr: number): 'green' | 'amber' | 'red' => (cr < 100 ? 'green' : cr <= 110 ? 'amber' : 'red');
+// rateChange is a fraction (0.15 → "+15%")
+const fmtRate = (rc: number) => `${rc > 0 ? '+' : ''}${Math.round(rc * 100)}%`;
+// lossShock is a multiplier (1.25 → "×1.25")
+const fmtShock = (ls: number) => `×${(Math.round(ls * 100) / 100).toString()}`;
+
+function StatChip({ label, value, headline, band }: { label: string; value: string; headline?: boolean; band?: 'green' | 'amber' | 'red' }) {
+  return (
+    <div className={`${styles.statChip} ${headline ? styles.statChipHeadline : ''}`} data-band={band}>
+      <span className={styles.statChipLabel}>{label}</span>
+      <span className={styles.statChipValue}>{value}</span>
+    </div>
+  );
+}
+
+function SensRow({ label, points, fmt }: { label: string; points: SensitivityPoint[]; fmt: (v: number) => string }) {
+  return (
+    <div className={styles.sensRow}>
+      <span className={styles.sensLabel}>{label}</span>
+      <div className={styles.sensPoints}>
+        {points.map((p, i) => (
+          <span key={i} className={styles.sensPoint} data-band={crBand(p.combinedRatioPct)}>
+            <span className={styles.sensPointDriver}>{fmt(p.value)}</span>
+            <span className={styles.sensPointCr}>{p.combinedRatioPct}%</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

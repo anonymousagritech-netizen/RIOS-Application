@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, Volume2, Square, FileText, CircleAlert, TrendingUp, CalendarClock } from 'lucide-react';
+import { Mic, Volume2, Square, FileText, CircleAlert, TrendingUp, CalendarClock, ShieldAlert, ClipboardList } from 'lucide-react';
 import type { AssistantAction } from '@rios/shared';
 import { Drawer } from '../components/Drawer';
 import { Button } from '../components/Button';
@@ -33,6 +33,8 @@ const VOICE_COMMANDS = [
   { icon: CircleAlert, label: 'Open claims', text: 'Summarise open claims' },
   { icon: TrendingUp, label: 'Total GWP', text: 'What is total GWP this year?' },
   { icon: CalendarClock, label: "Who's on leave", text: 'Who is on leave today?' },
+  { icon: ShieldAlert, label: 'High-risk', text: 'Show high-risk submissions' },
+  { icon: ClipboardList, label: 'UW pipeline', text: 'Underwriting pipeline' },
 ];
 
 export function AssistantDrawer({ open, onClose, autoVoice = false }: { open: boolean; onClose: () => void; autoVoice?: boolean }) {

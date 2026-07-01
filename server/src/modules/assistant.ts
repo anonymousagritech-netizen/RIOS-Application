@@ -95,6 +95,93 @@ function navAction(route: string, label: string): AssistantAction {
 // Intent catalogue
 // ---------------------------------------------------------------------------
 const INTENTS: Intent[] = [
+  // ---- Underwriting: high-risk submissions ------------------------------
+  {
+    test: /high.?risk|elevated risk|risky (submission|treat)/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'treaty:read')) return answer('You do not have permission to view submissions (treaty:read).');
+      const r = await db.query<{ id: string; reference: string; title: string; risk_score: number; risk_band: string; stage: string }>(
+        `select s.id, s.reference, s.title, s.risk_score, s.risk_band, s.stage
+           from submission s
+          where s.risk_band in ('ELEVATED','HIGH') and s.stage not in ('BOUND','DECLINED','LAPSED')
+          order by s.risk_score desc nulls last limit 8`,
+      );
+      if (!r.rows.length) return answer('No open ELEVATED/HIGH-risk submissions right now.');
+      const lines = r.rows.map((s) => `• ${s.reference} - ${s.title} (${s.risk_band}, score ${s.risk_score ?? 'n/a'}, ${s.stage})`).join('\n');
+      return answer(
+        `Top high-risk open submissions:\n${lines}`,
+        r.rows.map((s) => ({ entity: 'submission', id: s.id, label: s.reference })),
+      );
+    },
+  },
+
+  // ---- Underwriting: pipeline ------------------------------------------
+  {
+    test: /underwriting pipeline|open submission|submissions?\b|\bsubmission pipeline\b/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'treaty:read')) return answer('You do not have permission to view submissions (treaty:read).');
+      const byStage = await db.query<{ stage: string; n: number }>(
+        `select stage, count(*)::int n from submission group by stage order by n desc`,
+      );
+      if (!byStage.rows.length) return answer('There are no submissions in the pipeline yet.');
+      const OPEN = new Set(['SUBMISSION', 'TRIAGE', 'ANALYSIS', 'PRICING', 'REFERRAL', 'QUOTED']);
+      const openStages = byStage.rows.filter((s) => OPEN.has(s.stage));
+      const openTotal = openStages.reduce((a, s) => a + s.n, 0);
+      const epi = await db.query<{ epi: number }>(
+        `select coalesce(sum(est_premium_minor),0)::bigint epi from submission
+          where stage in ('SUBMISSION','TRIAGE','ANALYSIS','PRICING','REFERRAL','QUOTED')`,
+      );
+      const stageLine = byStage.rows.map((s) => `${s.stage}: ${s.n}`).join(', ');
+      return answer(
+        `Underwriting pipeline - ${openTotal} open submission(s), pipeline EPI ${fmt(Number(epi.rows[0]!.epi))}.\nBy stage: ${stageLine}.`,
+      );
+    },
+  },
+
+  // ---- Underwriting: catastrophe exposure ------------------------------
+  {
+    test: /cat(astrophe)?[\s-]?expos|cat.?exposed/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'treaty:read')) return answer('You do not have permission to view submissions (treaty:read).');
+      const r = await db.query<{ exposure: number; n: number }>(
+        `select coalesce(sum(coalesce(limit_minor, sum_insured_minor, 0)),0)::bigint exposure, count(*)::int n
+           from submission where cat_exposed = true and stage not in ('DECLINED','LAPSED')`,
+      );
+      const row = r.rows[0]!;
+      if (!row.n) return answer('No cat-exposed submissions on the book right now.');
+      return answer(
+        `Catastrophe exposure: ${row.n} cat-exposed submission(s) carrying ${fmt(Number(row.exposure))} of aggregate exposure (layer limit, else sum insured).`,
+      );
+    },
+  },
+
+  // ---- Underwriting: portfolio / summary -------------------------------
+  {
+    test: /underwriting summary|portfolio summary|underwriting (overview|snapshot)/i,
+    handler: async (db, _ctx, _message, perms) => {
+      if (!has(perms, 'treaty:read')) return answer('You do not have permission to view submissions (treaty:read).');
+      const t = await db.query<{ total: number; bound: number; declined: number; avg_score: number }>(
+        `select count(*)::int total,
+                count(*) filter (where stage='BOUND')::int bound,
+                count(*) filter (where stage='DECLINED')::int declined,
+                coalesce(round(avg(risk_score)),0)::int avg_score
+           from submission`,
+      );
+      const tot = t.rows[0]!;
+      if (!tot.total) return answer('No submissions on the book yet.');
+      const top = await db.query<{ key: string; n: number }>(
+        `select coalesce(structure, kind) key, count(*)::int n from submission
+          group by coalesce(structure, kind) order by n desc limit 1`,
+      );
+      const decided = tot.bound + tot.declined;
+      const hitRatio = decided ? Math.round((tot.bound / decided) * 100) : 0;
+      const topStruct = top.rows[0] ? `${top.rows[0].key} (${top.rows[0].n})` : 'n/a';
+      return answer(
+        `Underwriting summary: ${tot.total} submission(s), ${tot.bound} bound, hit ratio ${hitRatio}% (bound / decided), average risk score ${tot.avg_score}. Top structure by count is ${topStruct}.`,
+      );
+    },
+  },
+
   // ---- Navigation -------------------------------------------------------
   {
     test: /^(go to|open|show me|take me to|navigate to)\b/i,

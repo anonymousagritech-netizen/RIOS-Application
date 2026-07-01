@@ -6,6 +6,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { TreatiesPage } from '../pages/TreatiesPage';
 import { UnderwritingPage } from '../pages/UnderwritingPage';
+import { UnderwritingAnalyticsPage } from '../pages/UnderwritingAnalyticsPage';
 import { TreatyDetailPage } from '../pages/TreatyDetailPage';
 import { PartiesPage } from '../pages/PartiesPage';
 import { PartyDetailPage } from '../pages/PartyDetailPage';
@@ -85,6 +86,7 @@ export function App() {
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/underwriting" element={<UnderwritingPage />} />
+        <Route path="/underwriting/analytics" element={<UnderwritingAnalyticsPage />} />
         <Route path="/treaties" element={<TreatiesPage />} />
         <Route path="/treaties/:id" element={<TreatyDetailPage />} />
         <Route path="/parties" element={<PartiesPage />} />
