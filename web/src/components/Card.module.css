@@ -3,6 +3,9 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  /* Clip full-bleed children (header dividers, tables, charts, filter bars) to
+     the rounded corners so nothing intersects the card border. */
+  overflow: hidden;
   transition: border-color var(--motion-fast), box-shadow var(--motion-base), transform var(--motion-base);
 }
 .card:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
@@ -16,6 +19,14 @@
   margin-bottom: var(--space-4);
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border);
+}
+
+/* A non-padded card has no card padding for the header to sit within, so the
+   header insets itself — its bottom divider is then held off the rounded corners
+   and the title isn't flush to the edge. The body element brings its own padding. */
+.card:not(.padded) > .header {
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  margin-bottom: 0;
 }
 .title {
   font-size: var(--text-lg);
