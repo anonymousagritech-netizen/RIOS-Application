@@ -6,6 +6,7 @@ import { NAV_GROUPS } from './nav';
 import { TopBar } from './TopBar';
 import { CommandPalette } from './CommandPalette';
 import { AssistantDrawer } from '../assistant/AssistantDrawer';
+import { VoiceFab } from '../assistant/VoiceFab';
 import styles from './AppShell.module.css';
 
 const COLLAPSE_KEY = 'rios.nav.collapsed';
@@ -15,6 +16,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(
     () => typeof localStorage !== 'undefined' && localStorage.getItem(COLLAPSE_KEY) === '1',
@@ -148,8 +150,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
+      <VoiceFab
+        hidden={assistantOpen}
+        onClick={() => { setVoiceMode(true); setAssistantOpen(true); }}
+      />
+
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <AssistantDrawer open={assistantOpen} onClose={() => setAssistantOpen(false)} />
+      <AssistantDrawer
+        open={assistantOpen}
+        autoVoice={voiceMode}
+        onClose={() => { setAssistantOpen(false); setVoiceMode(false); }}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic } from 'lucide-react';
 import type { AssistantAction } from '@rios/shared';
@@ -27,7 +27,19 @@ const SUGGESTIONS = [
   'What is total GWP this year?',
 ];
 
-export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** Speak a reply aloud (voice-out). No-op where speechSynthesis is unavailable. */
+function speak(text: string) {
+  try {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    u.rate = 1.02;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch { /* ignore */ }
+}
+
+export function AssistantDrawer({ open, onClose, autoVoice = false }: { open: boolean; onClose: () => void; autoVoice?: boolean }) {
   const toast = useToast();
   const navigate = useNavigate();
   const ask = useAssistant();
@@ -36,8 +48,18 @@ export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () 
   const [input, setInput] = useState('');
   const [pending, setPending] = useState<AssistantAction | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // When opened in voice mode, replies are also spoken aloud.
+  const voiceModeRef = useRef(autoVoice);
+  voiceModeRef.current = autoVoice;
   // Voice command: transcribe speech and send it straight to the assistant.
   const voice = useVoice((text) => { setInput(text); void send(text); });
+
+  // Opened via the floating Voice Assistant → start listening immediately.
+  useEffect(() => {
+    if (open && autoVoice && voice.supported && !voice.listening) voice.start();
+    if (!open) { try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoVoice]);
 
   const scrollDown = () => {
     requestAnimationFrame(() => {
@@ -57,6 +79,7 @@ export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () 
         ...t,
         { role: 'assistant', text: res.reply, actions: res.actions, grounding: res.grounding },
       ]);
+      if (voiceModeRef.current) speak(res.reply);
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : 'The assistant could not respond.';
       setTurns((t) => [...t, { role: 'assistant', text: msg }]);
