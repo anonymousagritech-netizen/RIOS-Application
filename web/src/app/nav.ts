@@ -1,5 +1,6 @@
 import {
   LayoutDashboard, Search, Sparkles, Smartphone,
+  Gavel,
   FileText, FileCheck2, ArrowLeftRight, PenLine, Calculator, Boxes, SlidersHorizontal,
   Users, Contact, FolderOpen,
   ShieldAlert, Grid2x2, Radar, Undo2,
@@ -39,6 +40,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Underwriting',
     icon: FileText,
     items: [
+      { label: 'Underwriting', to: '/underwriting', icon: Gavel, permission: 'treaty:read' },
       { label: 'Treaties', to: '/treaties', icon: FileText, permission: 'treaty:read' },
       { label: 'Facultative', to: '/facultative', icon: FileCheck2, permission: 'facultative:read' },
       { label: 'Retrocession', to: '/retrocession', icon: ArrowLeftRight, permission: 'retro:read' },

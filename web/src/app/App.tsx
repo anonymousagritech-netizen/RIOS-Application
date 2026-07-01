@@ -5,6 +5,7 @@ import { AppShell } from './AppShell';
 import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { TreatiesPage } from '../pages/TreatiesPage';
+import { UnderwritingPage } from '../pages/UnderwritingPage';
 import { TreatyDetailPage } from '../pages/TreatyDetailPage';
 import { PartiesPage } from '../pages/PartiesPage';
 import { PartyDetailPage } from '../pages/PartyDetailPage';
@@ -83,6 +84,7 @@ export function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/underwriting" element={<UnderwritingPage />} />
         <Route path="/treaties" element={<TreatiesPage />} />
         <Route path="/treaties/:id" element={<TreatyDetailPage />} />
         <Route path="/parties" element={<PartiesPage />} />
