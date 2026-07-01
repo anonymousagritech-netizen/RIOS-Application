@@ -53,11 +53,11 @@ def cover():
         [('Intelligence &', 33, WHITE, True)],
         [('Operations Suite', 33, RGBColor(0x93,0xC5,0xFD), True)],
     ], line_spacing=1.03)
-    text(s, 0.9, 4.85, 4.4, 1.1, [[('A unified operating system for reinsurance — placement, underwriting, accounting, claims, analytics and the back office on one governed platform.', 12.5, RGBColor(0xC7,0xD2,0xFE), False)]], line_spacing=1.24)
+    text(s, 0.9, 4.85, 4.4, 1.1, [[('A unified operating system for reinsurance: placement, underwriting, accounting, claims, analytics and the back office on one governed platform.', 12.5, RGBColor(0xC7,0xD2,0xFE), False)]], line_spacing=1.24)
     text(s, 0.9, 6.6, 4.4, 0.4, [[('Product Walkthrough', 12, WHITE, True)]])
     text(s, 6.1, 0.95, 6.6, 0.4, [[('ENTERPRISE PLATFORM FOR MODERN REINSURANCE', 11, BLUE, True)]])
     browser_frame(s, 'executive.png', 6.1, 1.5, 6.5, addr='app.rios.cloud/executive')
-    text(s, 6.1, 6.68, 6.6, 0.4, [[('Place   ·   Bind   ·   Account   ·   Reconcile   ·   Claims  —  on one platform.', 12, SLATE, True)]])
+    text(s, 6.1, 6.68, 6.6, 0.4, [[('Place   ·   Bind   ·   Account   ·   Reconcile   ·   Claims.   On one platform.', 12, SLATE, True)]])
 
 # ============================================================== 2. ABOUT
 def about():
@@ -130,15 +130,20 @@ def architecture():
               ('Data & Integration','PostgreSQL (Row-Level Security) · Outbox + Relay · APIs · ERP / Email / DMS', AMBER)]
     y = 2.0
     for i, (h, b, c) in enumerate(layers):
-        rect(s, 1.4, y, 8.4, 1.05, fill=_mix(c, WHITE, 0.10), line=None, radius=0.05)
-        rect(s, 1.4, y, 0.14, 1.05, fill=c, rounded=False)
-        text(s, 1.75, y+0.14, 3, 0.4, [[(h, 15, INK, True)]])
-        text(s, 1.75, y+0.56, 7.9, 0.4, [[(b, 11.5, SLATE, False)]])
+        rect(s, 1.4, y, 8.4, 1.0, fill=_mix(c, WHITE, 0.10), line=None, radius=0.05)
+        rect(s, 1.4, y, 0.14, 1.0, fill=c, rounded=False)
+        text(s, 1.75, y+0.15, 3, 0.4, [[(h, 15, INK, True)]])
+        text(s, 1.75, y+0.55, 7.9, 0.4, [[(b, 11.5, SLATE, False)]])
         if i < 3:
-            a = s.shapes.add_shape(MSO_SHAPE.DOWN_ARROW, Inches(5.4), Inches(y+1.02), Inches(0.4), Inches(0.2))
-            _noshadow(a); a.fill.solid(); a.fill.fore_color.rgb = MUTE; a.line.fill.background()
-        y += 1.28
-    rect(s, 10.2, 2.0, 2.5, 4.35, fill=INK, radius=0.06)
+            a = s.shapes.add_shape(MSO_SHAPE.DOWN_ARROW, Inches(5.51), Inches(y+1.02), Inches(0.18), Inches(0.26))
+            _noshadow(a); a.fill.solid(); a.fill.fore_color.rgb = RGBColor(0xCB,0xD5,0xE1); a.line.fill.background()
+            try:
+                a.adjustments[0] = 0.42  # slender shaft
+                a.adjustments[1] = 0.5   # head length
+            except Exception:
+                pass
+        y += 1.3
+    rect(s, 10.2, 2.0, 2.5, 4.9, fill=INK, radius=0.06)
     text(s, 10.45, 2.25, 2.1, 0.4, [[('PLATFORM', 11, RGBColor(0x93,0xC5,0xFD), True)]])
     for i, t in enumerate(['Multi-tenant + RLS','Zero-trust access','Hash-chained audit','Integer-money ledger','Modular monolith','Container-based deploy']):
         text(s, 10.45, 2.75+i*0.58, 2.1, 0.4, [[('•  '+t, 11, WHITE, False)]])
