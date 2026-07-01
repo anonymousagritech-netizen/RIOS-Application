@@ -5,7 +5,7 @@ import {
   FileText, Calculator, Send, Play, XCircle, StickyNote,
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
-import { useParties, useCodeLists, useCurrencies } from '../lib/queries';
+import { useParties, useCurrencies } from '../lib/queries';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
@@ -37,15 +37,13 @@ const STAGE_COLOR: Record<string, 'slate' | 'blue' | 'indigo' | 'violet' | 'ambe
 const BAND_COLOR: Record<string, 'green' | 'amber' | 'orange' | 'red'> = {
   LOW: 'green', MODERATE: 'amber', ELEVATED: 'orange', HIGH: 'red',
 };
-const STRUCTURES = [
-  { code: '', label: '—' },
-  { code: 'QUOTA_SHARE', label: 'Quota share' },
-  { code: 'SURPLUS', label: 'Surplus' },
-  { code: 'PER_RISK_XL', label: 'Per-risk XL' },
-  { code: 'CAT_XL', label: 'Cat XL' },
-  { code: 'AGG_XL', label: 'Aggregate XL' },
-  { code: 'STOP_LOSS', label: 'Stop loss' },
-];
+/* ---------------- Model catalog (served by /api/underwriting/models) ---------------- */
+type ModelFieldType = 'number' | 'percent' | 'money' | 'text' | 'select' | 'boolean';
+interface ModelField { key: string; label: string; type: ModelFieldType; group?: string; options?: string[]; unit?: string; help?: string; required?: boolean; }
+interface ModelStructure { key: string; label: string; basis: 'PROPORTIONAL' | 'NON_PROPORTIONAL'; blurb: string; fields: ModelField[]; }
+interface ModelLine { key: string; label: string; hazard: number; catExposed: boolean; blurb: string; fields: ModelField[]; }
+interface ModelCatalog { structures: ModelStructure[]; lines: ModelLine[]; }
+interface TermsCheck { ok: boolean; missing: string[]; unknown: string[]; }
 
 /* ---------------- Types ---------------- */
 interface SubmissionRow {
@@ -61,6 +59,7 @@ interface SubmissionDetail extends SubmissionRow {
   sumInsuredMinor: number | null; attachmentMinor: number | null; limitMinor: number | null;
   lossRatioPct: number | null; catExposed: boolean; classHazard: number | null; priorClaims: number | null; yearsWithCedent: number | null;
   scoreBreakdown: ScoreContribution[]; activity: Activity[];
+  terms: Record<string, unknown> | null; termsCheck?: TermsCheck;
 }
 
 interface ScenarioBase {
@@ -84,6 +83,9 @@ const compact = (minor: number, ccy = 'USD') =>
   new Intl.NumberFormat(undefined, { style: 'currency', currency: ccy, notation: 'compact', maximumFractionDigits: 1 }).format(minor / 100);
 
 /* ---------------- Data hooks ---------------- */
+function useModelCatalog() {
+  return useQuery({ queryKey: ['uw', 'models'], queryFn: () => api<ModelCatalog>('/api/underwriting/models'), staleTime: 60 * 60 * 1000 });
+}
 function useKpis() { return useQuery({ queryKey: ['uw', 'kpis'], queryFn: () => api<Kpis>('/api/underwriting/kpis') }); }
 function useSubmissions(stage: string) {
   return useQuery({ queryKey: ['uw', 'submissions', stage], queryFn: () => api<{ submissions: SubmissionRow[] }>(`/api/underwriting/submissions${stage ? `?stage=${stage}` : ''}`) });
@@ -173,11 +175,12 @@ function NewSubmissionModal({ open, onClose, onCreated }: { open: boolean; onClo
   const toast = useToast();
   const qc = useQueryClient();
   const { data: partyData } = useParties({});
-  const { data: codeLists } = useCodeLists();
   const { data: ccy } = useCurrencies();
+  const { data: catalog } = useModelCatalog();
   const parties = partyData?.parties ?? [];
-  const lobOptions = codeLists?.lists?.line_of_business ?? [];
   const currencies = ccy?.currencies ?? [];
+  const structures = catalog?.structures ?? [];
+  const lines = catalog?.lines ?? [];
 
   const [f, setF] = useState({
     title: '', kind: 'TREATY', basis: 'NON_PROPORTIONAL', structure: 'CAT_XL', lineOfBusiness: '',
@@ -185,19 +188,64 @@ function NewSubmissionModal({ open, onClose, onCreated }: { open: boolean; onClo
     sumInsured: '', attachment: '', limit: '', estPremium: '',
     lossRatioPct: '', catExposed: false, classHazard: '3', priorClaims: '', yearsWithCedent: '', capacityUtilPct: '',
   });
+  // Model-specific term values, keyed by field key. Kept as strings/booleans and
+  // coerced on submit against the field type (money → integer minor units).
+  const [terms, setTerms] = useState<Record<string, string | boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof f) => (v: string) => setF((p) => ({ ...p, [k]: v }));
   const numv = (v: string) => (v.trim() && !Number.isNaN(Number(v)) ? Number(v) : undefined);
+  const setTerm = (key: string, v: string | boolean) => setTerms((p) => ({ ...p, [key]: v }));
+
+  const selectedStructure = structures.find((s) => s.key === f.structure);
+  const selectedLine = lines.find((l) => l.key === f.lineOfBusiness);
+  const modelFields: ModelField[] = [...(selectedStructure?.fields ?? []), ...(selectedLine?.fields ?? [])];
+  // Group model fields by their `group` heading, preserving first-seen order.
+  const groupedFields: [string, ModelField[]][] = (() => {
+    const map = new Map<string, ModelField[]>();
+    for (const fld of modelFields) {
+      const g = fld.group ?? 'Terms';
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(fld);
+    }
+    return [...map.entries()];
+  })();
+
+  // Picking a structure aligns the basis; picking a line seeds hazard + cat flag.
+  const onStructure = (key: string) => {
+    const st = structures.find((s) => s.key === key);
+    setF((p) => ({ ...p, structure: key, basis: st?.basis ?? p.basis }));
+  };
+  const onLine = (key: string) => {
+    const l = lines.find((x) => x.key === key);
+    setF((p) => ({ ...p, lineOfBusiness: key, ...(l ? { classHazard: String(l.hazard), catExposed: l.catExposed } : {}) }));
+  };
 
   const create = useMutation({
-    mutationFn: (body: Record<string, unknown>) => api<{ id: string; reference: string; riskBand: string }>('/api/underwriting/submissions', { body }),
+    mutationFn: (body: Record<string, unknown>) => api<{ id: string; reference: string; riskBand: string; termsCheck?: TermsCheck }>('/api/underwriting/submissions', { body }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['uw'] });
-      toast.success(`Submission ${res.reference} created · risk ${titleCase(res.riskBand)}`);
+      const gap = res.termsCheck && !res.termsCheck.ok ? ` · ${res.termsCheck.missing.length} term(s) still to capture` : '';
+      toast.success(`Submission ${res.reference} created · risk ${titleCase(res.riskBand)}${gap}`);
       onCreated(res.id);
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : 'Could not create the submission.'),
   });
+
+  // Coerce term inputs against their declared type: money → minor units (×100),
+  // percent/number → number, boolean stays boolean, select/text stay string.
+  const buildTerms = (): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    for (const fld of modelFields) {
+      const raw = terms[fld.key];
+      if (raw === undefined || raw === '' ) continue;
+      if (fld.type === 'boolean') { out[fld.key] = Boolean(raw); continue; }
+      if (fld.type === 'text' || fld.type === 'select') { out[fld.key] = String(raw); continue; }
+      const n = Number(raw);
+      if (Number.isNaN(n)) continue;
+      out[fld.key] = fld.type === 'money' ? Math.round(n * 100) : n;
+    }
+    return out;
+  };
 
   const submit = () => {
     setError(null);
@@ -208,6 +256,7 @@ function NewSubmissionModal({ open, onClose, onCreated }: { open: boolean; onClo
       sumInsured: numv(f.sumInsured), attachment: numv(f.attachment), limit: numv(f.limit), estPremium: numv(f.estPremium),
       lossRatioPct: numv(f.lossRatioPct), catExposed: f.catExposed, classHazard: numv(f.classHazard),
       priorClaims: numv(f.priorClaims), yearsWithCedent: numv(f.yearsWithCedent), capacityUtilPct: numv(f.capacityUtilPct),
+      terms: buildTerms(),
     });
   };
 
@@ -229,11 +278,27 @@ function NewSubmissionModal({ open, onClose, onCreated }: { open: boolean; onClo
             <TextField label="Submission title" value={f.title} onChange={set('title')} required placeholder="e.g. North Atlantic Property Cat XL 2026" />
           </div>
           <FormField label="Kind"><Select value={f.kind} onChange={(e) => set('kind')(e.target.value)}><option value="TREATY">Treaty</option><option value="FACULTATIVE">Facultative</option></Select></FormField>
+          <FormField label="Structure / model">
+            <Select value={f.structure} onChange={(e) => onStructure(e.target.value)}>
+              <option value="">—</option>
+              {structures.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </Select>
+          </FormField>
           <FormField label="Basis"><Select value={f.basis} onChange={(e) => set('basis')(e.target.value)}><option value="PROPORTIONAL">Proportional</option><option value="NON_PROPORTIONAL">Non-proportional</option></Select></FormField>
-          <FormField label="Structure"><Select value={f.structure} onChange={(e) => set('structure')(e.target.value)}>{STRUCTURES.map((s) => <option key={s.code} value={s.code}>{s.label}</option>)}</Select></FormField>
-          <FormField label="Line of business"><Select value={f.lineOfBusiness} onChange={(e) => set('lineOfBusiness')(e.target.value)}><option value="">Unspecified</option>{lobOptions.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}</Select></FormField>
+          <FormField label="Line of business">
+            <Select value={f.lineOfBusiness} onChange={(e) => onLine(e.target.value)}>
+              <option value="">Unspecified</option>
+              {lines.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
+            </Select>
+          </FormField>
           <FormField label="Currency"><Select value={f.currency} onChange={(e) => set('currency')(e.target.value)}>{(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => <option key={c} value={c}>{c}</option>)}</Select></FormField>
         </FormSection>
+
+        {(selectedStructure || selectedLine) && (
+          <p className={styles.modelBlurb}>
+            {selectedStructure?.blurb}{selectedStructure && selectedLine ? ' ' : ''}{selectedLine?.blurb}
+          </p>
+        )}
 
         <FormSection title="Parties & period">
           <FormField label="Cedent / reinsured"><Select value={f.cedentPartyId} onChange={(e) => set('cedentPartyId')(e.target.value)}><option value="">Select…</option>{parties.map((p) => <option key={p.id} value={p.id}>{partyName(p)}</option>)}</Select></FormField>
@@ -243,12 +308,21 @@ function NewSubmissionModal({ open, onClose, onCreated }: { open: boolean; onClo
           <div style={{ gridColumn: '1 / -1' }}><TextField label="Territory" value={f.territory} onChange={set('territory')} placeholder="e.g. Worldwide excl. USA & Canada" /></div>
         </FormSection>
 
-        <FormSection title="Structure terms & premium">
+        <FormSection title="Headline terms & premium">
           <TextField label="Sum insured / limit (major)" type="number" value={f.sumInsured} onChange={set('sumInsured')} placeholder="e.g. 50000000" />
           <TextField label="Attachment (major)" type="number" value={f.attachment} onChange={set('attachment')} placeholder="e.g. 1000000" />
           <TextField label="Layer limit (major)" type="number" value={f.limit} onChange={set('limit')} placeholder="e.g. 4000000" />
           <TextField label="Estimated premium income (major)" type="number" value={f.estPremium} onChange={set('estPremium')} placeholder="e.g. 5000000" />
         </FormSection>
+
+        {/* Model-specific slip terms, rendered from the catalog for the chosen structure × line. */}
+        {groupedFields.map(([group, fields]) => (
+          <FormSection key={group} title={`${selectedStructure?.label ?? selectedLine?.label ?? 'Model'} · ${group}`}>
+            {fields.map((fld) => (
+              <ModelFieldInput key={fld.key} field={fld} value={terms[fld.key]} onChange={(v) => setTerm(fld.key, v)} currency={f.currency} />
+            ))}
+          </FormSection>
+        ))}
 
         <FormSection title="Risk factors" description="These drive the transparent risk score.">
           <TextField label="Historical loss ratio %" type="number" value={f.lossRatioPct} onChange={set('lossRatioPct')} placeholder="e.g. 65" />
@@ -267,11 +341,44 @@ function NewSubmissionModal({ open, onClose, onCreated }: { open: boolean; onClo
   );
 }
 
+/* One model-catalog field → the right input. Money/percent/number use numeric
+ * inputs; select renders its options; boolean is a checkbox. */
+function ModelFieldInput({ field, value, onChange, currency }: {
+  field: ModelField; value: string | boolean | undefined; onChange: (v: string | boolean) => void; currency: string;
+}) {
+  const req = field.required ? ' *' : '';
+  if (field.type === 'boolean') {
+    return (
+      <FormField label={field.label + req} hint={field.help}>
+        <label className={styles.check}>
+          <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} /> Yes
+        </label>
+      </FormField>
+    );
+  }
+  if (field.type === 'select') {
+    return (
+      <FormField label={field.label + req} hint={field.help}>
+        <Select value={String(value ?? '')} onChange={(e) => onChange(e.target.value)}>
+          <option value="">Select…</option>
+          {(field.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+        </Select>
+      </FormField>
+    );
+  }
+  const unit = field.type === 'money' ? `${currency} (major)` : field.type === 'percent' ? '%' : field.unit;
+  const label = unit ? `${field.label}${req} · ${unit}` : field.label + req;
+  return (
+    <TextField label={label} hint={field.help} type="number" value={String(value ?? '')} onChange={(v) => onChange(v)} />
+  );
+}
+
 /* ---------------- Submission detail drawer ---------------- */
 function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => void }) {
   const toast = useToast();
   const qc = useQueryClient();
   const { data: s, isLoading } = useSubmission(id);
+  const { data: catalog } = useModelCatalog();
   const [note, setNote] = useState('');
   const [scenario, setScenario] = useState<ScenarioResult | null>(null);
 
@@ -351,6 +458,9 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
             <Fact label="Loss ratio" value={s.lossRatioPct != null ? `${s.lossRatioPct}%` : '—'} />
             <Fact label="Cat exposed" value={s.catExposed ? 'Yes' : 'No'} />
           </div>
+
+          {/* Model-specific slip terms */}
+          <ModelTermsCard submission={s} catalog={catalog} />
 
           {/* Workflow actions */}
           <Card padded>
@@ -454,6 +564,53 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
       )}
     </Drawer>
   );
+}
+
+/* Renders the model-specific slip terms stored on a submission, resolving their
+ * labels/types from the catalog and flagging any required terms still missing. */
+function ModelTermsCard({ submission, catalog }: { submission: SubmissionDetail; catalog?: ModelCatalog }) {
+  const structure = catalog?.structures.find((x) => x.key === submission.structure);
+  const line = catalog?.lines.find((x) => x.key === submission.lineOfBusiness);
+  const fields: ModelField[] = [...(structure?.fields ?? []), ...(line?.fields ?? [])];
+  if (!fields.length) return null;
+  const terms = submission.terms ?? {};
+  const present = fields.filter((fld) => terms[fld.key] !== undefined && terms[fld.key] !== null && terms[fld.key] !== '');
+  const missing = submission.termsCheck?.missing ?? [];
+  const labelFor = (key: string) => fields.find((fld) => fld.key === key)?.label ?? key;
+
+  return (
+    <Card padded>
+      <CardHeader
+        title="Model terms"
+        subtitle={[structure?.label, line?.label].filter(Boolean).join(' · ') || 'Slip terms'}
+      />
+      {present.length ? (
+        <div className={styles.termsGrid}>
+          {present.map((fld) => (
+            <div key={fld.key} className={styles.termItem}>
+              <span className={styles.termLabel}>{fld.label}</span>
+              <span className={styles.termValue}>{fmtTerm(fld, terms[fld.key], submission.currency)}</span>
+            </div>
+          ))}
+        </div>
+      ) : <p className={styles.cellSub}>No model terms captured yet.</p>}
+      {missing.length > 0 && (
+        <div className={styles.termsMissing}>
+          <StickyNote size={14} /> {missing.length} required term(s) to complete: {missing.map(labelFor).join(', ')}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// Format a stored term value for display, honouring its declared type.
+function fmtTerm(field: ModelField, value: unknown, currency: string): string {
+  if (value === null || value === undefined || value === '') return '—';
+  if (field.type === 'boolean') return value ? 'Yes' : 'No';
+  if (field.type === 'money') return money(Number(value), currency);
+  if (field.type === 'percent') return `${value}%`;
+  if (field.type === 'number') return `${value}${field.unit ? ' ' + field.unit : ''}`;
+  return String(value);
 }
 
 function Fact({ label, value }: { label: string; value: React.ReactNode }) {

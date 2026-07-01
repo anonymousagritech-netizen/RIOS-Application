@@ -14,6 +14,7 @@ import { z } from 'zod';
 import {
   riskScore, technicalPremium, canTransition, isTerminalStage,
   scenarioGrid, sensitivity, ratios,
+  modelCatalog, validateTerms,
   type UwStage, type RiskFactorInput,
 } from '@rios/domain';
 import { runAs, type Db } from '../db.js';
@@ -86,6 +87,11 @@ async function logActivity(
 }
 
 export async function underwritingModule(app: FastifyInstance): Promise<void> {
+  // ---- Model catalog -------------------------------------------------------
+  // The declarative structure × line-of-business catalog the slip renders from.
+  // Static metadata (no tenant data), so it needs only an authenticated read.
+  app.get('/api/underwriting/models', { preHandler: requirePermission('treaty:read') }, async () => modelCatalog());
+
   // ---- Pipeline KPIs -------------------------------------------------------
   app.get('/api/underwriting/kpis', { preHandler: requirePermission('treaty:read') }, async (req) => {
     const ctx = authContext(req);
@@ -152,6 +158,10 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
     if (!parsed.success) { reply.code(400); return { error: 'Invalid submission', details: parsed.error.flatten() }; }
     const b = parsed.data;
     const terms = { ...(b.terms ?? {}), ...(b.capacityUtilPct !== undefined ? { capacityUtilPct: b.capacityUtilPct } : {}) };
+    // Check the model-specific terms against the catalog. A slip missing required
+    // model terms is still accepted (submissions are captured incrementally) but
+    // the gaps are returned so the underwriter can complete them before quoting.
+    const termsCheck = validateTerms(b.structure, b.lineOfBusiness, terms);
     // Money in — major units on the wire, stored as integer minor units.
     const minor = (v: number | undefined) => (v === undefined ? null : Math.round(v * 100));
     // Score up-front so a new submission already carries a risk read.
@@ -182,7 +192,7 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
       await logActivity(db, ctx.tenantId, id, ctx.userId, 'CREATE', { toStage: 'SUBMISSION', note: `Risk score ${rs.score} (${rs.band})` });
       await writeAudit(db, ctx, { action: 'create', entityType: 'submission', entityId: id, after: { reference: ref, riskScore: rs.score } });
       reply.code(201);
-      return { id, reference: ref, riskScore: rs.score, riskBand: rs.band };
+      return { id, reference: ref, riskScore: rs.score, riskBand: rs.band, termsCheck };
     });
   });
 
@@ -221,6 +231,7 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
         priorClaims: r.prior_claims, yearsWithCedent: r.years_with_cedent,
         riskScore: r.risk_score, riskBand: r.risk_band, scoreBreakdown: breakdown.contributions,
         terms: r.terms, activity: activity.rows,
+        termsCheck: validateTerms(r.structure as string | null, r.line_of_business as string | null, r.terms),
       };
     });
   });

@@ -111,6 +111,44 @@ describe('Underwriting: analytics, scenarios & approval matrix', () => {
     expect(Array.isArray(cat.json().bookEpCurve)).toBe(true);
   });
 
+  it('serves the model catalog and flags incomplete slip terms', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+
+    // The catalog is the declarative structure × line-of-business registry.
+    const cat = await app.inject({ method: 'GET', url: '/api/underwriting/models', headers: auth });
+    expect(cat.statusCode).toBe(200);
+    const body = cat.json();
+    expect(Array.isArray(body.structures)).toBe(true);
+    expect(Array.isArray(body.lines)).toBe(true);
+    expect(body.structures.some((s: { key: string }) => s.key === 'CAT_XL')).toBe(true);
+    expect(body.lines.some((l: { key: string }) => l.key === 'AGRICULTURE')).toBe(true);
+
+    // A CAT_XL / PROPERTY submission missing required model terms is created but
+    // the response reports the gaps.
+    const incomplete = await app.inject({
+      method: 'POST', url: '/api/underwriting/submissions', headers: auth,
+      payload: { title: 'Cat XL missing terms', structure: 'CAT_XL', lineOfBusiness: 'PROPERTY', terms: { peril: 'Earthquake' } },
+    });
+    expect(incomplete.statusCode).toBe(201);
+    expect(incomplete.json().termsCheck.ok).toBe(false);
+    expect(incomplete.json().termsCheck.missing).toContain('attachmentMinor');
+
+    // A fully-specified slip validates clean and round-trips its terms.
+    const complete = await app.inject({
+      method: 'POST', url: '/api/underwriting/submissions', headers: auth,
+      payload: {
+        title: 'Cat XL complete', structure: 'CAT_XL', lineOfBusiness: 'PROPERTY',
+        terms: { attachmentMinor: 100_000_000, limitMinor: 500_000_000, peril: 'Windstorm', totalInsuredValueMinor: 900_000_000 },
+      },
+    });
+    expect(complete.json().termsCheck.ok).toBe(true);
+    const id = complete.json().id as string;
+    const detail = await app.inject({ method: 'GET', url: `/api/underwriting/submissions/${id}`, headers: auth });
+    expect(detail.json().terms.peril).toBe('Windstorm');
+    expect(detail.json().termsCheck.ok).toBe(true);
+  });
+
   it('builds a pricing scenario grid for a submission', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
