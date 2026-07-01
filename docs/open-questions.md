@@ -38,7 +38,10 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   prices a commutation as the present value of outstanding plus a risk load and returns the economic
   gain/loss to cedent and reinsurer; `lossPortfolioTransfer` builds the LPT premium (PV + risk margin +
   expense load) and the ceding insurer's capital-relief benefit - unit-tested. **Indexation/stability
-  clauses, hours clauses and occurrence definitions** remain designed-for.
+  clauses and the hours clause** are now delivered too (`@rios/domain/clauses`): `indexLayer` /
+  `indexedRecovery` re-express an XL layer in settlement-date money (full index, franchise and
+  severe-inflation variants) and `hoursClauseOccurrences` groups dated cat losses into occurrences bounded
+  by a time window. Optimal hours-window placement and richer occurrence definitions remain designed-for.
 - **Reinstatement schedules** beyond the simple cumulative-fraction model; **sliding scale** stepped (vs
   interpolated) variants - config-driven extensions.
 
