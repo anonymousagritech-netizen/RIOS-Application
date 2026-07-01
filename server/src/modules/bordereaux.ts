@@ -9,7 +9,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ingestBordereau, type BordereauMapping } from '@rios/domain';
+import { ingestBordereau, mapAndValidate, type BordereauMapping, type MappingSpec } from '@rios/domain';
 import { runAs } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
@@ -258,4 +258,32 @@ export async function bordereauxModule(app: FastifyInstance): Promise<void> {
       });
     },
   );
+
+  // Dry-run mapping + validation preview: coerce and validate rows against a
+  // field-mapping spec without persisting, so an operator can fix a file first.
+  const validateSchema = z.object({
+    spec: z.object({
+      fields: z.array(z.object({
+        target: z.string().min(1),
+        source: z.string().min(1),
+        type: z.enum(['string', 'number', 'integerMinor', 'date', 'boolean', 'currency', 'enum']),
+        required: z.boolean().optional(),
+        allowed: z.array(z.string()).optional(),
+        min: z.number().optional(),
+        max: z.number().optional(),
+        minorUnits: z.number().int().optional(),
+        pattern: z.string().optional(),
+      })).min(1),
+    }),
+    rows: z.array(z.record(z.unknown())).default([]),
+  });
+
+  app.post('/api/import/validate', { preHandler: requirePermission('bordereaux:read') }, async (req, reply) => {
+    const parsed = validateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      reply.code(400);
+      return { error: 'Invalid import request', details: parsed.error.flatten() };
+    }
+    return mapAndValidate(parsed.data.rows, parsed.data.spec as MappingSpec);
+  });
 }
