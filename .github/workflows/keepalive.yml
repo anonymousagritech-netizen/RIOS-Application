@@ -23,10 +23,15 @@ jobs:
           BACKEND_URL: ${{ vars.RIOS_BACKEND_URL || 'https://rios-backend.onrender.com' }}
         run: |
           echo "Pinging ${BACKEND_URL}/health ..."
-          STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 30 "${BACKEND_URL}/health")
+          # Best-effort keep-alive: a slow/asleep server (Render cold start) must
+          # NOT fail the job. Long max-time + retries to give the dyno time to wake,
+          # and `|| echo 000` so a curl timeout/error never aborts the step.
+          STATUS=$(curl -o /dev/null -sL --max-time 120 --retry 3 --retry-all-errors \
+                     -w "%{http_code}" "${BACKEND_URL}/health" || echo "000")
           echo "Response status: $STATUS"
-          if [ "$STATUS" -eq 200 ]; then
+          if [ "$STATUS" = "200" ]; then
             echo "✅ RIOS backend is alive!"
           else
-            echo "⚠️ RIOS backend returned status $STATUS"
+            echo "⚠️ RIOS backend returned $STATUS — ping sent anyway (keep-alive is best-effort)."
+            echo "   If this is 000/timeout, set the RIOS_BACKEND_URL variable to your real backend URL."
           fi
