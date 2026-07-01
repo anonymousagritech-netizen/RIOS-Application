@@ -113,3 +113,18 @@ describe('formula.resolveField (status model)', () => {
     expect(resolveField({ systemValue: 0, manual: true }).status).toBe('MANUAL');
   });
 });
+
+describe('formula.explainFormula (AI Formula Assistant)', () => {
+  it('composes a grounded narrative and line list from the breakdown', async () => {
+    const { explainFormula, computeFormula } = await import('./formula.js');
+    const { getFormula } = await import('./formulaLibrary.js');
+    const def = getFormula('claims.net_claim')!;
+    const res = computeFormula(def, { grossLoss: 1000, reinsuranceRecovery: 300, salvage: 50, subrogation: 100 });
+    const ex = explainFormula(def, res, (n) => `$${n}`);
+    expect(ex.title).toBe('Net Claim');
+    expect(ex.total.formatted).toBe('$550');
+    expect(ex.lines[0]).toEqual({ label: 'Total Recoveries', value: 450, formatted: '$450' });
+    expect(ex.narrative).toContain('Net Claim is $550');
+    expect(ex.narrative).toContain('claims.net_claim');
+  });
+});

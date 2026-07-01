@@ -281,3 +281,39 @@ export function resolveField(input: OverrideInput): ResolvedField {
   const status: FieldStatus = input.manual ? 'MANUAL' : input.imported ? 'IMPORTED' : 'SYSTEM';
   return { value: input.systemValue, status, systemValue: input.systemValue, overridden: false };
 }
+
+// --------------------------------------------------------------------------- explanation (AI Formula Assistant)
+export interface ExplanationLine {
+  label: string;
+  value: number;
+  formatted: string;
+}
+
+export interface FormulaExplanation {
+  title: string;
+  lines: ExplanationLine[];
+  total: ExplanationLine;
+  narrative: string;
+}
+
+/**
+ * Deterministic, grounded explanation of a computed formula - the "AI Formula
+ * Assistant" without a black box. It composes the breakdown steps and the final
+ * value into a titled line list and a plain-language narrative, so a user can
+ * see exactly how the number was derived. `format` turns a raw number into a
+ * display string (e.g. money from minor units); it defaults to a plain number.
+ */
+export function explainFormula(
+  def: FormulaDefinition,
+  result: FormulaResult,
+  format: (n: number) => string = (n) => String(n),
+): FormulaExplanation {
+  const title = def.resultLabel ?? def.name;
+  const lines: ExplanationLine[] = result.steps.map((s) => ({ label: s.label, value: s.value, formatted: format(s.value) }));
+  const total: ExplanationLine = { label: title, value: result.value, formatted: format(result.value) };
+  const parts = lines.length
+    ? lines.map((l) => `${l.label} ${l.formatted}`).join(', ')
+    : 'the supplied inputs';
+  const narrative = `${title} is ${total.formatted}, derived from ${parts} (formula "${def.key}" v${result.version}).`;
+  return { title, lines, total, narrative };
+}

@@ -17,7 +17,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
-  computeFormula, validateFormula, resolveField,
+  computeFormula, validateFormula, resolveField, explainFormula,
   DEFAULT_FORMULAS, getFormula, type FormulaDefinition,
 } from '@rios/domain';
 import type { Db } from '../db.js';
@@ -135,7 +135,9 @@ export async function formulasModule(app: FastifyInstance): Promise<void> {
       return runAs(ctx, async (db) => {
         const def = req.body?.definition ?? await storedLatest(db, key) ?? getFormula(key);
         if (!def) { reply.code(404); return { error: 'Formula not found' }; }
-        return computeFormula(def, inputs);
+        const result = computeFormula(def, inputs);
+        // Grounded, deterministic explanation (AI Formula Assistant, no black box).
+        return { ...result, explanation: explainFormula(def, result) };
       });
     });
 
