@@ -172,3 +172,51 @@ describe('Attendance command center: month grid + WFH request', () => {
     expect(again.statusCode).toBe(409);
   });
 });
+
+describe('HR employee profile: personal/statutory details + dependents', () => {
+  it('updates the profile and adds a family member, both audited', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    const suffix = Date.now().toString(36) + 'p';
+
+    const emp = await app.inject({
+      method: 'POST', url: '/api/hr/employees', headers: auth,
+      payload: { firstName: 'Grace', lastName: suffix, position: 'Engineer' },
+    });
+    const employeeId = emp.json().id as string;
+
+    // Update the HR-managed personal profile.
+    const upd = await app.inject({
+      method: 'PUT', url: `/api/hr/employees/${employeeId}/profile`, headers: auth,
+      payload: {
+        gender: 'female', bloodGroup: 'O+', nationality: 'India',
+        personalEmail: `grace-${suffix}@example.com`, phone: '+91 90000 00000',
+        pan: 'ABCDE1234F', aadhaar: '1234 5678 9012', insuranceProvider: 'Acme Health',
+      },
+    });
+    expect(upd.statusCode).toBe(200);
+
+    // Add a dependent / emergency contact.
+    const dep = await app.inject({
+      method: 'POST', url: `/api/hr/employees/${employeeId}/dependents`, headers: auth,
+      payload: { name: 'Alex', relationship: 'spouse', phone: '+91 90000 11111', isEmergency: true },
+    });
+    expect(dep.statusCode).toBe(201);
+    const depId = dep.json().id as string;
+
+    // Detail endpoint returns the profile fields + dependents.
+    const detail = await app.inject({ method: 'GET', url: `/api/hr/employees/${employeeId}`, headers: auth });
+    const body = detail.json();
+    expect(body.bloodGroup).toBe('O+');
+    expect(body.pan).toBe('ABCDE1234F');
+    expect(body.insuranceProvider).toBe('Acme Health');
+    expect(Array.isArray(body.dependents)).toBe(true);
+    expect(body.dependents[0]).toMatchObject({ name: 'Alex', relationship: 'spouse', isEmergency: true });
+
+    // Remove the dependent.
+    const del = await app.inject({ method: 'DELETE', url: `/api/hr/employees/${employeeId}/dependents/${depId}`, headers: auth });
+    expect(del.statusCode).toBe(200);
+    const detail2 = await app.inject({ method: 'GET', url: `/api/hr/employees/${employeeId}`, headers: auth });
+    expect(detail2.json().dependents.length).toBe(0);
+  });
+});

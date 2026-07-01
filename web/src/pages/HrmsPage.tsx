@@ -43,10 +43,20 @@ interface Employee {
 }
 interface SystemRole { code: string; name: string }
 interface StatusHistoryRow { fromStatus: string | null; toStatus: string; reason: string | null; changedAt: string }
-interface EmployeeDetail extends Employee {
+interface Dependent { id: string; name: string; relationship: string; dateOfBirth: string | null; phone: string | null; isEmergency: boolean }
+// HR-managed personal / statutory profile fields.
+interface EmployeeProfile {
+  gender: string | null; dateOfBirth: string | null; bloodGroup: string | null;
+  maritalStatus: string | null; nationality: string | null;
+  personalEmail: string | null; phone: string | null; altPhone: string | null; address: string | null;
+  pan: string | null; aadhaar: string | null; nationalId: string | null; passportNo: string | null;
+  insuranceProvider: string | null; insuranceNumber: string | null;
+}
+interface EmployeeDetail extends Employee, EmployeeProfile {
   leaveRequests: LeaveRequest[];
   systemRoles: SystemRole[];
   statusHistory: StatusHistoryRow[];
+  dependents: Dependent[];
 }
 interface ReportRow { id: string; name: string; position: string | null; status: string; depth: number; directReport: boolean }
 interface ReportsResponse { reports: ReportRow[]; direct: number; total: number }
@@ -148,6 +158,29 @@ function useChangeStatus(id: string | null) {
       qc.invalidateQueries({ queryKey: ['hr', 'employee', id] });
       qc.invalidateQueries({ queryKey: ['hr', 'employees'] });
     },
+  });
+}
+function useUpdateProfile(id: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<EmployeeProfile>) =>
+      api(`/api/hr/employees/${id}/profile`, { method: 'PUT', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr', 'employee', id] }),
+  });
+}
+function useAddDependent(id: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; relationship: string; dateOfBirth?: string; phone?: string; isEmergency?: boolean }) =>
+      api(`/api/hr/employees/${id}/dependents`, { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr', 'employee', id] }),
+  });
+}
+function useDeleteDependent(id: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (depId: string) => api(`/api/hr/employees/${id}/dependents/${depId}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr', 'employee', id] }),
   });
 }
 
@@ -267,8 +300,24 @@ function EmployeeDetailModal({ id, canWrite, onClose }: { id: string | null; can
   const { data: emp, isLoading } = useEmployeeDetail(id);
   const { data: reports } = useEmployeeReports(id);
   const changeStatus = useChangeStatus(id);
+  const addDependent = useAddDependent(id);
+  const delDependent = useDeleteDependent(id);
   const [target, setTarget] = useState<string | null>(null);
   const [reason, setReason] = useState('');
+  const [editProfile, setEditProfile] = useState(false);
+  const [dep, setDep] = useState({ name: '', relationship: '', dateOfBirth: '', phone: '', isEmergency: false });
+
+  const submitDependent = async () => {
+    if (!dep.name.trim() || !dep.relationship.trim()) return;
+    try {
+      await addDependent.mutateAsync({
+        name: dep.name.trim(), relationship: dep.relationship.trim(),
+        dateOfBirth: dep.dateOfBirth || undefined, phone: dep.phone || undefined, isEmergency: dep.isEmergency,
+      });
+      setDep({ name: '', relationship: '', dateOfBirth: '', phone: '', isEmergency: false });
+      toast.success('Family member added');
+    } catch (err) { toast.error(err instanceof ApiError ? err.message : 'Could not add.'); }
+  };
 
   const runChange = async () => {
     if (!target) return;
@@ -302,6 +351,70 @@ function EmployeeDetailModal({ id, canWrite, onClose }: { id: string | null; can
               <Fact label="Hire date" value={emp.hireDate ? formatDate(emp.hireDate) : '—'} />
               <Fact label="Status" value={<StatusPill status={emp.status} />} />
             </div>
+
+            {/* HR-managed personal / statutory profile */}
+            <Section
+              title="Personal profile"
+              subtitle="Personal, statutory and contact details (HR-managed)"
+              actions={canWrite ? <Button size="sm" variant="secondary" onClick={() => setEditProfile(true)}>Edit profile</Button> : undefined}
+            >
+              <div className={shared.grid2} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+                <Fact label="Gender" value={emp.gender ? titleCase(emp.gender) : '—'} />
+                <Fact label="Date of birth" value={emp.dateOfBirth ? formatDate(emp.dateOfBirth) : '—'} />
+                <Fact label="Blood group" value={emp.bloodGroup ?? '—'} />
+                <Fact label="Marital status" value={emp.maritalStatus ? titleCase(emp.maritalStatus) : '—'} />
+                <Fact label="Nationality" value={emp.nationality ?? '—'} />
+                <Fact label="Work email" value={emp.email ?? '—'} />
+                <Fact label="Personal email" value={emp.personalEmail ?? '—'} />
+                <Fact label="Phone" value={emp.phone ?? '—'} />
+                <Fact label="Alternate phone" value={emp.altPhone ?? '—'} />
+                <Fact label="Address" value={emp.address ?? '—'} />
+              </div>
+            </Section>
+
+            {/* Government / statutory identifiers */}
+            <Section title="Government IDs" subtitle="Statutory identity documents">
+              <div className={shared.grid2} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+                <Fact label="PAN" value={emp.pan ?? '—'} />
+                <Fact label="Aadhaar" value={emp.aadhaar ?? '—'} />
+                <Fact label="National ID" value={emp.nationalId ?? '—'} />
+                <Fact label="Passport no." value={emp.passportNo ?? '—'} />
+                <Fact label="Insurance provider" value={emp.insuranceProvider ?? '—'} />
+                <Fact label="Insurance number" value={emp.insuranceNumber ?? '—'} />
+              </div>
+            </Section>
+
+            {/* Family / dependents (incl. emergency contacts) */}
+            <Section title="Family & dependents" subtitle="Dependents and emergency contacts">
+              {emp.dependents.length ? (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  {emp.dependents.map((d) => (
+                    <li key={d.id} className={shared.toolbar} style={{ justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                      <span className={shared.cellSub}>
+                        <span className={shared.cellMain}>{d.name}</span> · {titleCase(d.relationship)}
+                        {d.phone ? ` · ${d.phone}` : ''}{d.isEmergency ? '' : ''}
+                      </span>
+                      <span className={shared.toolbar} style={{ gap: 'var(--space-2)' }}>
+                        {d.isEmergency && <StatusPill status="emergency" />}
+                        {canWrite && <Button size="sm" variant="ghost" onClick={() => delDependent.mutate(d.id)}>Remove</Button>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className={shared.cellSub}>No family members recorded.</p>}
+              {canWrite && (
+                <div className={shared.grid2} style={{ display: 'grid', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+                  <Input placeholder="Name" value={dep.name} onChange={(e) => setDep({ ...dep, name: e.target.value })} />
+                  <Input placeholder="Relationship (e.g. Spouse)" value={dep.relationship} onChange={(e) => setDep({ ...dep, relationship: e.target.value })} />
+                  <Input type="date" value={dep.dateOfBirth} onChange={(e) => setDep({ ...dep, dateOfBirth: e.target.value })} />
+                  <Input placeholder="Phone" value={dep.phone} onChange={(e) => setDep({ ...dep, phone: e.target.value })} />
+                  <label className={shared.toolbar} style={{ gap: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                    <input type="checkbox" checked={dep.isEmergency} onChange={(e) => setDep({ ...dep, isEmergency: e.target.checked })} /> Emergency contact
+                  </label>
+                  <Button size="sm" variant="secondary" onClick={submitDependent} loading={addDependent.isPending} disabled={!dep.name.trim() || !dep.relationship.trim()}>Add family member</Button>
+                </div>
+              )}
+            </Section>
 
             {/* System roles from the Permission Engine, alongside HR designation */}
             <Section title="System access" subtitle="Roles from the Permission Engine">
@@ -369,6 +482,10 @@ function EmployeeDetailModal({ id, canWrite, onClose }: { id: string | null; can
       >
         <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" rows={2} />
       </ConfirmDialog>
+
+      {emp && editProfile && (
+        <EditProfileModal id={id} emp={emp} open onClose={() => setEditProfile(false)} />
+      )}
     </>
   );
 }
@@ -382,16 +499,94 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Section({ title, subtitle, actions, children }: { title: string; subtitle?: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-      <div>
-        <div className={shared.cellMain} style={{ fontWeight: 'var(--weight-semibold)' }}>{title}</div>
-        {subtitle && <div className={shared.cellSub}>{subtitle}</div>}
+      <div className={shared.toolbar} style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div className={shared.cellMain} style={{ fontWeight: 'var(--weight-semibold)' }}>{title}</div>
+          {subtitle && <div className={shared.cellSub}>{subtitle}</div>}
+        </div>
+        {actions}
       </div>
       {children}
     </div>
   );
+}
+
+const GENDERS = ['male', 'female', 'other', 'undisclosed'];
+const MARITAL = ['single', 'married', 'divorced', 'widowed'];
+
+function EditProfileModal({ id, emp, open, onClose }: { id: string | null; emp: EmployeeDetail; open: boolean; onClose: () => void }) {
+  const toast = useToast();
+  const update = useUpdateProfile(id);
+  const [f, setF] = useState<EmployeeProfile>(() => pickProfile(emp));
+  const set = (k: keyof EmployeeProfile) => (v: string) => setF((prev) => ({ ...prev, [k]: v }));
+
+  const submit = async () => {
+    try {
+      await update.mutateAsync(f);
+      toast.success('Profile updated');
+      onClose();
+    } catch (err) { toast.error(err instanceof ApiError ? err.message : 'Could not update profile.'); }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="lg"
+      title="Edit personal profile"
+      description="HR-managed personal, statutory and contact details. Changes are audited."
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={submit} loading={update.isPending}>Save profile</Button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className={shared.grid2} style={{ display: 'grid' }}>
+          <FormField label="Gender">
+            <Select value={f.gender ?? ''} onChange={(e) => set('gender')(e.target.value)}>
+              <option value="">—</option>
+              {GENDERS.map((g) => <option key={g} value={g}>{titleCase(g)}</option>)}
+            </Select>
+          </FormField>
+          <TextField label="Date of birth" type="date" value={f.dateOfBirth ?? ''} onChange={set('dateOfBirth')} />
+          <TextField label="Blood group" value={f.bloodGroup ?? ''} onChange={set('bloodGroup')} placeholder="e.g. O+" />
+          <FormField label="Marital status">
+            <Select value={f.maritalStatus ?? ''} onChange={(e) => set('maritalStatus')(e.target.value)}>
+              <option value="">—</option>
+              {MARITAL.map((m) => <option key={m} value={m}>{titleCase(m)}</option>)}
+            </Select>
+          </FormField>
+          <TextField label="Nationality" value={f.nationality ?? ''} onChange={set('nationality')} />
+          <TextField label="Personal email" type="email" value={f.personalEmail ?? ''} onChange={set('personalEmail')} />
+          <TextField label="Phone" value={f.phone ?? ''} onChange={set('phone')} />
+          <TextField label="Alternate phone" value={f.altPhone ?? ''} onChange={set('altPhone')} />
+        </div>
+        <TextField label="Address" value={f.address ?? ''} onChange={set('address')} />
+        <div className={shared.grid2} style={{ display: 'grid' }}>
+          <TextField label="PAN" value={f.pan ?? ''} onChange={set('pan')} />
+          <TextField label="Aadhaar" value={f.aadhaar ?? ''} onChange={set('aadhaar')} />
+          <TextField label="National ID" value={f.nationalId ?? ''} onChange={set('nationalId')} />
+          <TextField label="Passport no." value={f.passportNo ?? ''} onChange={set('passportNo')} />
+          <TextField label="Insurance provider" value={f.insuranceProvider ?? ''} onChange={set('insuranceProvider')} />
+          <TextField label="Insurance number" value={f.insuranceNumber ?? ''} onChange={set('insuranceNumber')} />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function pickProfile(e: EmployeeProfile): EmployeeProfile {
+  return {
+    gender: e.gender, dateOfBirth: e.dateOfBirth, bloodGroup: e.bloodGroup, maritalStatus: e.maritalStatus,
+    nationality: e.nationality, personalEmail: e.personalEmail, phone: e.phone, altPhone: e.altPhone,
+    address: e.address, pan: e.pan, aadhaar: e.aadhaar, nationalId: e.nationalId, passportNo: e.passportNo,
+    insuranceProvider: e.insuranceProvider, insuranceNumber: e.insuranceNumber,
+  };
 }
 
 function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClose: () => void; departments: Department[] }) {

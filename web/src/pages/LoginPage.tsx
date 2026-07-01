@@ -43,6 +43,8 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [code, setCode] = useState('');
+  const [view, setView] = useState<'signin' | 'reset'>('signin');
+  const [resetSent, setResetSent] = useState(false);
 
   // Adopt an SSO token handed back via the redirect fragment (#sso_token=…).
   useEffect(() => {
@@ -140,6 +142,43 @@ export function LoginPage() {
               ← Back to sign in
             </button>
           </form>
+        ) : view === 'reset' ? (
+          <div className={styles.card}>
+            <h2 className={styles.title}>Reset password</h2>
+            <p className={styles.subtitle}>
+              Enter your email and we&apos;ll notify your workspace administrator to reset it.
+            </p>
+            {resetSent ? (
+              <p className={styles.resetOk} role="status">
+                If an account exists for <strong>{email}</strong>, your administrator has been
+                notified and will help you reset your password.
+              </p>
+            ) : (
+              <>
+                <div className={styles.fields}>
+                  <TextField label="Email" type="email" value={email} onChange={setEmail} required />
+                  <TextField label="Tenant code" value={tenantCode} onChange={setTenantCode} required />
+                </div>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  className={styles.submit}
+                  disabled={!email.trim()}
+                  onClick={() => setResetSent(true)}
+                >
+                  Request password reset
+                </Button>
+              </>
+            )}
+            <button
+              type="button"
+              className={styles.linkBtn}
+              onClick={() => { setView('signin'); setResetSent(false); setError(null); }}
+            >
+              ← Back to sign in
+            </button>
+          </div>
         ) : (
         <form className={styles.card} onSubmit={submit}>
           <h2 className={styles.title}>Sign in</h2>
@@ -150,6 +189,10 @@ export function LoginPage() {
             <TextField label="Password" type="password" value={password} onChange={setPassword} required />
             <TextField label="Tenant code" value={tenantCode} onChange={setTenantCode} required />
           </div>
+
+          <button type="button" className={styles.forgot} onClick={() => { setView('reset'); setError(null); }}>
+            Forgot password?
+          </button>
 
           {error && <p className={styles.error} role="alert">{error}</p>}
 

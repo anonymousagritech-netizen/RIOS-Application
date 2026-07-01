@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic } from 'lucide-react';
+import { Mic, Volume2, Square, FileText, CircleAlert, TrendingUp, CalendarClock } from 'lucide-react';
 import type { AssistantAction } from '@rios/shared';
 import { Drawer } from '../components/Drawer';
 import { Button } from '../components/Button';
@@ -27,17 +27,13 @@ const SUGGESTIONS = [
   'What is total GWP this year?',
 ];
 
-/** Speak a reply aloud (voice-out). No-op where speechSynthesis is unavailable. */
-function speak(text: string) {
-  try {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'en-US';
-    u.rate = 1.02;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch { /* ignore */ }
-}
+// Quick voice commands shown in voice mode.
+const VOICE_COMMANDS = [
+  { icon: FileText, label: 'Active treaties', text: 'How many treaties are active?' },
+  { icon: CircleAlert, label: 'Open claims', text: 'Summarise open claims' },
+  { icon: TrendingUp, label: 'Total GWP', text: 'What is total GWP this year?' },
+  { icon: CalendarClock, label: "Who's on leave", text: 'Who is on leave today?' },
+];
 
 export function AssistantDrawer({ open, onClose, autoVoice = false }: { open: boolean; onClose: () => void; autoVoice?: boolean }) {
   const toast = useToast();
@@ -47,17 +43,38 @@ export function AssistantDrawer({ open, onClose, autoVoice = false }: { open: bo
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState<AssistantAction | null>(null);
+  const [speaking, setSpeaking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  // When opened in voice mode, replies are also spoken aloud.
   const voiceModeRef = useRef(autoVoice);
   voiceModeRef.current = autoVoice;
+
+  // Speak a reply aloud (voice-out). Tracks a speaking state so the orb can
+  // show "Speaking…". No-op where speechSynthesis is unavailable.
+  const speak = (text: string) => {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) return;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = 1.02;
+      u.onstart = () => setSpeaking(true);
+      u.onend = () => setSpeaking(false);
+      u.onerror = () => setSpeaking(false);
+      synth.speak(u);
+    } catch { setSpeaking(false); }
+  };
+
   // Voice command: transcribe speech and send it straight to the assistant.
   const voice = useVoice((text) => { setInput(text); void send(text); });
+
+  // Warm up the speech-synthesis voice list (some browsers load it lazily).
+  useEffect(() => { try { window.speechSynthesis?.getVoices(); } catch { /* ignore */ } }, []);
 
   // Opened via the floating Voice Assistant → start listening immediately.
   useEffect(() => {
     if (open && autoVoice && voice.supported && !voice.listening) voice.start();
-    if (!open) { try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } }
+    if (!open) { try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } setSpeaking(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, autoVoice]);
 
@@ -88,8 +105,13 @@ export function AssistantDrawer({ open, onClose, autoVoice = false }: { open: bo
     }
   };
 
+  const stopVoice = () => {
+    voice.stop();
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+    setSpeaking(false);
+  };
+
   const runAction = (action: AssistantAction) => {
-    // Navigation actions are non-mutating and handled client-side.
     const route = (action.preview as { route?: string } | undefined)?.route;
     if (action.kind === 'navigate' && route) {
       navigate(route);
@@ -120,6 +142,8 @@ export function AssistantDrawer({ open, onClose, autoVoice = false }: { open: bo
     }
   };
 
+  const voiceState = speaking ? 'speaking' : voice.listening ? 'listening' : 'idle';
+
   return (
     <>
       <Drawer
@@ -130,7 +154,37 @@ export function AssistantDrawer({ open, onClose, autoVoice = false }: { open: bo
         width={440}
       >
         <div className={styles.scroll} ref={scrollRef}>
-          {turns.length === 0 && (
+          {/* Voice mode panel: speaking / listening orb, Stop, quick commands. */}
+          {autoVoice && voice.supported && (
+            <div className={styles.voicePanel}>
+              <button
+                type="button"
+                className={`${styles.orb} ${styles[`orb_${voiceState}`]}`}
+                onClick={() => (voice.listening || speaking ? stopVoice() : voice.start())}
+                aria-label={voice.listening ? 'Stop listening' : 'Start listening'}
+              >
+                <span className={styles.orbRing} aria-hidden />
+                <span className={styles.orbRing2} aria-hidden />
+                {speaking ? <Volume2 size={30} /> : <Mic size={30} />}
+              </button>
+              <div className={styles.voiceStatus}>
+                {speaking ? 'Speaking…' : voice.listening ? 'Listening…' : 'Tap the mic to speak'}
+              </div>
+              {(voice.listening || speaking) && (
+                <Button variant="danger" size="sm" icon={<Square size={13} />} onClick={stopVoice}>Stop</Button>
+              )}
+              <div className={styles.voiceCmdLabel}>Quick voice commands</div>
+              <div className={styles.voiceCmds}>
+                {VOICE_COMMANDS.map((c) => (
+                  <button key={c.label} type="button" className={styles.voiceCmd} onClick={() => send(c.text)}>
+                    <c.icon size={15} /> {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {turns.length === 0 && !autoVoice && (
             <div className={styles.intro}>
               <p className={styles.introText}>
                 Ask about treaties, claims, parties or financials. I cite what I read and

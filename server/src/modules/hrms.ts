@@ -124,6 +124,11 @@ export async function hrmsModule(app: FastifyInstance): Promise<void> {
                   e.email, e.department_id as "departmentId", e.position, e.manager_id as "managerId",
                   e.hire_date as "hireDate", e.base_salary_minor as "baseSalaryMinor", e.currency, e.status,
                   e.employment_type as "employmentType",
+                  e.gender, e.date_of_birth as "dateOfBirth", e.blood_group as "bloodGroup",
+                  e.marital_status as "maritalStatus", e.nationality,
+                  e.personal_email as "personalEmail", e.phone, e.alt_phone as "altPhone", e.address,
+                  e.pan, e.aadhaar, e.national_id as "nationalId", e.passport_no as "passportNo",
+                  e.insurance_provider as "insuranceProvider", e.insurance_number as "insuranceNumber",
                   d.name as "departmentName"
              from employee e
              left join department d on d.id = e.department_id
@@ -134,6 +139,12 @@ export async function hrmsModule(app: FastifyInstance): Promise<void> {
           reply.code(404);
           return { error: 'Employee not found' };
         }
+        const dependents = await db.query(
+          `select id, name, relationship, to_char(date_of_birth,'YYYY-MM-DD') as "dateOfBirth",
+                  phone, is_emergency as "isEmergency"
+             from employee_dependent where employee_id = $1 order by is_emergency desc, created_at`,
+          [req.params.id],
+        );
         const leave = await db.query(
           `select id, kind, start_date as "startDate", end_date as "endDate", days, reason, status,
                   decided_by as "decidedBy", decided_at as "decidedAt"
@@ -158,7 +169,106 @@ export async function hrmsModule(app: FastifyInstance): Promise<void> {
           leaveRequests: leave.rows,
           systemRoles: roles.rows,
           statusHistory: history.rows,
+          dependents: dependents.rows,
         };
+      });
+    },
+  );
+
+  // --- HR-managed personal / statutory profile ------------------------------
+  const profileSchema = z.object({
+    gender: z.string().optional(),
+    dateOfBirth: z.string().optional(),
+    bloodGroup: z.string().optional(),
+    maritalStatus: z.string().optional(),
+    nationality: z.string().optional(),
+    personalEmail: z.string().optional(),
+    phone: z.string().optional(),
+    altPhone: z.string().optional(),
+    address: z.string().optional(),
+    pan: z.string().optional(),
+    aadhaar: z.string().optional(),
+    nationalId: z.string().optional(),
+    passportNo: z.string().optional(),
+    insuranceProvider: z.string().optional(),
+    insuranceNumber: z.string().optional(),
+  });
+
+  app.put<{ Params: { id: string } }>(
+    '/api/hr/employees/:id/profile',
+    { preHandler: requirePermission('hr:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = profileSchema.safeParse(req.body);
+      if (!parsed.success) { reply.code(400); return { error: 'Invalid profile', details: parsed.error.flatten() }; }
+      const b = parsed.data;
+      const empty = (v: string | undefined) => (v && v.trim() ? v.trim() : null);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{ id: string }>(
+          `update employee set
+             gender=$2, date_of_birth=$3, blood_group=$4, marital_status=$5, nationality=$6,
+             personal_email=$7, phone=$8, alt_phone=$9, address=$10,
+             pan=$11, aadhaar=$12, national_id=$13, passport_no=$14,
+             insurance_provider=$15, insurance_number=$16
+           where id=$1 and not is_deleted returning id`,
+          [
+            req.params.id, empty(b.gender), empty(b.dateOfBirth), empty(b.bloodGroup),
+            empty(b.maritalStatus), empty(b.nationality), empty(b.personalEmail), empty(b.phone),
+            empty(b.altPhone), empty(b.address), empty(b.pan), empty(b.aadhaar), empty(b.nationalId),
+            empty(b.passportNo), empty(b.insuranceProvider), empty(b.insuranceNumber),
+          ],
+        );
+        if (!rows[0]) { reply.code(404); return { error: 'Employee not found' }; }
+        // Audit without echoing raw PII values - record which fields were set.
+        const changed = Object.entries(b).filter(([, v]) => v && String(v).trim()).map(([k]) => k);
+        await writeAudit(db, ctx, { action: 'update', entityType: 'employee_profile', entityId: req.params.id, after: { fields: changed } });
+        return { id: req.params.id, updated: true };
+      });
+    },
+  );
+
+  const dependentSchema = z.object({
+    name: z.string().min(1),
+    relationship: z.string().min(1),
+    dateOfBirth: z.string().optional(),
+    phone: z.string().optional(),
+    isEmergency: z.boolean().optional(),
+  });
+
+  app.post<{ Params: { id: string } }>(
+    '/api/hr/employees/:id/dependents',
+    { preHandler: requirePermission('hr:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = dependentSchema.safeParse(req.body);
+      if (!parsed.success) { reply.code(400); return { error: 'Invalid dependent', details: parsed.error.flatten() }; }
+      const b = parsed.data;
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{ id: string }>(
+          `insert into employee_dependent (tenant_id, employee_id, name, relationship, date_of_birth, phone, is_emergency)
+           values ($1,$2,$3,$4,$5,$6,$7) returning id`,
+          [ctx.tenantId, req.params.id, b.name, b.relationship, b.dateOfBirth ?? null, b.phone ?? null, b.isEmergency ?? false],
+        );
+        await writeAudit(db, ctx, { action: 'create', entityType: 'employee_dependent', entityId: rows[0]!.id, after: { name: b.name, relationship: b.relationship } });
+        reply.code(201);
+        return { id: rows[0]!.id };
+      });
+    },
+  );
+
+  app.delete<{ Params: { id: string; depId: string } }>(
+    '/api/hr/employees/:id/dependents/:depId',
+    { preHandler: requirePermission('hr:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{ id: string }>(
+          `delete from employee_dependent where id=$1 and employee_id=$2 returning id`,
+          [req.params.depId, req.params.id],
+        );
+        if (!rows[0]) { reply.code(404); return { error: 'Dependent not found' }; }
+        await writeAudit(db, ctx, { action: 'delete', entityType: 'employee_dependent', entityId: req.params.depId });
+        return { ok: true };
       });
     },
   );

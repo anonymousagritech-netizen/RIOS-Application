@@ -194,3 +194,26 @@
   align-self: center;
 }
 .linkBtn:hover { color: var(--text); text-decoration: underline; }
+
+.forgot {
+  align-self: flex-end;
+  margin-top: calc(var(--space-2) * -1);
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+.forgot:hover { text-decoration: underline; }
+
+.resetOk {
+  font-size: var(--text-sm);
+  color: var(--text);
+  line-height: var(--leading-normal);
+  background: var(--c-green-bg);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+}
