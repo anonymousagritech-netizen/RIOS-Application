@@ -94,8 +94,12 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   discounting) and **own-funds tiering/eligibility** (Tier limits vs SCR and MCR) with the solvency ratio -
   all unit-tested. What remains designed-for is the **full sub-module granularity** (every standard-formula
   sub-risk and the official correlation matrices), **ORSA**, and the **QRT report packs**. (§18.2)
-- **Statutory/market returns** (US Schedule F, Lloyd's returns), tax/levy regimes - designed-for as governed
-  report packs. (§18.3)
+- **Statutory/market returns** - a governed **report-pack assembler is now delivered**
+  (`@rios/domain/reportPack`): template-driven sections and line items with computed sum/diff totals,
+  completeness checks and control-total tie-outs, resolved iteratively regardless of declaration order. The
+  specific return taxonomies and factors (US Schedule F, Lloyd's returns, QRTs, tax/levy regimes) are
+  supplied as templates (configuration), not hard-coded, and their certified factor sets remain
+  jurisdiction-specific configuration. (§18.3)
 - **Data lineage to regulatory output** - the technical→financial chain is reconcilable and lineage-tracked
   (`source_event_id`); regulatory read models are designed-for. (§18.4)
 
