@@ -18,6 +18,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
+import { t } from '../lib/i18n';
 import { ApiError } from '../lib/api';
 import type { ClaimListItem } from '../lib/types';
 import shared from './shared.module.css';
@@ -65,9 +66,9 @@ export function ClaimsPage() {
       ),
     },
     { key: 'lossDate', header: 'Loss date', sortValue: (c) => c.lossDate ?? '', render: (c) => formatDate(c.lossDate) },
-    { key: 'gross', header: 'Gross', align: 'right', sortValue: (c) => c.grossLossMinor, render: (c) => <span className={shared.money}>{formatMoney(c.grossLossMinor, c.currency)}</span> },
-    { key: 'outstanding', header: 'Outstanding', align: 'right', sortValue: (c) => c.outstandingMinor, render: (c) => <span className={shared.money}>{formatMoney(c.outstandingMinor, c.currency)}</span> },
-    { key: 'paid', header: 'Paid', align: 'right', sortValue: (c) => c.paidMinor, render: (c) => <span className={shared.money}>{formatMoney(c.paidMinor, c.currency)}</span> },
+    { key: 'gross', header: 'Gross Loss', align: 'right', sortValue: (c) => c.grossLossMinor, render: (c) => <span className={shared.money}>{formatMoney(c.grossLossMinor, c.currency)}</span> },
+    { key: 'outstanding', header: t('outstandingReserve'), align: 'right', sortValue: (c) => c.outstandingMinor, render: (c) => <span className={shared.money}>{formatMoney(c.outstandingMinor, c.currency)}</span> },
+    { key: 'paid', header: 'Paid Loss', align: 'right', sortValue: (c) => c.paidMinor, render: (c) => <span className={shared.money}>{formatMoney(c.paidMinor, c.currency)}</span> },
     { key: 'status', header: 'Status', align: 'right', sortValue: (c) => c.status, render: (c) => <StatusPill status={c.status} metaColors={statusColors} /> },
   ];
 
@@ -86,9 +87,9 @@ export function ClaimsPage() {
 
       <div className={shared.kpiRow}>
         <KpiCard label="Open claims" value={kpis.open} loading={isLoading} icon={<FolderOpen size={20} />} accent="var(--primary)" />
-        <KpiCard label="Gross loss" value={formatMoney(kpis.gross, kpis.ccy)} loading={isLoading} icon={<Coins size={20} />} accent="var(--accent-violet)" />
-        <KpiCard label="Outstanding" value={formatMoney(kpis.outstanding, kpis.ccy)} loading={isLoading} icon={<Wallet size={20} />} accent="var(--accent-cyan)" />
-        <KpiCard label="Paid" value={formatMoney(kpis.paid, kpis.ccy)} loading={isLoading} icon={<CircleDollarSign size={20} />} accent="var(--accent-emerald)" />
+        <KpiCard label="Gross Loss" value={formatMoney(kpis.gross, kpis.ccy)} loading={isLoading} icon={<Coins size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label={t('outstandingReserve')} value={formatMoney(kpis.outstanding, kpis.ccy)} loading={isLoading} icon={<Wallet size={20} />} accent="var(--accent-cyan)" />
+        <KpiCard label="Paid Loss" value={formatMoney(kpis.paid, kpis.ccy)} loading={isLoading} icon={<CircleDollarSign size={20} />} accent="var(--accent-emerald)" />
       </div>
 
       <Card padded={false}>
@@ -167,7 +168,7 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
     setError(null);
     const gross = Number(grossLoss);
     if (!contractId) { setError('Select a treaty.'); return; }
-    if (Number.isNaN(gross) || gross <= 0) { setError('Enter a gross loss amount.'); return; }
+    if (Number.isNaN(gross) || gross <= 0) { setError('Enter a gross loss (initial case reserve).'); return; }
     // Adaptive detail: the engine returns only the fields currently visible for
     // this treaty's class + the answered FNOL branches, so nothing stale persists.
     const collected = collectVisibleValues(claimGroups, formCtx, details);
@@ -253,7 +254,7 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
               ))}
             </Select>
           </FormField>
-          <FormField label={`Gross loss / initial reserve (major units of ${currency})`} required>
+          <FormField label={`Gross loss / initial case reserve (major units of ${currency})`} required>
             <Input type="number" min="0" step="any" value={grossLoss} onChange={(e) => setGrossLoss(e.target.value)} placeholder="e.g. 250000" />
           </FormField>
         </FormSection>
