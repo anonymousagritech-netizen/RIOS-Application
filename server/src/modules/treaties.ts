@@ -25,6 +25,67 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   RUNOFF: ['COMMUTED', 'CLOSED'],
 };
 
+/**
+ * Typed commercial terms (gap-analysis §2.2 item 4). The known keys are
+ * validated; unknown keys still pass through so tenant-specific vocabulary
+ * (metadata-driven config) is not rejected. Percentages are expressed 0-100;
+ * shares/lines elsewhere stay 0-1.
+ */
+const termsSchema = z
+  .object({
+    currency: z.string().length(3).optional(),
+    underwritingYear: z.number().int().min(1990).max(2100).optional(),
+    territory: z.string().optional(),
+    slipReference: z.string().optional(),
+    expiringContractRef: z.string().optional(),
+    writtenSharePct: z.number().min(0).max(100).optional(),
+    orderPct: z.number().min(0).max(100).optional(),
+    periodBasis: z.enum(['LOSSES_OCCURRING', 'RISKS_ATTACHING', 'CLAIMS_MADE']).optional(),
+    cessionPct: z.number().min(0).max(100).optional(),
+    retentionLines: z.number().nonnegative().optional(),
+    maxCession: z.number().nonnegative().optional(),
+    attachment: z.number().nonnegative().optional(),
+    limit: z.number().nonnegative().optional(),
+    layers: z.number().int().positive().optional(),
+    aggregateDeductible: z.number().nonnegative().optional(),
+    reinstatements: z.string().optional(),
+    rateOnLine: z.number().min(0).max(100).optional(),
+    hoursClause: z.number().positive().optional(),
+    eventLimit: z.number().nonnegative().optional(),
+    cedingCommissionPct: z.number().min(0).max(100).optional(),
+    profitCommissionPct: z.number().min(0).max(100).optional(),
+    overridePct: z.number().min(0).max(100).optional(),
+    commissionMinPct: z.number().min(0).max(100).optional(),
+    commissionMaxPct: z.number().min(0).max(100).optional(),
+    brokeragePct: z.number().min(0).max(100).optional(),
+    estimatedPremiumIncome: z.number().nonnegative().optional(),
+    minimumAndDepositPremium: z.number().nonnegative().optional(),
+    depositPremium: z.number().nonnegative().optional(),
+    statementFrequency: z.enum(['QUARTERLY', 'HALF_YEARLY', 'ANNUAL']).optional(),
+    accountingBasis: z.enum(['UNDERWRITING_YEAR', 'ACCOUNTING_YEAR', 'CLEAN_CUT']).optional(),
+    settlementCurrency: z.string().length(3).optional(),
+    cashCallThreshold: z.number().nonnegative().optional(),
+  })
+  .passthrough()
+  .superRefine((t, ctx) => {
+    if (t.commissionMinPct !== undefined && t.commissionMaxPct !== undefined && t.commissionMinPct > t.commissionMaxPct) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['commissionMinPct'],
+        message: `commissionMinPct (${t.commissionMinPct}) must be <= commissionMaxPct (${t.commissionMaxPct})`,
+      });
+    }
+    // attachment/limit may arrive independently (terms firm up over the placement),
+    // but when both are present the layer must have a positive limit.
+    if (t.attachment !== undefined && t.limit !== undefined && t.limit <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['limit'],
+        message: 'limit must be > 0 when attachment and limit are both present',
+      });
+    }
+  });
+
 const createContractSchema = z.object({
   name: z.string().min(1),
   contractKind: z.enum(['TREATY', 'FACULTATIVE', 'RETROCESSION']).default('TREATY'),
@@ -39,7 +100,8 @@ const createContractSchema = z.object({
   periodStart: z.string().optional(),
   periodEnd: z.string().optional(),
   // Optional commercial terms persisted as the contract's first term set (§28.1).
-  terms: z.record(z.unknown()).optional(),
+  // Known keys are typed (see termsSchema); unknown keys pass through.
+  terms: termsSchema.optional(),
 });
 
 export async function treatiesModule(app: FastifyInstance): Promise<void> {
@@ -89,7 +151,15 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
     const parsed = createContractSchema.safeParse(req.body);
     if (!parsed.success) {
       reply.code(400);
-      return { error: 'Invalid contract', details: parsed.error.flatten() };
+      // flatten() collapses nested paths (e.g. terms.rateOnLine → "terms"), so
+      // also surface each issue with its full dotted path.
+      return {
+        error: 'Invalid contract',
+        details: {
+          ...parsed.error.flatten(),
+          issues: parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+        },
+      };
     }
     const b = parsed.data;
     return runAs(ctx, async (db) => {

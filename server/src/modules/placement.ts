@@ -25,6 +25,28 @@ const addLineSchema = z.object({
   writtenLine: z.number().min(0).max(1),
 });
 
+// Tolerance for float noise when comparing the signed total against the order.
+const SIGN_EPSILON = 1e-6;
+// signed_line is numeric(9,6) in the DB, so each stored line can be off by up to
+// 5e-7 from the computed share; the reconciliation view tolerates that per line.
+const FULLY_SIGNED_EPSILON = 1e-4;
+
+// Body of POST /slips/:id/sign - either explicit per-line signed shares, or
+// classic proportional signing down of an oversubscribed slip.
+const signSchema = z.union([
+  z.object({ mode: z.literal('PRO_RATA') }),
+  z.object({
+    lines: z
+      .array(
+        z.object({
+          lineId: z.string().uuid(),
+          signedLine: z.number().gt(0).max(1),
+        }),
+      )
+      .min(1),
+  }),
+]);
+
 export async function placementModule(app: FastifyInstance): Promise<void> {
   // Create a slip for a contract (status DRAFT).
   app.post('/api/placement/slips', { preHandler: requirePermission('placement:write') }, async (req, reply) => {
@@ -138,6 +160,183 @@ export async function placementModule(app: FastifyInstance): Promise<void> {
         });
         reply.code(201);
         return { id: lineId, totalWritten, isOversubscribed };
+      });
+    },
+  );
+
+  // Signing workflow (gap-analysis §2.2 item 1): record signed shares against the
+  // written lines - explicitly per line, or pro-rata when oversubscribed. Signed
+  // shares only ever go DOWN from the written share, and the signed total may
+  // never exceed the order.
+  app.post<{ Params: { id: string } }>(
+    '/api/placement/slips/:id/sign',
+    { preHandler: requirePermission('placement:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = signSchema.safeParse(req.body);
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid sign request', details: parsed.error.flatten() };
+      }
+      const b = parsed.data;
+      return runAs(ctx, async (db) => {
+        const slip = await loadSlip(db, req.params.id);
+        if (!slip) {
+          reply.code(404);
+          return { error: 'Slip not found' };
+        }
+        const orderPct = Number(slip.orderPct);
+        const { rows: lines } = await db.query<{
+          id: string;
+          party_id: string;
+          written_line: string;
+          signed_line: string | null;
+        }>(
+          `select id, party_id, written_line, signed_line
+             from market_line where slip_id = $1 order by written_at, created_at`,
+          [slip.id],
+        );
+        if (lines.length === 0) {
+          reply.code(400);
+          return { error: 'Slip has no written lines to sign' };
+        }
+        const totalWritten = lines.reduce((acc, l) => acc + Number(l.written_line), 0);
+
+        // Resolve the target signed share per line id.
+        const targets = new Map<string, number>();
+        if ('mode' in b) {
+          // Classic signing down: scale every written line by order/total written,
+          // capped at 1 (an undersubscribed slip signs each line as written).
+          if (totalWritten <= 0) {
+            reply.code(400);
+            return { error: 'Slip has no written share to sign' };
+          }
+          const factor = Math.min(1, orderPct / totalWritten);
+          for (const l of lines) targets.set(l.id, Number(l.written_line) * factor);
+        } else {
+          const byId = new Map(lines.map((l) => [l.id, l]));
+          for (const item of b.lines) {
+            const line = byId.get(item.lineId);
+            if (!line) {
+              reply.code(400);
+              return { error: `Line ${item.lineId} does not belong to this slip` };
+            }
+            const writtenLine = Number(line.written_line);
+            if (item.signedLine > writtenLine + SIGN_EPSILON) {
+              reply.code(400);
+              return {
+                error: `Signed line ${item.signedLine} exceeds written line ${writtenLine} for line ${item.lineId} - signing down only, never up`,
+              };
+            }
+            targets.set(item.lineId, item.signedLine);
+          }
+        }
+
+        // Slip-level invariant: new targets plus untouched already-signed lines
+        // must not exceed the order.
+        let totalSigned = 0;
+        for (const l of lines) {
+          totalSigned += targets.get(l.id) ?? (l.signed_line === null ? 0 : Number(l.signed_line));
+        }
+        if (totalSigned > orderPct + SIGN_EPSILON) {
+          reply.code(400);
+          return { error: `Total signed ${totalSigned} exceeds the order ${orderPct}` };
+        }
+
+        const before = lines.map((l) => ({
+          id: l.id,
+          partyId: l.party_id,
+          writtenLine: Number(l.written_line),
+          signedLine: l.signed_line === null ? null : Number(l.signed_line),
+        }));
+        const signedLines: { id: string; partyId: string; writtenLine: number; signedLine: number | null }[] = [];
+        for (const l of lines) {
+          const target = targets.get(l.id);
+          if (target !== undefined) {
+            await db.query(`update market_line set signed_line = $1, status = 'SIGNED' where id = $2`, [target, l.id]);
+          }
+          signedLines.push({
+            id: l.id,
+            partyId: l.party_id,
+            writtenLine: Number(l.written_line),
+            signedLine: target ?? (l.signed_line === null ? null : Number(l.signed_line)),
+          });
+        }
+
+        await db.query(`update slip set total_signed = $1, status = 'SIGNED', updated_at = now() where id = $2`, [
+          totalSigned,
+          slip.id,
+        ]);
+        // slip has no signed_at column (migration 0009); the timestamp is returned
+        // and audited rather than persisted.
+        const signedAt = new Date().toISOString();
+
+        await writeAudit(db, ctx, {
+          action: 'sign',
+          entityType: 'slip',
+          entityId: slip.id,
+          before: { lines: before, totalSigned: Number(slip.totalSigned ?? 0), status: slip.status },
+          after: {
+            lines: signedLines,
+            totalSigned,
+            orderPct,
+            status: 'SIGNED',
+            mode: 'mode' in b ? 'PRO_RATA' : 'EXPLICIT',
+          },
+          actorLabel: req.auth?.displayName,
+        });
+        return { id: slip.id, status: 'SIGNED', orderPct, totalWritten, totalSigned, signedAt, lines: signedLines };
+      });
+    },
+  );
+
+  // Written-vs-signed reconciliation view for a slip.
+  app.get<{ Params: { id: string } }>(
+    '/api/placement/slips/:id/signing',
+    { preHandler: requirePermission('placement:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const slip = await loadSlip(db, req.params.id);
+        if (!slip) {
+          reply.code(404);
+          return { error: 'Slip not found' };
+        }
+        const raw = slip.lines as {
+          id: string;
+          partyId: string;
+          partyName: string | null;
+          writtenLine: string | number;
+          signedLine: string | number | null;
+        }[];
+        const lines = raw.map((l) => {
+          const writtenLine = Number(l.writtenLine);
+          const signedLine = l.signedLine === null ? null : Number(l.signedLine);
+          return {
+            lineId: l.id,
+            partyId: l.partyId,
+            party: l.partyName,
+            writtenLine,
+            signedLine,
+            deltaLine: signedLine === null ? null : signedLine - writtenLine,
+          };
+        });
+        const writtenTotal = lines.reduce((acc, l) => acc + l.writtenLine, 0);
+        const signedTotal = lines.reduce((acc, l) => acc + (l.signedLine ?? 0), 0);
+        const orderPct = Number(slip.orderPct);
+        return {
+          slipId: slip.id,
+          reference: slip.reference,
+          status: slip.status,
+          lines,
+          totals: {
+            writtenTotal,
+            signedTotal,
+            orderPct,
+            oversubscribed: writtenTotal > orderPct + SIGN_EPSILON,
+            fullySigned: Math.abs(signedTotal - orderPct) < FULLY_SIGNED_EPSILON,
+          },
+        };
       });
     },
   );
