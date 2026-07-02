@@ -29,14 +29,16 @@ const en = {
 } as const;
 
 type I18nKey = keyof typeof en;
-let _locale: typeof en = en;
+type Locale = Record<I18nKey, string>;
+let _locale: Locale = en;
 
 export function t(key: I18nKey): string {
   return _locale[key] ?? key;
 }
 
-export function setLocale(locale: typeof en): void {
+export function setLocale(locale: Locale): void {
   _locale = locale;
 }
 
+export type { Locale };
 export { en as enStrings };
