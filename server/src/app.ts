@@ -27,6 +27,7 @@ import { accountCurrentModule } from './modules/accountCurrent.js';
 import { multiGaapModule } from './modules/multiGaap.js';
 import { reservingWorkflowModule } from './modules/reservingWorkflow.js';
 import { accumulationModule } from './modules/accumulation.js';
+import { jurisdictionPacksModule } from './modules/jurisdictionPacks.js';
 import { financeModule } from './modules/finance.js';
 import { financialStatementsModule } from './modules/financialStatements.js';
 import { regulatoryModule } from './modules/regulatory.js';
@@ -243,6 +244,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(financeModule);
   await app.register(financialStatementsModule);
   await app.register(regulatoryModule);
+  await app.register(jurisdictionPacksModule);
   await app.register(automationModule);
   // Content, reporting, relationship & integration modules
   await app.register(documentsModule);
