@@ -14,6 +14,7 @@ import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
 import { DefinitionList } from '../components/Feedback';
+import { useCurrencies } from '../lib/queries';
 import { formatMoney, formatMoneyCompact, formatNumber, formatPercent, formatDate, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
@@ -118,7 +119,6 @@ function useRunSolvency2() {
 // The server currently accepts only the Premium Allocation Approach (PAA).
 const MEASUREMENT_MODELS = ['PAA'];
 const HELD_OR_ISSUED = ['ISSUED', 'HELD'];
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF'];
 
 const TABS = [
   { id: 'ifrs17', label: 'IFRS 17' },
@@ -224,6 +224,8 @@ function Ifrs17Tab({ canRun }: { canRun: boolean }) {
 function NewGroupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const create = useCreateGroup();
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
   const [name, setName] = useState('');
   const [measurementModel, setMeasurementModel] = useState('PAA');
   const [heldOrIssued, setHeldOrIssued] = useState('ISSUED');
@@ -283,7 +285,7 @@ function NewGroupModal({ open, onClose }: { open: boolean; onClose: () => void }
           </FormField>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
             </Select>
           </FormField>
         </FormSection>
@@ -425,6 +427,8 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
   const { data, isLoading } = useSolvency2Runs();
   const run = useRunSolvency2();
   const toast = useToast();
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
 
   const [currency, setCurrency] = useState('USD');
   const [asAt, setAsAt] = useState('');
@@ -494,7 +498,7 @@ function Solvency2Tab({ canRun }: { canRun: boolean }) {
               <FormSection title="Run parameters">
                 <FormField label="Currency" required>
                   <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                    {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
                   </Select>
                 </FormField>
                 <FormField label="As at" hint="Valuation date (defaults to today)">

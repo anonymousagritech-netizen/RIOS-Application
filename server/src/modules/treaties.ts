@@ -15,6 +15,9 @@ import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
 import { nextReference } from './parties.js';
 import { checkContractAccumulation } from './accumulation.js';
+import { parsePaginationQuery, encodeCursor, decodeCursor } from '../lib/pagination.js';
+import { toCsv } from '../csv.js';
+import { notify } from './notifications.js';
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
   DRAFT: ['QUOTED', 'PLACING', 'CANCELLED'],
@@ -106,18 +109,73 @@ const createContractSchema = z.object({
 });
 
 export async function treatiesModule(app: FastifyInstance): Promise<void> {
-  app.get<{ Querystring: { status?: string; kind?: string; cedentId?: string; brokerId?: string } }>(
+  app.get<{ Querystring: { status?: string; kind?: string; cedentId?: string; brokerId?: string; limit?: string; cursor?: string } }>(
     '/api/treaties',
     { preHandler: requirePermission('treaty:read') },
     async (req) => {
       const ctx = authContext(req);
+      const { limit, cursor } = parsePaginationQuery(req.query as Record<string, unknown>);
+      const decoded = cursor ? decodeCursor(cursor) : null;
       return runAs(ctx, async (db) => {
-        const { rows } = await db.query(
+        // Parameterised cursor WHERE — no user data is interpolated into SQL.
+        // Keyset uses DESC ordering: next page rows have (created_at, id) < cursor.
+        const params: unknown[] = [
+          req.query.status ?? null,
+          req.query.kind ?? null,
+          req.query.cedentId ?? null,
+          req.query.brokerId ?? null,
+        ];
+        let cursorClause = '';
+        if (decoded) {
+          params.push(decoded.createdAt, decoded.id);
+          cursorClause = `AND (c.created_at, c.id) < ($5::timestamptz, $6::uuid)`;
+        }
+        const { rows } = await db.query<{ id: string; createdAt: string } & Record<string, unknown>>(
           `select c.id, c.reference, c.name, c.contract_kind as "contractKind", c.basis,
                   c.proportional_type as "proportionalType", c.np_type as "npType",
                   c.line_of_business as "lineOfBusiness", c.direction, c.currency,
                   c.period_start as "periodStart", c.period_end as "periodEnd", c.status,
                   c.cedent_party_id as "cedentPartyId", c.broker_party_id as "brokerPartyId",
+                  ced.short_name as "cedentName", brk.short_name as "brokerName",
+                  c.created_at::text as "createdAt"
+             from contract c
+             left join party ced on ced.id = c.cedent_party_id
+             left join party brk on brk.id = c.broker_party_id
+            where not c.is_deleted
+              and ($1::citext is null or c.status = $1)
+              and ($2::citext is null or c.contract_kind = $2)
+              and ($3::uuid is null or c.cedent_party_id = $3)
+              and ($4::uuid is null or c.broker_party_id = $4)
+              ${cursorClause}
+            order by c.created_at desc, c.id desc
+            limit ${limit + 1}`,
+          params,
+        );
+        const hasMore = rows.length > limit;
+        if (hasMore) rows.pop();
+        const last = rows[rows.length - 1];
+        const nextCursor = hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
+        return { treaties: rows, nextCursor };
+      });
+    },
+  );
+
+  // CSV export — same filters, streamed as a download.
+  app.get<{ Querystring: { status?: string; kind?: string; cedentId?: string; brokerId?: string } }>(
+    '/api/treaties/export.csv',
+    { preHandler: requirePermission('treaty:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{
+          reference: string; name: string; contractKind: string; basis: string;
+          lineOfBusiness: string | null; direction: string; currency: string;
+          periodStart: string | null; periodEnd: string | null; status: string;
+          cedentName: string | null; brokerName: string | null;
+        }>(
+          `select c.reference, c.name, c.contract_kind as "contractKind", c.basis,
+                  c.line_of_business as "lineOfBusiness", c.direction, c.currency,
+                  c.period_start as "periodStart", c.period_end as "periodEnd", c.status,
                   ced.short_name as "cedentName", brk.short_name as "brokerName"
              from contract c
              left join party ced on ced.id = c.cedent_party_id
@@ -130,7 +188,18 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
             order by c.created_at desc`,
           [req.query.status ?? null, req.query.kind ?? null, req.query.cedentId ?? null, req.query.brokerId ?? null],
         );
-        return { treaties: rows };
+        const csv = toCsv(
+          ['Reference', 'Name', 'Kind', 'Basis', 'LOB', 'Direction', 'Currency',
+           'Inception', 'Expiry', 'Status', 'Cedent', 'Broker'],
+          rows.map((r) => [
+            r.reference, r.name, r.contractKind, r.basis, r.lineOfBusiness ?? '',
+            r.direction, r.currency, r.periodStart ?? '', r.periodEnd ?? '', r.status,
+            r.cedentName ?? '', r.brokerName ?? '',
+          ]),
+        );
+        reply.header('content-type', 'text/csv; charset=utf-8');
+        reply.header('content-disposition', 'attachment; filename="treaties.csv"');
+        return csv;
       });
     },
   );
@@ -275,6 +344,21 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
           after: { status: to },
           actorLabel: req.auth?.displayName,
         });
+
+        // Notify underwriters when a treaty is bound (starts the accounting chain).
+        if (to === 'BOUND') {
+          await notify(db, ctx.tenantId, {
+            userId: ctx.userId,
+            title: 'Treaty bound',
+            body: `Treaty ${(contract as Record<string, unknown>).reference as string ?? contract.id} has been bound and deposit premium booked.`,
+            kind: 'FINANCE',
+            severity: 'INFO',
+            link: `/treaties/${contract.id}`,
+            entityType: 'contract',
+            entityId: contract.id,
+          });
+        }
+
         return {
           id: contract.id,
           status: to,

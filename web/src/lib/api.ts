@@ -66,6 +66,10 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
     headers,
     body,
     signal: opts.signal,
+    // Send the httpOnly rios_token cookie automatically; it is the primary auth
+    // mechanism. The Authorization header (localStorage fallback) is also sent
+    // when available for API clients and non-browser callers.
+    credentials: 'include',
   });
 
   let payload: unknown = null;
@@ -95,7 +99,7 @@ export async function downloadFile(path: string, filename: string): Promise<void
   const headers: Record<string, string> = {};
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(apiUrl(path), { headers });
+  const res = await fetch(apiUrl(path), { headers, credentials: 'include' });
   if (!res.ok) {
     if (res.status === 401) emitAuth('unauthorized');
     if (res.status === 403) emitAuth('forbidden');

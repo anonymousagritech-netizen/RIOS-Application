@@ -9,6 +9,8 @@ import { applyFieldSecurity, type FieldSecurityPolicy } from '@rios/domain';
 import { runAs, type Db, type TenantContext } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { parsePaginationQuery } from '../lib/pagination.js';
+import { toCsv } from '../csv.js';
 
 /**
  * Load active field-security policies for an entity (0071). Returned empty when
@@ -121,11 +123,17 @@ const createPartySchema = z.object({
 });
 
 export async function partiesModule(app: FastifyInstance): Promise<void> {
-  app.get<{ Querystring: { q?: string; role?: string } }>(
+  app.get<{ Querystring: { q?: string; role?: string; limit?: string; cursor?: string } }>(
     '/api/parties',
     { preHandler: requirePermission('party:read') },
     async (req) => {
       const ctx = authContext(req);
+      // OFFSET pagination: parties are ordered by legal_name (text), which makes
+      // keyset pagination unwieldy. Cursor encodes the page offset as base64url.
+      const { limit, cursor } = parsePaginationQuery(req.query as Record<string, unknown>);
+      const offset = cursor
+        ? (Number(Buffer.from(cursor, 'base64url').toString('utf8')) || 0)
+        : 0;
       return runAs(ctx, async (db) => {
         const { rows } = await db.query(
           `select p.id, p.reference, p.legal_name as "legalName", p.short_name as "shortName",
@@ -138,10 +146,52 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
               and ($2::citext is null or exists (
                     select 1 from party_role x where x.party_id = p.id and x.role_code = $2 and x.is_active))
             group by p.id
+            order by p.legal_name
+            limit ${limit + 1} offset ${offset}`,
+          [req.query.q ?? null, req.query.role ?? null],
+        );
+        const hasMore = rows.length > limit;
+        if (hasMore) rows.pop();
+        const nextOffset = offset + limit;
+        const nextCursor = hasMore
+          ? Buffer.from(String(nextOffset)).toString('base64url')
+          : null;
+        return { parties: rows, nextCursor };
+      });
+    },
+  );
+
+  // CSV export — same filters, streamed as a download.
+  app.get<{ Querystring: { q?: string; role?: string } }>(
+    '/api/parties/export.csv',
+    { preHandler: requirePermission('party:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{
+          reference: string; legalName: string; shortName: string | null;
+          kind: string; country: string | null; status: string; roles: string[];
+        }>(
+          `select p.reference, p.legal_name as "legalName", p.short_name as "shortName",
+                  p.kind, p.country, p.status,
+                  coalesce(array_agg(pr.role_code::text) filter (where pr.role_code is not null), '{}') as roles
+             from party p
+             left join party_role pr on pr.party_id = p.id and pr.is_active
+            where not p.is_deleted
+              and ($1::text is null or p.legal_name ilike '%'||$1||'%' or p.short_name ilike '%'||$1||'%')
+              and ($2::citext is null or exists (
+                    select 1 from party_role x where x.party_id = p.id and x.role_code = $2 and x.is_active))
+            group by p.id
             order by p.legal_name`,
           [req.query.q ?? null, req.query.role ?? null],
         );
-        return { parties: rows };
+        const csv = toCsv(
+          ['Reference', 'Legal name', 'Short name', 'Kind', 'Country', 'Status', 'Roles'],
+          rows.map((r) => [r.reference, r.legalName, r.shortName ?? '', r.kind, r.country ?? '', r.status, (r.roles ?? []).join('; ')]),
+        );
+        reply.header('content-type', 'text/csv; charset=utf-8');
+        reply.header('content-disposition', 'attachment; filename="parties.csv"');
+        return csv;
       });
     },
   );

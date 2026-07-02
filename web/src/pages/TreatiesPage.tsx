@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useTreaties, useCreateTreaty, useCodeLists, useCurrencies, useStatusColors, useParties } from '../lib/queries';
+import { useTreaties, useCreateTreaty, useCodeLists, useCurrencies, useStatusColors, useParties, usePreference } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -12,11 +12,12 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { formatDate, titleCase } from '../lib/format';
+import { t } from '../lib/i18n';
 import { DynamicForm, collectVisibleValues, type FormContext } from '../lib/formEngine';
 import { LOB_CLASS_GROUPS } from '../lib/lobSchema';
-import { ApiError } from '../lib/api';
+import { ApiError, downloadFile, qs } from '../lib/api';
 import type { TreatyListItem } from '../lib/types';
-import { Plus, FileText, Layers, CheckCircle2, Activity, FileSignature } from 'lucide-react';
+import { Plus, FileText, Layers, CheckCircle2, Activity, FileSignature, Download } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './TreatiesPage.module.css';
 
@@ -35,7 +36,24 @@ export function TreatiesPage() {
     if (v) next.set('status', v); else next.delete('status');
     return next;
   }, { replace: true });
+
+  // Saved filter preference: persists the kind filter across sessions.
+  const { value: savedFilters, save: saveFilters } = usePreference('filters:treaties', { kind: '' });
   const [kind, setKind] = useState('');
+  // Apply the saved preference on first load (only once, before the user has touched the filter).
+  const savedApplied = useRef(false);
+  useEffect(() => {
+    if (!savedApplied.current && savedFilters.kind !== undefined) {
+      savedApplied.current = true;
+      setKind(savedFilters.kind);
+    }
+  }, [savedFilters]);
+
+  const updateKind = (v: string) => {
+    setKind(v);
+    void saveFilters({ kind: v });
+  };
+
   const [showNew, setShowNew] = useState(false);
 
   const { data, isLoading } = useTreaties({ status: status || undefined, kind: kind || undefined });
@@ -126,13 +144,21 @@ export function TreatiesPage() {
           </div>
           <div className={shared.filter}>
             <span className={shared.filterLabel}>Kind</span>
-            <Select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Filter by kind">
+            <Select value={kind} onChange={(e) => updateKind(e.target.value)} aria-label="Filter by kind">
               <option value="">All</option>
               {KINDS.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
             </Select>
           </div>
           <div className={shared.spacer} />
           <span className={styles.resultCount}>{rows.length} result{rows.length === 1 ? '' : 's'}</span>
+          <Button
+            variant="ghost"
+            icon={<Download size={15} />}
+            onClick={() => downloadFile(`/api/treaties/export.csv${qs({ status: status || undefined, kind: kind || undefined })}`, 'treaties.csv')}
+            aria-label="Export treaties as CSV"
+          >
+            Export CSV
+          </Button>
         </div>
 
         <Table
@@ -392,7 +418,7 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
               <option value="OUTWARDS">Outwards (ceded)</option>
             </Select>
           </FormField>
-          <FormField label="Line of business">
+          <FormField label={t('lineOfBusiness')}>
             <Select value={lineOfBusiness} onChange={(e) => setLineOfBusiness(e.target.value)}>
               <option value="">Unspecified</option>
               {lobOptions.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
@@ -400,8 +426,8 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
           </FormField>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {currencies.map((c) => (
+                <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
               ))}
             </Select>
           </FormField>
@@ -427,9 +453,9 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
           <TextField label="Order %" type="number" value={orderPct} onChange={setOrderPct} placeholder="e.g. 100" hint="Share of the risk being placed" />
         </FormSection>
 
-        <FormSection title="Period & territory">
-          <TextField label="Inception date" type="date" value={periodStart} onChange={setPeriodStart} />
-          <TextField label="Expiry date" type="date" value={periodEnd} onChange={setPeriodEnd} />
+        <FormSection title="Risk Period & Territory">
+          <TextField label={t('inceptionDate')} type="date" value={periodStart} onChange={setPeriodStart} />
+          <TextField label={t('expiryDate')} type="date" value={periodEnd} onChange={setPeriodEnd} />
           <FormField label="Period basis" required>
             <Select value={periodBasis} onChange={(e) => setPeriodBasis(e.target.value)}>
               <option value="LOSSES_OCCURRING">Losses occurring during</option>
@@ -473,12 +499,12 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
             </>
           ) : (
             <>
-              <TextField label="Retention / attachment (major units)" type="number" value={attachment} onChange={setAttachment} placeholder="e.g. 1000000" hint="Cedant's retention per loss" />
+              <TextField label={`${t('attachmentPoint')} (major units)`} type="number" value={attachment} onChange={setAttachment} placeholder="e.g. 1000000" hint="Cedent's retention per loss" />
               <TextField label="Limit / cover (major units)" type="number" value={limit} onChange={setLimit} placeholder="e.g. 4000000" hint="Layer limit above attachment" />
               <TextField label="Number of layers" type="number" value={layers} onChange={setLayers} placeholder="1" />
               {isAggregate && <TextField label="Aggregate deductible (major units)" type="number" value={aggDeductible} onChange={setAggDeductible} placeholder="e.g. 2000000" />}
-              <TextField label="Reinstatements" value={reinstatements} onChange={setReinstatements} placeholder="e.g. 1 at 100%, 1 at 50%" />
-              <TextField label="Rate on line %" type="number" value={rateOnLine} onChange={setRateOnLine} placeholder="e.g. 12.5" />
+              <TextField label={`${t('reinstatement')}s`} value={reinstatements} onChange={setReinstatements} placeholder="e.g. 1 at 100%, 1 at 50%" />
+              <TextField label={`${t('rateOnLine')} %`} type="number" value={rateOnLine} onChange={setRateOnLine} placeholder="e.g. 12.5" />
               <TextField label="Hours clause (hours)" type="number" value={hoursClause} onChange={setHoursClause} placeholder="e.g. 72" hint="Event definition window for occurrences" />
               <TextField label="Event limit (major units)" type="number" value={eventLimit} onChange={setEventLimit} placeholder="e.g. 10000000" hint="Maximum recovery per event, if any" />
             </>

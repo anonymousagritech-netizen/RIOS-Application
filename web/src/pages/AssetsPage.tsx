@@ -13,6 +13,7 @@ import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
+import { useCurrencies } from '../lib/queries';
 import { formatMoney, formatDate, formatNumber, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
@@ -103,7 +104,6 @@ interface CreateAssetBody {
   currency?: string;
 }
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY'];
 function useCreateAsset() {
   const qc = useQueryClient();
   return useMutation({
@@ -263,6 +263,8 @@ function NewAssetModal({ open, onClose }: { open: boolean; onClose: () => void }
   const create = useCreateAsset();
   const { data: empData, isLoading: loadingEmployees } = useEmployees(open);
   const employees = empData?.employees ?? [];
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
   const [tag, setTag] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
@@ -344,7 +346,7 @@ function NewAssetModal({ open, onClose }: { open: boolean; onClose: () => void }
           </FormField>
           <FormField label="Currency">
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
             </Select>
           </FormField>
         </FormSection>
@@ -455,6 +457,8 @@ function LicensesTab({ canWrite, createSignal }: { canWrite: boolean; createSign
 function NewLicenseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const create = useCreateLicense();
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
   const [name, setName] = useState('');
   const [vendor, setVendor] = useState('');
   const [seatsTotal, setSeatsTotal] = useState('');
@@ -529,7 +533,7 @@ function NewLicenseModal({ open, onClose }: { open: boolean; onClose: () => void
           </FormField>
           <FormField label="Currency">
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
             </Select>
           </FormField>
         </FormSection>

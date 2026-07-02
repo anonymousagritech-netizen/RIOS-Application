@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
+import { useCurrencies } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -90,8 +91,6 @@ function useApproveRun() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['hr', 'payroll', 'runs'] }),
   });
 }
-
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY'];
 
 export function PayrollPage() {
   const { hasPermission } = useAuth();
@@ -199,6 +198,8 @@ export function PayrollPage() {
 function RunPayrollModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const create = useCreateRun();
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
   const [period, setPeriod] = useState('');
   const [payDate, setPayDate] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -286,7 +287,7 @@ function RunPayrollModal({ open, onClose }: { open: boolean; onClose: () => void
           </FormField>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
             </Select>
           </FormField>
         </FormSection>

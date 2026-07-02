@@ -13,7 +13,7 @@
 import jwt from 'jsonwebtoken';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { config } from './config.js';
-import { ownerQuery } from './db.js';
+import { ownerQuery, appPool } from './db.js';
 import { verifyTotp } from './auth/totp.js';
 import type { AuthUser } from '@rios/shared';
 
@@ -63,7 +63,7 @@ export type LoginResult =
   | { token: string; user: AuthUser };
 
 /** Build an access token + AuthUser for a verified user id (post-password / post-MFA / post-SSO). */
-export async function buildSession(userId: string): Promise<{ token: string; user: AuthUser }> {
+export async function buildSession(userId: string): Promise<{ token: string; jti: string; user: AuthUser }> {
   const { rows } = await ownerQuery<{ id: string; tenant_id: string; email: string; display_name: string }>(
     `select id, tenant_id, email, display_name from app_user where id = $1 and status = 'active'`,
     [userId],
@@ -72,9 +72,11 @@ export async function buildSession(userId: string): Promise<{ token: string; use
   if (!row) throw new AuthError('User not found or inactive');
   const { roles, permissions } = await loadAccess(row.id, row.tenant_id);
   const user: AuthUser = { id: row.id, email: row.email, displayName: row.display_name, tenantId: row.tenant_id, roles, permissions };
-  const token = jwt.sign(user, config.jwtSecret, { expiresIn: config.jwtExpiresIn } as jwt.SignOptions);
+  // Include a JWT ID (jti) so individual tokens can be revoked server-side.
+  const jti = crypto.randomUUID();
+  const token = jwt.sign({ ...user, jti }, config.jwtSecret, { expiresIn: config.jwtExpiresIn } as jwt.SignOptions);
   await ownerQuery(`update app_user set last_login_at = now() where id = $1`, [row.id]);
-  return { token, user };
+  return { token, jti, user };
 }
 
 /** Complete a two-factor login: verify the MFA challenge token + the TOTP code. */
@@ -120,17 +122,32 @@ declare module 'fastify' {
   }
 }
 
-/** Verify the bearer token and attach req.auth. Throws 401 if missing/invalid. */
+/** Verify the bearer token (from Authorization header or httpOnly cookie) and attach req.auth. */
 export async function authenticate(req: FastifyRequest): Promise<AuthUser> {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) throw new AuthError('Missing bearer token');
+  // @fastify/cookie populates req.cookies; access it safely with a type cast.
+  const cookies = (req as FastifyRequest & { cookies?: Record<string, string | undefined> }).cookies;
+  const raw = header?.startsWith('Bearer ') ? header.slice(7) : cookies?.['rios_token'];
+  if (!raw) throw new AuthError('Missing bearer token');
+
+  let decoded: AuthUser & { jti?: string };
   try {
-    const decoded = jwt.verify(header.slice(7), config.jwtSecret) as AuthUser;
-    req.auth = decoded;
-    return decoded;
+    decoded = jwt.verify(raw, config.jwtSecret) as AuthUser & { jti?: string };
   } catch {
     throw new AuthError('Invalid or expired token');
   }
+
+  // Check the revocation list when the token carries a jti claim.
+  if (decoded.jti) {
+    const { rows } = await appPool.query<{ jti: string }>(
+      'SELECT jti FROM token_revocation WHERE jti = $1',
+      [decoded.jti],
+    );
+    if (rows.length > 0) throw new AuthError('Token has been revoked');
+  }
+
+  req.auth = decoded;
+  return decoded;
 }
 
 /** Fastify preHandler enforcing authentication and (optionally) a permission. */
@@ -149,7 +166,8 @@ export function requirePermission(permission?: string) {
   };
 }
 
-export function authContext(req: FastifyRequest): { tenantId: string; userId: string } {
+export function authContext(req: FastifyRequest): { tenantId: string; userId: string; jti: string | undefined } {
   if (!req.auth) throw new AuthError('Not authenticated');
-  return { tenantId: req.auth.tenantId, userId: req.auth.id };
+  const payload = req.auth as AuthUser & { jti?: string };
+  return { tenantId: payload.tenantId, userId: payload.id, jti: payload.jti };
 }

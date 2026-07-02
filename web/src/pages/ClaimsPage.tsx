@@ -1,9 +1,9 @@
-import { Plus, ShieldAlert, FolderOpen, Coins, Wallet, CircleDollarSign } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Plus, ShieldAlert, FolderOpen, Coins, Wallet, CircleDollarSign, Download } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useClaims, useCreateClaim, useTreaties, useCurrencies, useStatusColors, useCodeLists } from '../lib/queries';
+import { useClaims, useCreateClaim, useTreaties, useCurrencies, useStatusColors, useCodeLists, usePreference } from '../lib/queries';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { api, downloadFile, qs } from '../lib/api';
 import { DynamicForm, collectVisibleValues, type FormContext } from '../lib/formEngine';
 import { LOB_CLASS_GROUPS } from '../lib/lobSchema';
 import { CLAIM_FNOL_GROUPS } from '../lib/claimSchema';
@@ -18,6 +18,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
+import { t } from '../lib/i18n';
 import { ApiError } from '../lib/api';
 import type { ClaimListItem } from '../lib/types';
 import shared from './shared.module.css';
@@ -31,11 +32,34 @@ export function ClaimsPage() {
   // (e.g. /claims?status=OPEN); the dropdown keeps the query param in sync.
   const [searchParams, setSearchParams] = useSearchParams();
   const status = searchParams.get('status') ?? '';
-  const setStatus = (v: string) => setSearchParams((prev) => {
-    const next = new URLSearchParams(prev);
-    if (v) next.set('status', v); else next.delete('status');
-    return next;
-  }, { replace: true });
+
+  // Saved filter preference: persists the status filter across sessions.
+  // When the page loads without a URL param, restore the last-used status.
+  const { value: savedFilters, save: saveFilters } = usePreference('filters:claims', { status: '' });
+  const savedApplied = useRef(false);
+  useEffect(() => {
+    if (!savedApplied.current && savedFilters.status !== undefined) {
+      savedApplied.current = true;
+      // Only restore if the URL doesn't already specify a status (deep-link takes priority).
+      if (!searchParams.get('status') && savedFilters.status) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('status', savedFilters.status);
+          return next;
+        }, { replace: true });
+      }
+    }
+  }, [savedFilters]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setStatus = (v: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (v) next.set('status', v); else next.delete('status');
+      return next;
+    }, { replace: true });
+    void saveFilters({ status: v });
+  };
+
   const [showNew, setShowNew] = useState(false);
 
   const { data, isLoading } = useClaims({ status: status || undefined });
@@ -65,9 +89,9 @@ export function ClaimsPage() {
       ),
     },
     { key: 'lossDate', header: 'Loss date', sortValue: (c) => c.lossDate ?? '', render: (c) => formatDate(c.lossDate) },
-    { key: 'gross', header: 'Gross', align: 'right', sortValue: (c) => c.grossLossMinor, render: (c) => <span className={shared.money}>{formatMoney(c.grossLossMinor, c.currency)}</span> },
-    { key: 'outstanding', header: 'Outstanding', align: 'right', sortValue: (c) => c.outstandingMinor, render: (c) => <span className={shared.money}>{formatMoney(c.outstandingMinor, c.currency)}</span> },
-    { key: 'paid', header: 'Paid', align: 'right', sortValue: (c) => c.paidMinor, render: (c) => <span className={shared.money}>{formatMoney(c.paidMinor, c.currency)}</span> },
+    { key: 'gross', header: 'Gross Loss', align: 'right', sortValue: (c) => c.grossLossMinor, render: (c) => <span className={shared.money}>{formatMoney(c.grossLossMinor, c.currency)}</span> },
+    { key: 'outstanding', header: t('outstandingReserve'), align: 'right', sortValue: (c) => c.outstandingMinor, render: (c) => <span className={shared.money}>{formatMoney(c.outstandingMinor, c.currency)}</span> },
+    { key: 'paid', header: 'Paid Loss', align: 'right', sortValue: (c) => c.paidMinor, render: (c) => <span className={shared.money}>{formatMoney(c.paidMinor, c.currency)}</span> },
     { key: 'status', header: 'Status', align: 'right', sortValue: (c) => c.status, render: (c) => <StatusPill status={c.status} metaColors={statusColors} /> },
   ];
 
@@ -86,9 +110,9 @@ export function ClaimsPage() {
 
       <div className={shared.kpiRow}>
         <KpiCard label="Open claims" value={kpis.open} loading={isLoading} icon={<FolderOpen size={20} />} accent="var(--primary)" />
-        <KpiCard label="Gross loss" value={formatMoney(kpis.gross, kpis.ccy)} loading={isLoading} icon={<Coins size={20} />} accent="var(--accent-violet)" />
-        <KpiCard label="Outstanding" value={formatMoney(kpis.outstanding, kpis.ccy)} loading={isLoading} icon={<Wallet size={20} />} accent="var(--accent-cyan)" />
-        <KpiCard label="Paid" value={formatMoney(kpis.paid, kpis.ccy)} loading={isLoading} icon={<CircleDollarSign size={20} />} accent="var(--accent-emerald)" />
+        <KpiCard label="Gross Loss" value={formatMoney(kpis.gross, kpis.ccy)} loading={isLoading} icon={<Coins size={20} />} accent="var(--accent-violet)" />
+        <KpiCard label={t('outstandingReserve')} value={formatMoney(kpis.outstanding, kpis.ccy)} loading={isLoading} icon={<Wallet size={20} />} accent="var(--accent-cyan)" />
+        <KpiCard label="Paid Loss" value={formatMoney(kpis.paid, kpis.ccy)} loading={isLoading} icon={<CircleDollarSign size={20} />} accent="var(--accent-emerald)" />
       </div>
 
       <Card padded={false}>
@@ -102,6 +126,14 @@ export function ClaimsPage() {
           </div>
           <div className={shared.spacer} />
           <span className={shared.cellSub}>{claims.length} result{claims.length === 1 ? '' : 's'}</span>
+          <Button
+            variant="ghost"
+            icon={<Download size={15} />}
+            onClick={() => downloadFile(`/api/claims/export.csv${qs({ status: status || undefined })}`, 'claims.csv')}
+            aria-label="Export claims as CSV"
+          >
+            Export CSV
+          </Button>
         </div>
 
         <Table
@@ -167,7 +199,7 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
     setError(null);
     const gross = Number(grossLoss);
     if (!contractId) { setError('Select a treaty.'); return; }
-    if (Number.isNaN(gross) || gross <= 0) { setError('Enter a gross loss amount.'); return; }
+    if (Number.isNaN(gross) || gross <= 0) { setError('Enter a gross loss (initial case reserve).'); return; }
     // Adaptive detail: the engine returns only the fields currently visible for
     // this treaty's class + the answered FNOL branches, so nothing stale persists.
     const collected = collectVisibleValues(claimGroups, formCtx, details);
@@ -248,12 +280,12 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
         <FormSection title="Financials" description="The initial gross reserve opens the case reserve on registration.">
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {currencies.map((c) => (
+                <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
               ))}
             </Select>
           </FormField>
-          <FormField label={`Gross loss / initial reserve (major units of ${currency})`} required>
+          <FormField label={`Gross loss / initial case reserve (major units of ${currency})`} required>
             <Input type="number" min="0" step="any" value={grossLoss} onChange={(e) => setGrossLoss(e.target.value)} placeholder="e.g. 250000" />
           </FormField>
         </FormSection>
