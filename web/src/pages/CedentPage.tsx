@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Building2, Users, TrendingUp, Percent, Star, MapPin, ShieldCheck,
-  Layers, FileText, AlertTriangle, MessageSquare, PlusCircle, Pencil, Network, Download,
+  Layers, FileText, AlertTriangle, MessageSquare, PlusCircle, Pencil, Network, Download, ArrowUpRight,
 } from 'lucide-react';
 import { api, ApiError, downloadFile } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -257,7 +257,12 @@ function CedentDrawer({ id, onClose }: { id: string | null; onClose: () => void 
             <CardHeader
               title="Profile"
               subtitle={c.legalName}
-              actions={canWrite ? <Button size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setShowEdit(true)}>Edit profile</Button> : undefined}
+              actions={
+                <span style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                  <Button size="sm" variant="secondary" icon={<ArrowUpRight size={14} />} onClick={() => navigate(`/parties/${c.id}`)}>Party hub</Button>
+                  {canWrite && <Button size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setShowEdit(true)}>Edit profile</Button>}
+                </span>
+              }
             />
             <div className={styles.facts}>
               <Fact label="Rating" value={c.rating ? <Badge color="indigo">{c.rating}{c.ratingAgency ? ` · ${c.ratingAgency}` : ''}</Badge> : 'Unrated'} />
