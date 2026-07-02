@@ -166,9 +166,33 @@ insert into currency (tenant_id, code, name, minor_units, symbol) values
   (:'tenant_id'::uuid,'JPY','Japanese Yen',0,'¥')
 on conflict do nothing;
 
+-- Additional ISO-4217 currencies
+insert into currency (tenant_id, code, name, minor_units, symbol) values
+  (:'tenant_id'::uuid,'INR','Indian Rupee',2,'₹'),
+  (:'tenant_id'::uuid,'BTN','Bhutanese Ngultrum',2,'Nu'),
+  (:'tenant_id'::uuid,'CHF','Swiss Franc',2,'CHF'),
+  (:'tenant_id'::uuid,'AUD','Australian Dollar',2,'A$'),
+  (:'tenant_id'::uuid,'CAD','Canadian Dollar',2,'C$'),
+  (:'tenant_id'::uuid,'SGD','Singapore Dollar',2,'S$'),
+  (:'tenant_id'::uuid,'AED','UAE Dirham',2,'د.إ'),
+  (:'tenant_id'::uuid,'ZAR','South African Rand',2,'R'),
+  (:'tenant_id'::uuid,'CNY','Chinese Yuan Renminbi',2,'¥'),
+  (:'tenant_id'::uuid,'HKD','Hong Kong Dollar',2,'HK$')
+on conflict do nothing;
+
 insert into exchange_rate (tenant_id, from_ccy, to_ccy, rate, rate_date) values
   (:'tenant_id'::uuid,'EUR','USD',1.08,current_date),
-  (:'tenant_id'::uuid,'GBP','USD',1.27,current_date)
+  (:'tenant_id'::uuid,'GBP','USD',1.27,current_date),
+  (:'tenant_id'::uuid,'INR','USD',0.012,current_date),
+  (:'tenant_id'::uuid,'BTN','USD',0.012,current_date),
+  (:'tenant_id'::uuid,'CHF','USD',1.13,current_date),
+  (:'tenant_id'::uuid,'AUD','USD',0.65,current_date),
+  (:'tenant_id'::uuid,'CAD','USD',0.74,current_date),
+  (:'tenant_id'::uuid,'SGD','USD',0.74,current_date),
+  (:'tenant_id'::uuid,'AED','USD',0.27,current_date),
+  (:'tenant_id'::uuid,'ZAR','USD',0.054,current_date),
+  (:'tenant_id'::uuid,'CNY','USD',0.14,current_date),
+  (:'tenant_id'::uuid,'HKD','USD',0.13,current_date)
 on conflict do nothing;
 
 insert into numbering_scheme (tenant_id, key, pattern) values

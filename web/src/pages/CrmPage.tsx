@@ -12,6 +12,7 @@ import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField, Textarea } from '../components/Form';
+import { useCurrencies } from '../lib/queries';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
 import { Target, ClipboardList } from 'lucide-react';
 import shared from './shared.module.css';
@@ -63,7 +64,6 @@ const OPP_STATUSES = [
   { code: 'lost', label: 'Lost' },
 ];
 const ACTIVITY_KINDS = ['call', 'email', 'meeting', 'note', 'task'];
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF'];
 
 /* ---------------- Data hooks ---------------- */
 function usePipeline() {
@@ -308,6 +308,8 @@ function NewOpportunityModal({ open, onClose }: { open: boolean; onClose: () => 
   const create = useCreateOpportunity();
   const { data: parties } = usePartyOptions();
   const partyList = parties?.parties ?? [];
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
 
   const [partyId, setPartyId] = useState('');
   const [name, setName] = useState('');
@@ -389,7 +391,7 @@ function NewOpportunityModal({ open, onClose }: { open: boolean; onClose: () => 
           </FormField>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
             </Select>
           </FormField>
           <FormField label="Probability (%)" hint="Chance of winning; drives the weighted pipeline.">

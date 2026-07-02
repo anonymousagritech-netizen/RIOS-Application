@@ -12,7 +12,7 @@ import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField, Textarea } from '../components/Form';
-import { useParties } from '../lib/queries';
+import { useParties, useCurrencies } from '../lib/queries';
 import { PageLoader } from '../components/Feedback';
 import { formatMoney, formatMoneyCompact, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
@@ -151,7 +151,6 @@ const PO_TRANSITIONS: Record<string, string[]> = {
 };
 const PO_STATUSES = ['draft', 'issued', 'received', 'closed', 'cancelled'];
 const REQ_STATUSES = ['draft', 'submitted'];
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY'];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function ProcurementPage() {
@@ -348,6 +347,8 @@ function NewOrderModal({ open, onClose }: { open: boolean; onClose: () => void }
   const vendors = data?.vendors ?? [];
   const { data: reqData } = useRequisitions({});
   const requisitions = reqData?.requisitions ?? [];
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
 
   const [vendorId, setVendorId] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -424,7 +425,7 @@ function NewOrderModal({ open, onClose }: { open: boolean; onClose: () => void }
           </FormField>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
             </Select>
           </FormField>
           <div style={{ gridColumn: '1 / -1' }}>
@@ -559,6 +560,8 @@ function RequisitionsTab({ canWrite }: { canWrite: boolean }) {
 function NewRequisitionModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const create = useCreateRequisition();
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
   const [description, setDescription] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [total, setTotal] = useState('');
@@ -612,7 +615,7 @@ function NewRequisitionModal({ open, onClose }: { open: boolean; onClose: () => 
           </div>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
             </Select>
           </FormField>
           <FormField label="Total (major units)" hint="Estimated spend to authorise.">

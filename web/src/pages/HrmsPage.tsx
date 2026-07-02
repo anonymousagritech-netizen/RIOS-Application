@@ -13,6 +13,7 @@ import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField, Textarea } from '../components/Form';
 import { formatDate, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
+import { useCurrencies } from '../lib/queries';
 import { UserRound, CalendarClock, Building2 } from 'lucide-react';
 import shared from './shared.module.css';
 
@@ -594,6 +595,8 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
   const create = useCreateEmployee();
   const { data: empData } = useEmployees({});
   const managers = empData?.employees ?? [];
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -692,7 +695,7 @@ function NewEmployeeModal({ open, onClose, departments }: { open: boolean; onClo
           </FormField>
           <FormField label="Currency">
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)} aria-label="Currency">
-              {['USD', 'EUR', 'GBP', 'JPY'].map((c) => <option key={c} value={c}>{c}</option>)}
+              {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
             </Select>
           </FormField>
         </FormSection>
