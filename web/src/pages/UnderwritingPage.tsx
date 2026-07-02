@@ -350,7 +350,7 @@ function NewSubmissionModal({ open, onClose, onCreated }: { open: boolean; onClo
               {lines.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
             </Select>
           </FormField>
-          <FormField label="Currency"><Select value={f.currency} onChange={(e) => set('currency')(e.target.value)}>{(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => <option key={c} value={c}>{c}</option>)}</Select></FormField>
+          <FormField label="Currency"><Select value={f.currency} onChange={(e) => set('currency')(e.target.value)}>{currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}</Select></FormField>
         </FormSection>
 
         {(selectedStructure || selectedLine) && (

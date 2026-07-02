@@ -400,8 +400,8 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
           </FormField>
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {currencies.map((c) => (
+                <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
               ))}
             </Select>
           </FormField>

@@ -12,6 +12,7 @@ import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { KpiCard } from '../components/KpiCard';
+import { useCurrencies } from '../lib/queries';
 import { formatMoney, formatNumber, formatPercent, titleCase } from '../lib/format';
 import { Radar, Layers, ShieldAlert, Gauge, MapPin } from 'lucide-react';
 import shared from './shared.module.css';
@@ -95,7 +96,6 @@ function useAddEntry(id: string | undefined) {
 }
 
 const PERILS = ['EARTHQUAKE', 'WINDSTORM', 'FLOOD', 'WILDFIRE', 'TERROR'];
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF'];
 
 export function ExposurePage() {
   const { hasPermission } = useAuth();
@@ -291,6 +291,8 @@ function SummaryCard() {
 function NewAccumulationModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const create = useCreateAccumulation();
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
   const [peril, setPeril] = useState('EARTHQUAKE');
   const [zone, setZone] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -346,7 +348,7 @@ function NewAccumulationModal({ open, onClose }: { open: boolean; onClose: () =>
         <FormSection title="Capacity" description="Declared zonal capacity. Utilisation and breaches are measured against this limit.">
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
             </Select>
           </FormField>
           <FormField label="Capacity" required hint={`Major units of ${currency}.`}>

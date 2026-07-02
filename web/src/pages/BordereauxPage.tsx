@@ -2,7 +2,7 @@ import { Grid2x2, Plus, Rows3, CircleCheck, CircleAlert, Sigma } from 'lucide-re
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
-import { useStatusColors } from '../lib/queries';
+import { useStatusColors, useCurrencies } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -90,7 +90,6 @@ function useProcessBordereau(id: string | undefined) {
 }
 
 const KINDS = ['PREMIUM', 'LOSS'];
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF'];
 
 const SAMPLE_ROWS = `[
   { "amount": 125000, "policy": "POL-001", "insured": "Acme Mfg" },
@@ -287,6 +286,8 @@ function UploadModal({ open, onClose, onUploaded }: {
   const toast = useToast();
   const upload = useUploadBordereau();
   const { data: treatyData } = useTreatyOptions();
+  const { data: ccyData } = useCurrencies();
+  const currencies = ccyData?.currencies ?? [];
 
   const [contractId, setContractId] = useState('');
   const [kind, setKind] = useState('PREMIUM');
@@ -395,7 +396,7 @@ function UploadModal({ open, onClose, onUploaded }: {
             </FormField>
             <FormField label="Currency" required>
               <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                {currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
               </Select>
             </FormField>
           </div>

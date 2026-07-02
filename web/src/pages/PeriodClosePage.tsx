@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
+import { useCurrencies } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -283,12 +284,13 @@ function NewPeriodModal({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 /* ---------------- FX revaluation ---------------- */
-const FX_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD'];
 
 function FxTab({ canPost }: { canPost: boolean }) {
   const toast = useToast();
   const revalue = useFxRevalue();
   const { data: pastData, isLoading: pastLoading } = useRevaluations();
+  const { data: ccyData } = useCurrencies();
+  const fxCurrencies = ccyData?.currencies ?? [];
 
   const [baseCurrency, setBaseCurrency] = useState('USD');
   const [asAt, setAsAt] = useState('');
@@ -354,7 +356,7 @@ function FxTab({ canPost }: { canPost: boolean }) {
           <div className={`${shared.grid2} ${styles.fieldsGrid}`}>
             <FormField label="Base currency" required>
               <Select value={baseCurrency} onChange={(e) => setBaseCurrency(e.target.value)} disabled={!canPost}>
-                {FX_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                {fxCurrencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
               </Select>
             </FormField>
             <FormField label="As at">
@@ -367,7 +369,7 @@ function FxTab({ canPost }: { canPost: boolean }) {
               {balances.map((b, i) => (
                 <div key={i} className={shared.toolbar}>
                   <Select value={b.currency} onChange={(e) => setBalance(i, 'currency', e.target.value)} disabled={!canPost} aria-label={`Balance ${i + 1} currency`}>
-                    {FX_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {fxCurrencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
                   </Select>
                   <Input type="number" step="any" value={b.amount} onChange={(e) => setBalance(i, 'amount', e.target.value)} placeholder="Amount" aria-label={`Balance ${i + 1} amount`} className={styles.balanceInput} disabled={!canPost} />
                   <Input type="number" min="0" step="any" value={b.bookedRate} onChange={(e) => setBalance(i, 'bookedRate', e.target.value)} placeholder="Booked rate" aria-label={`Balance ${i + 1} booked rate`} className={styles.balanceInput} disabled={!canPost} />
