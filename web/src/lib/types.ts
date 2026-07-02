@@ -4,6 +4,22 @@ import type {
   StatementLineDTO, ClaimDTO, AssistantAction,
 } from '@rios/shared';
 
+/** A single entry in the recent-activity feed, sourced from audit_log. */
+export interface ActivityEntry {
+  id: string;
+  /** Raw action code from audit_log (e.g. "CREATE", "BIND", "POST_GL"). */
+  type: string;
+  /** Table / entity category (e.g. "contract", "claim", "statement"). */
+  entityType: string;
+  /** The affected record's UUID (null for tenant-level actions). */
+  entityId: string | null;
+  /** Display label of the user who performed the action (may be null for system actions). */
+  actor: string | null;
+  /** ISO-8601 timestamp of when the action occurred. */
+  at: string;
+}
+
+
 export interface DashboardSummary {
   kpis: {
     treaties: number;
@@ -13,9 +29,15 @@ export interface DashboardSummary {
     gwpMinor: number;
     outstandingMinor: number;
     currency: string;
+    /** Count of statement_of_account rows with status = 'OPEN'. */
+    pendingStatementsCount: number;
+    /** Incurred losses / GWP × 100, rounded to one decimal place. 0 when GWP is zero. */
+    claimsRatioPercent: number;
   };
   recentTreaties: { reference: string; name: string; status: string; currency: string }[];
   treatiesByStatus: { status: string; n: number }[];
+  /** Last 10 audit_log entries across all entity types. */
+  recentActivity: ActivityEntry[];
 }
 
 export interface CodeListsResponse {

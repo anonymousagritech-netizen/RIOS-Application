@@ -10,9 +10,10 @@ import rateLimit from '@fastify/rate-limit';
 import cookie from '@fastify/cookie';
 import { z } from 'zod';
 import { login, completeMfaLogin, AuthError, requirePermission, authContext, authenticate } from './auth.js';
-import { runAs, appPool } from './db.js';
+import { appPool } from './db.js';
 import { config } from './config.js';
 import { observabilityPlugin } from './observability.js';
+import { dashboardModule } from './modules/dashboard.js';
 import { referenceModule } from './modules/reference.js';
 import { partiesModule } from './modules/parties.js';
 import { treatiesModule } from './modules/treaties.js';
@@ -255,48 +256,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     return { success: true };
   });
 
-  // --- Dashboard summary (executive KPIs, §13.5 / §30) ---
-  app.get('/api/dashboard/summary', { preHandler: requirePermission() }, async (req) => {
-    const ctx = authContext(req);
-    return runAs(ctx, async (db) => {
-      const { rows } = await db.query<{
-        treaties: number;
-        active_treaties: number;
-        parties: number;
-        open_claims: number;
-        gwp_minor: number;
-        outstanding_minor: number;
-      }>(
-        `select
-           (select count(*)::int from contract where not is_deleted) as treaties,
-           (select count(*)::int from contract where not is_deleted and status in ('BOUND','ACTIVE')) as active_treaties,
-           (select count(*)::int from party where not is_deleted) as parties,
-           (select count(*)::int from claim where not is_deleted and status not in ('CLOSED','SETTLED')) as open_claims,
-           (select coalesce(sum(amount_minor),0)::bigint from financial_event
-             where event_type in ('DEPOSIT_PREMIUM','INSTALMENT_PREMIUM','ADJUSTMENT_PREMIUM','MINIMUM_PREMIUM')) as gwp_minor,
-           (select coalesce(sum(outstanding_minor),0)::bigint from claim where not is_deleted) as outstanding_minor`,
-      );
-      const recent = await db.query(
-        `select reference, name, status, currency from contract where not is_deleted order by created_at desc limit 5`,
-      );
-      const byStatus = await db.query(
-        `select status, count(*)::int as n from contract where not is_deleted group by status order by n desc`,
-      );
-      return {
-        kpis: {
-          treaties: rows[0]!.treaties,
-          activeTreaties: rows[0]!.active_treaties,
-          parties: rows[0]!.parties,
-          openClaims: rows[0]!.open_claims,
-          gwpMinor: Number(rows[0]!.gwp_minor),
-          outstandingMinor: Number(rows[0]!.outstanding_minor),
-          currency: 'USD',
-        },
-        recentTreaties: recent.rows,
-        treatiesByStatus: byStatus.rows,
-      };
-    });
-  });
+  // --- Dashboard summary (§13.5 / §30) — see modules/dashboard.ts ---
+  await app.register(dashboardModule);
 
   // --- Domain modules ---
   await app.register(referenceModule);

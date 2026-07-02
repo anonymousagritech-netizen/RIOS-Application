@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FileText, CheckCircle2, Users, ShieldAlert, Wallet, PiggyBank,
   Plus, ArrowRight, BarChart3, Clock, LayoutDashboard, Pencil,
-  ArrowUp, ArrowDown, X, Trash2, Save, Activity, type LucideIcon,
+  ArrowUp, ArrowDown, X, Trash2, Save, Activity, FileCheck2,
+  TrendingUp, type LucideIcon,
 } from 'lucide-react';
 import { useDashboard, useStatusColors } from '../lib/queries';
 import { api, ApiError } from '../lib/api';
@@ -20,10 +21,10 @@ import { StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Tabs } from '../components/Tabs';
 import { ErrorState, PageLoader } from '../components/Feedback';
-import { formatMoneyCompact, formatNumber, formatPercent } from '../lib/format';
+import { formatMoneyCompact, formatNumber, formatPercent, titleCase } from '../lib/format';
 import { t } from '../lib/i18n';
 import { CHART_DRILL } from './ExecutiveDashboardPage';
-import type { DashboardSummary } from '../lib/types';
+import type { DashboardSummary, ActivityEntry } from '../lib/types';
 import shared from './shared.module.css';
 import styles from './DashboardPage.module.css';
 
@@ -100,6 +101,39 @@ function TileView({ tile, exec }: { tile: Tile; exec: ExecResponse }) {
   );
 }
 
+/* ---------------- Relative time helper ---------------- */
+function relativeTime(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(isoString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/* Map an audit action + entity type to a human-readable description. */
+function activityLabel(entry: ActivityEntry): string {
+  const entity = titleCase(entry.entityType);
+  const action = titleCase(entry.type);
+  return `${action} — ${entity}`;
+}
+
+/* Pick an accent colour from the entity type for the timeline dot. */
+const ENTITY_ACCENT: Record<string, string> = {
+  contract: 'var(--primary)',
+  claim: 'var(--accent-orange)',
+  party: 'var(--accent-cyan)',
+  statement: 'var(--accent-emerald)',
+  gl_journal: 'var(--accent-indigo)',
+};
+function entityAccent(entityType: string): string {
+  return ENTITY_ACCENT[entityType.toLowerCase()] ?? 'var(--text-muted)';
+}
+
 /* ---------------- Overview tab (the existing default dashboard) ---------------- */
 function OverviewTab() {
   const navigate = useNavigate();
@@ -118,6 +152,7 @@ function OverviewTab() {
 
   return (
     <>
+      {/* KPI tiles — 8 metrics across 4 columns on wide screens */}
       <div className={shared.kpiGrid}>
         <KpiCard label="Treaties" value={formatNumber(k?.treaties)} loading={isLoading} icon={<FileText size={20} />} accent="var(--primary)" onClick={() => navigate('/treaties')} />
         <KpiCard label="Active treaties" value={formatNumber(k?.activeTreaties)} loading={isLoading} icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" onClick={() => navigate('/treaties')} />
@@ -125,8 +160,25 @@ function OverviewTab() {
         <KpiCard label="Open claims" value={formatNumber(k?.openClaims)} loading={isLoading} icon={<ShieldAlert size={20} />} accent="var(--accent-orange)" onClick={() => navigate('/claims')} />
         <KpiCard label={t('grossWrittenPremium')} value={k ? formatMoneyCompact(k.gwpMinor, k.currency) : '-'} hint={k?.currency} loading={isLoading} icon={<Wallet size={20} />} accent="var(--accent-indigo)" />
         <KpiCard label={`${t('outstandingReserve')}s`} value={k ? formatMoneyCompact(k.outstandingMinor, k.currency) : '-'} hint={k?.currency} loading={isLoading} icon={<PiggyBank size={20} />} accent="var(--accent-rose)" />
+        <KpiCard
+          label="Pending statements"
+          value={formatNumber(k?.pendingStatementsCount)}
+          loading={isLoading}
+          icon={<FileCheck2 size={20} />}
+          accent="var(--accent-amber, var(--c-amber))"
+          onClick={() => navigate('/accounting')}
+        />
+        <KpiCard
+          label="Claims ratio"
+          value={k != null ? `${k.claimsRatioPercent.toFixed(1)}%` : '-'}
+          hint="Incurred / GWP"
+          loading={isLoading}
+          icon={<TrendingUp size={20} />}
+          accent={k && k.claimsRatioPercent > 80 ? 'var(--c-red)' : k && k.claimsRatioPercent > 60 ? 'var(--accent-amber, var(--c-amber))' : 'var(--accent-emerald)'}
+        />
       </div>
 
+      {/* Quick actions */}
       <Card padded>
         <CardHeader title="Quick actions" subtitle="Jump straight into the most common workflows" />
         <div className={shared.quickActions}>
@@ -140,6 +192,7 @@ function OverviewTab() {
         </div>
       </Card>
 
+      {/* Recent treaties table + treaties by status donut */}
       <div className={shared.cols}>
         <Card>
           <CardHeader title="Recent treaties" subtitle="Latest activity across the book" />
@@ -167,6 +220,47 @@ function OverviewTab() {
           )}
         </Card>
       </div>
+
+      {/* Recent activity feed */}
+      <Card>
+        <CardHeader title="Recent activity" subtitle="Last 10 platform events from the audit log" />
+        {isLoading ? (
+          <div style={{ padding: 'var(--space-5)', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+            Loading activity...
+          </div>
+        ) : !data?.recentActivity?.length ? (
+          <div style={{ padding: 'var(--space-5)' }}>
+            <EmptyState title="No activity yet" message="Platform events will appear here as your team works." />
+          </div>
+        ) : (
+          <div className={styles.activityFeed}>
+            {data.recentActivity.map((entry, idx) => (
+              <div key={entry.id} className={styles.activityItem}>
+                {/* Timeline connector */}
+                <div className={styles.activityTimeline}>
+                  <span
+                    className={styles.activityDot}
+                    style={{ background: entityAccent(entry.entityType) }}
+                  />
+                  {idx < data.recentActivity.length - 1 && (
+                    <span className={styles.activityLine} />
+                  )}
+                </div>
+                {/* Content */}
+                <div className={styles.activityContent}>
+                  <span className={styles.activityLabel}>{activityLabel(entry)}</span>
+                  <div className={styles.activityMeta}>
+                    {entry.actor && (
+                      <span className={styles.activityActor}>{entry.actor}</span>
+                    )}
+                    <span className={styles.activityTime}>{relativeTime(entry.at)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </>
   );
 }
