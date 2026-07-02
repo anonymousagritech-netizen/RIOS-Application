@@ -191,3 +191,30 @@ export interface AssistantResponse {
   /** Records consulted to ground the answer. */
   grounding?: { entity: string; id: string; label: string }[];
 }
+
+// ── Capacity breach (P3-D) ─────────────────────────────────────────────────
+
+/**
+ * One zone's numbers in a capacity hard-limit breach (HTTP 409 CAPACITY_BREACH).
+ * `zoneCode` and `addedMinor` are the canonical P3-D field names; the server
+ * also returns `zone`, `additionMinor` etc. for backwards compatibility.
+ */
+export interface CapacityBreachZone {
+  /** Zone identifier (e.g. territory code or cat zone). */
+  zoneCode: string;
+  /** The hard limit for this zone in integer minor units. */
+  limitMinor: number;
+  /** Existing bound aggregate before this contract, in integer minor units. */
+  currentMinor: number;
+  /** Exposure this contract would add, in integer minor units. */
+  addedMinor: number;
+}
+
+/**
+ * Body of the HTTP 409 response returned when binding would breach a hard
+ * accumulation limit.  Discriminated by `code === 'CAPACITY_BREACH'`.
+ */
+export interface CapacityBreachError {
+  code: 'CAPACITY_BREACH';
+  zones: CapacityBreachZone[];
+}

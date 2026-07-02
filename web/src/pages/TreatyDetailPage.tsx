@@ -22,7 +22,7 @@ import { legalTransitions } from '../lib/status';
 import { formatMoney, formatDate, formatPercent, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
 import type { FinancialEventDTO } from '@rios/shared';
-import type { TreatyDetail } from '../lib/types';
+import type { TreatyDetail, CapacityBreachZone } from '../lib/types';
 import { ClipboardList, DollarSign, Coins, Layers, Users, CalendarDays } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './TreatyDetailPage.module.css';
@@ -54,6 +54,14 @@ export function TreatyDetailPage() {
   const [tab, setTab] = useState(TABS.some((t) => t.id === requestedTab) ? requestedTab! : 'key-terms');
   const [confirmTo, setConfirmTo] = useState<string | null>(null);
 
+
+  // Capacity alert state (P3-D). capacityError is set when binding returns
+  // 409 CAPACITY_BREACH (hard limit exceeded - bind was NOT committed).
+  // softLimitWarning is set when binding succeeds but the server reports that
+  // one or more zones are above 80 % utilisation (SOFT threshold).
+  const [capacityError, setCapacityError] = useState<CapacityBreachZone[] | null>(null);
+  const [softLimitWarning, setSoftLimitWarning] = useState<{ zoneCode: string; usedPercent: number } | null>(null);
+
   if (isLoading) return <PageLoader label="Loading treaty…" />;
   if (isError || !treaty) {
     return <Card><ErrorState title="Treaty not found" message="It may have been removed or you lack access." action={<Button onClick={() => navigate('/treaties')}>Back to treaties</Button>} /></Card>;
@@ -63,13 +71,41 @@ export function TreatyDetailPage() {
   const currency = treaty.currency;
 
   const runTransition = async (to: string) => {
+
+    // Clear stale capacity alerts each time a transition is attempted.
+    if (to === 'BOUND') {
+      setCapacityError(null);
+      setSoftLimitWarning(null);
+    }
     try {
       const res = await transition.mutateAsync(to);
       toast.success(`Treaty moved to ${titleCase(res.status)}`);
       if (res.financialEvents?.length) {
         toast.success(`${res.financialEvents.length} financial event(s) booked`);
       }
+      if (to === 'BOUND' && res.warnings?.length) {
+        const mostLoaded = res.warnings.reduce((worst, z) =>
+          z.limitMinor > 0 && (z.currentMinor + z.addedMinor) / z.limitMinor >
+          (worst.limitMinor > 0 ? (worst.currentMinor + worst.addedMinor) / worst.limitMinor : 0)
+            ? z : worst,
+          res.warnings[0]!,
+        );
+        const usedPercent = mostLoaded.limitMinor > 0
+          ? Math.round(((mostLoaded.currentMinor + mostLoaded.addedMinor) / mostLoaded.limitMinor) * 100)
+          : 0;
+        if (usedPercent > 80) {
+          setSoftLimitWarning({ zoneCode: mostLoaded.zoneCode, usedPercent });
+        }
+      }
     } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        const body = e.body as { code?: string; zones?: CapacityBreachZone[] } | null | undefined;
+        if (body?.code === 'CAPACITY_BREACH' && Array.isArray(body.zones) && body.zones.length > 0) {
+          setCapacityError(body.zones);
+          setConfirmTo(null);
+          return;
+        }
+      }
       toast.error(e instanceof ApiError ? e.message : 'Transition failed');
     } finally {
       setConfirmTo(null);
@@ -131,6 +167,35 @@ export function TreatyDetailPage() {
           </div>
         }
       />
+
+
+      {/* Hard-limit capacity breach (P3-D): binding was blocked, show why. */}
+      {capacityError && (
+        <div className={styles.capacityBreachAlert}>
+          <strong>Capacity Limit Breached</strong>
+          <p>This treaty cannot be bound — it would exceed the following accumulation limits:</p>
+          <ul>
+            {capacityError.map((z) => (
+              <li key={z.zoneCode}>
+                <strong>{z.zoneCode}</strong>: Limit {formatMoney(z.limitMinor, currency)} |
+                Current {formatMoney(z.currentMinor, currency)} |
+                Adding {formatMoney(z.addedMinor, currency)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Soft-limit capacity warning (P3-D): bind succeeded but zone is >80 % used. */}
+      {softLimitWarning && (
+        <div className={styles.capacitySoftWarning}>
+          <strong>Capacity Warning</strong>
+          <p>
+            Binding this treaty uses {softLimitWarning.usedPercent}% of available capacity
+            for zone {softLimitWarning.zoneCode}.
+          </p>
+        </div>
+      )}
 
       <div className={styles.kpiRow}>
         <KpiCard label="Currency" value={treaty.currency} icon={<Coins size={18} />} accent="var(--primary)" hint={titleCase(treaty.basis)} />

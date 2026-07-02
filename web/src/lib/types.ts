@@ -127,10 +127,47 @@ export type TreatyDetail = ContractDTO & {
   brokerName?: string | null;
 };
 
+
+/**
+ * Zone detail in a capacity soft-limit warning (returned on a 200 bind when
+ * the zone aggregate exceeds the SOFT threshold but is below the HARD limit).
+ * Field names mirror the server's breachDetail shape; `zoneCode` / `addedMinor`
+ * are the canonical P3-D aliases.
+ */
+export interface AccumulationWarningZone {
+  zoneCode: string;
+  zone: string;
+  peril: string | null;
+  currency: string;
+  mode: string;
+  currentMinor: number;
+  additionMinor: number;
+  addedMinor: number;
+  projectedMinor: number;
+  limitMinor: number;
+  headroomMinor: number;
+  message: string;
+}
+
+/**
+ * Subset of CapacityBreachZone used in the web for 409 CAPACITY_BREACH handling.
+ * Mirrors @rios/shared CapacityBreachZone; duplicated here so web/src/lib/types.ts
+ * remains self-contained without a build-order dependency on @rios/shared types.
+ */
+export interface CapacityBreachZone {
+  zoneCode: string;
+  limitMinor: number;
+  currentMinor: number;
+  addedMinor: number;
+}
+
 export interface TransitionResponse {
   id: string;
   status: string;
   financialEvents: FinancialEventDTO[];
+
+  /** Present when binding succeeds but one or more zones are above soft threshold. */
+  warnings?: AccumulationWarningZone[];
 }
 
 export interface FinancialEventsResponse { events: FinancialEventDTO[]; }
@@ -255,7 +292,12 @@ export interface TreasuryHolding {
   fdMaturity?: string | null;
   accruedInterestMinor?: number;
   status: string;
+}
+
+// ---------------------------------------------------------------------------
 // SOA Entry types (P3-B)
+// ---------------------------------------------------------------------------
+
 export interface PremiumEntry {
   id: string;
   policyNo: string | null;

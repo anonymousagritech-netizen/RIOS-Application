@@ -297,6 +297,8 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
           if (acc.checked && acc.verdict !== 'PASS') {
             const breachDetail = (zs: typeof acc.zones) =>
               zs.map((z) => ({
+                zoneCode: z.zone,
+                addedMinor: z.additionMinor,
                 zone: z.zone, peril: z.peril, currency: z.currency, mode: z.mode,
                 currentMinor: z.currentMinor, additionMinor: z.additionMinor,
                 projectedMinor: z.projectedMinor, limitMinor: z.limitMinor, headroomMinor: z.headroomMinor,
@@ -308,6 +310,7 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
               if (!(overrideRequested && isAdmin)) {
                 reply.code(409);
                 return {
+                  code: 'CAPACITY_BREACH',
                   error: 'Accumulation limit breached - binding blocked',
                   verdict: 'BLOCK',
                   exposureSource: acc.exposureSource,
