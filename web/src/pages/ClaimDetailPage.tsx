@@ -1,5 +1,5 @@
 import { ShieldAlert, Wallet, CircleDollarSign, Undo2, History } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
@@ -54,6 +54,9 @@ export function ClaimDetailPage() {
   const recoveries = useClaimRecoveries(id);
   const statusColors = useStatusColors('claim_status');
   const [showMove, setShowMove] = useState(false);
+  const [quickMoveType, setQuickMoveType] = useState<MovementType | undefined>(undefined);
+
+  const openMove = (type?: MovementType) => { setQuickMoveType(type); setShowMove(true); };
 
   if (isLoading) return <PageLoader label="Loading claim…" />;
   if (isError || !claim) {
@@ -62,6 +65,9 @@ export function ClaimDetailPage() {
 
   const movements = (claim.movements ?? []).slice().reverse();
   const ccy = claim.currency;
+
+  const canReserve = ['NOTIFIED', 'OPEN'].includes(claim.status);
+  const canSettle  = ['RESERVED', 'PART_PAID'].includes(claim.status);
 
   return (
     <>
@@ -78,7 +84,15 @@ export function ClaimDetailPage() {
           <div className={styles.actions}>
             <StatusPill status={claim.status} metaColors={statusColors} />
             {hasPermission('claims:write') && (
-              <Button variant="primary" size="sm" onClick={() => setShowMove(true)}>Add movement / Pay</Button>
+              <>
+                {canReserve && (
+                  <Button variant="secondary" size="sm" onClick={() => openMove('OPEN')}>Reserve</Button>
+                )}
+                {canSettle && (
+                  <Button variant="secondary" size="sm" onClick={() => openMove('PAYMENT')}>Settle</Button>
+                )}
+                <Button variant="primary" size="sm" onClick={() => openMove(undefined)}>Add movement / Pay</Button>
+              </>
             )}
           </div>
         }
@@ -154,7 +168,13 @@ export function ClaimDetailPage() {
         <DocumentsPanel entityType="claim" entityId={id!} />
       </div>
 
-      <MovementModal claimId={id!} currency={ccy} open={showMove} onClose={() => setShowMove(false)} />
+      <MovementModal
+        claimId={id!}
+        currency={ccy}
+        open={showMove}
+        defaultMovementType={quickMoveType}
+        onClose={() => { setShowMove(false); setQuickMoveType(undefined); }}
+      />
     </>
   );
 }
@@ -200,18 +220,24 @@ function signed(minor: number, currency: string): string {
   return minor < 0 ? `−${s}` : `+${s}`;
 }
 
-function MovementModal({ claimId, currency, open, onClose }: {
-  claimId: string; currency: string; open: boolean; onClose: () => void;
+function MovementModal({ claimId, currency, open, defaultMovementType, onClose }: {
+  claimId: string; currency: string; open: boolean; defaultMovementType?: MovementType; onClose: () => void;
 }) {
   const toast = useToast();
   const move = useReserveMovement(claimId);
-  const [movementType, setMovementType] = useState<MovementType>('INCREASE');
+  const [movementType, setMovementType] = useState<MovementType>(defaultMovementType ?? 'INCREASE');
   const [outstandingDelta, setOutstandingDelta] = useState('');
   const [paidDelta, setPaidDelta] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const reset = () => { setMovementType('INCREASE'); setOutstandingDelta(''); setPaidDelta(''); setReason(''); setError(null); };
+  // When the modal opens with a quick-action type (e.g. Reserve → OPEN, Settle → PAYMENT),
+  // pre-select that type so the user lands on the right movement without extra clicks.
+  useEffect(() => {
+    if (open && defaultMovementType) setMovementType(defaultMovementType);
+  }, [open, defaultMovementType]);
+
+  const reset = () => { setMovementType(defaultMovementType ?? 'INCREASE'); setOutstandingDelta(''); setPaidDelta(''); setReason(''); setError(null); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

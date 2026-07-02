@@ -131,8 +131,11 @@ export async function claimsModule(app: FastifyInstance): Promise<void> {
                   cl.loss_date as "lossDate", cl.notified_date as "notifiedDate", cl.currency,
                   cl.gross_loss_minor as "grossLossMinor", cl.outstanding_minor as "outstandingMinor",
                   cl.paid_minor as "paidMinor", cl.recovered_minor as "recoveredMinor", cl.status,
-                  cl.details as "details"
-             from claim cl where cl.id = $1 and not cl.is_deleted`,
+                  cl.details as "details",
+                  c.name as "contractName"
+             from claim cl
+             join contract c on c.id = cl.contract_id
+            where cl.id = $1 and not cl.is_deleted`,
           [req.params.id],
         );
         if (!rows[0]) {
@@ -141,7 +144,8 @@ export async function claimsModule(app: FastifyInstance): Promise<void> {
         }
         const movements = await db.query(
           `select id, movement_type as "movementType", outstanding_delta_minor as "outstandingDeltaMinor",
-                  paid_delta_minor as "paidDeltaMinor", reason, effective_date as "effectiveDate"
+                  paid_delta_minor as "paidDeltaMinor", reason, effective_date as "effectiveDate",
+                  created_at::text as "createdAt"
              from reserve_movement where claim_id = $1 order by created_at`,
           [req.params.id],
         );

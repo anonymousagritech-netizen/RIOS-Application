@@ -89,7 +89,7 @@ export function ClaimsPage() {
       ),
     },
     { key: 'lossDate', header: 'Loss date', sortValue: (c) => c.lossDate ?? '', render: (c) => formatDate(c.lossDate) },
-    { key: 'gross', header: 'Gross Loss', align: 'right', sortValue: (c) => c.grossLossMinor, render: (c) => <span className={shared.money}>{formatMoney(c.grossLossMinor, c.currency)}</span> },
+    { key: 'gross', header: 'Gross Incurred', align: 'right', sortValue: (c) => c.grossLossMinor, render: (c) => <span className={shared.money}>{formatMoney(c.grossLossMinor, c.currency)}</span> },
     { key: 'outstanding', header: t('outstandingReserve'), align: 'right', sortValue: (c) => c.outstandingMinor, render: (c) => <span className={shared.money}>{formatMoney(c.outstandingMinor, c.currency)}</span> },
     { key: 'paid', header: 'Paid Loss', align: 'right', sortValue: (c) => c.paidMinor, render: (c) => <span className={shared.money}>{formatMoney(c.paidMinor, c.currency)}</span> },
     { key: 'status', header: 'Status', align: 'right', sortValue: (c) => c.status, render: (c) => <StatusPill status={c.status} metaColors={statusColors} /> },
