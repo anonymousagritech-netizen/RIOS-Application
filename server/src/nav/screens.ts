@@ -86,6 +86,7 @@ export const SCREENS: Screen[] = [
   { path: '/statements', label: 'Statements', aliases: ['statements', 'statement', 'statement of account', 'soa', 'account current'], permission: 'statement:read' },
   { path: '/finance', label: 'Finance', aliases: ['finance', 'financials', 'ledger', 'general ledger', 'gl', 'trial balance', 'invoices', 'invoice'], permission: 'finance:read' },
   { path: '/treasury', label: 'Treasury', aliases: ['treasury', 'investment', 'investments', 'cash management', 'liquidity'], permission: 'treasury:read' },
+  { path: '/bureau', label: 'Bureau / ACORD', aliases: ['bureau', 'acord', 'ebot', 'ecot', 'dxc', 'lloyds', 'market messaging', 'technical accounting message'], permission: 'accounting:read' },
   { path: '/period-close', label: 'Period Close', aliases: ['period close', 'close', 'month end', 'closing', 'financial close'], permission: 'finance:read' },
   { path: '/procurement', label: 'Procurement', aliases: ['procurement', 'purchase', 'purchasing', 'purchase orders', 'po', 'vendors', 'vendor', 'suppliers'], permission: 'procurement:read' },
 

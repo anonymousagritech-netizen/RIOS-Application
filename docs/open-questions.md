@@ -192,8 +192,14 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   `mapAndValidate`): column-to-field mapping, typed coercion (string/number/money-minor/date/boolean/currency/
   enum), per-field rules and a precise per-cell error report, exposed as a dry-run preview at
   `POST /api/import/validate` (and used by bordereaux ingestion). **Webhooks/event subscriptions, the
-  Integration Hub, export with mapping, the ACORD/EBOT/ECOT connector framework, the Developer Portal and
-  API Marketplace** remain designed-for. (§17)
+  Integration Hub, export with mapping, the Developer Portal and API Marketplace** remain designed-for. (§17)
+- **ACORD bureau connector (EBOT/ECOT)** is now delivered: the pure `@rios/domain/acord` engine builds and
+  validates EBOT (technical accounting, from a statement of account) and ECOT (claim movement, from a claim)
+  messages with a deterministic canonical serialization, and the `bureau` module drives them through a
+  `BureauConnector` seam. The default in-repo `LoopbackConnector` acknowledges outbound messages and echoes an
+  inbound receipt so the round trip (BUILT → SENT → ACKNOWLEDGED) is demonstrable without a live credential; a
+  real DXC / Lloyd's-Velonetic gateway is the labelled integration seam that swaps in behind the same
+  interface. Surfaced at `/bureau`. (§7, §28)
 - **Portals** (broker, cedent, retrocessionaire, client, coverholder, mobile) - designed-for as thin scoped
   projections. (§9.11)
 
