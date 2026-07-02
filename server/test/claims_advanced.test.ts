@@ -120,6 +120,45 @@ describe('claims advanced: cash call, recovery, net position', () => {
     expect(inQueue).toBeUndefined();
   });
 
+  it('persists a metadata-driven details bag on the claim and cash call, and returns it', async () => {
+    if (!dbUp) return;
+    const tkn = await token(app, 'admin@demo.rios');
+    const auth = { authorization: `Bearer ${tkn}` };
+
+    const contractId = await boundTreaty(app, auth);
+    const claimDetails = { causeOfLoss: 'FLOOD', adjusterAssigned: true, severity: 3 };
+    const claim = await app.inject({
+      method: 'POST',
+      url: '/api/claims',
+      headers: auth,
+      payload: { contractId, currency: 'USD', grossLoss: 500000, description: 'Details claim', details: claimDetails },
+    });
+    expect(claim.statusCode).toBe(201);
+    const claimId = claim.json().id as string;
+
+    // The claim detail view returns the persisted details byte-equal.
+    const detail = await app.inject({ method: 'GET', url: `/api/claims/${claimId}`, headers: auth });
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json().details).toEqual(claimDetails);
+
+    // A cash call carries its own details bag; returned on create and in the queue.
+    const callDetails = { fundingBank: 'ACME BANK', urgentReason: 'court order' };
+    const call = await app.inject({
+      method: 'POST',
+      url: `/api/claims/${claimId}/cash-call`,
+      headers: auth,
+      payload: { amount: 50000, details: callDetails },
+    });
+    expect(call.statusCode).toBe(200);
+    expect(call.json().details).toEqual(callDetails);
+    const callId = call.json().id as string;
+
+    const queue = await app.inject({ method: 'GET', url: '/api/claims/cash-calls/queue', headers: auth });
+    const inQueue = (queue.json().queue as Array<{ id: string; details: unknown }>).find((q) => q.id === callId);
+    expect(inQueue).toBeTruthy();
+    expect(inQueue!.details).toEqual(callDetails);
+  });
+
   it('records a SALVAGE recovery and reflects it in the net position', async () => {
     if (!dbUp) return;
     const tkn = await token(app, 'admin@demo.rios');

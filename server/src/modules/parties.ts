@@ -100,6 +100,9 @@ const createPartySchema = z.object({
   roles: z.array(z.string()).default([]),
   // Regulatory / market identifiers (LEI, tax id, NAIC, Lloyd's syndicate number, ...).
   identifiers: z.record(z.string()).optional(),
+  // Metadata-driven adaptive-form data (Dynamic Form Engine) for CRO/compliance
+  // fields; persisted verbatim.
+  details: z.record(z.unknown()).optional(),
 });
 
 export async function partiesModule(app: FastifyInstance): Promise<void> {
@@ -136,7 +139,7 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
       return runAs(ctx, async (db) => {
         const { rows } = await db.query(
           `select p.id, p.reference, p.legal_name as "legalName", p.short_name as "shortName",
-                  p.kind, p.country, p.status, p.identifiers,
+                  p.kind, p.country, p.status, p.identifiers, p.details as "details",
                   coalesce(array_agg(pr.role_code::text) filter (where pr.role_code is not null), '{}') as roles
              from party p left join party_role pr on pr.party_id = p.id and pr.is_active
             where p.id = $1 and not p.is_deleted group by p.id`,
@@ -162,10 +165,10 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
     return runAs(ctx, async (db) => {
       const ref = await nextReference(db, ctx.tenantId, 'party_reference', 'PTY');
       const { rows } = await db.query<{ id: string }>(
-        `insert into party (tenant_id, reference, legal_name, short_name, kind, country, identifiers)
-         values ($1,$2,$3,$4,$5,$6,$7) returning id`,
+        `insert into party (tenant_id, reference, legal_name, short_name, kind, country, identifiers, details)
+         values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
         [ctx.tenantId, ref, body.legalName, body.shortName ?? null, body.kind, body.country ?? null,
-         JSON.stringify(body.identifiers ?? {})],
+         JSON.stringify(body.identifiers ?? {}), JSON.stringify(body.details ?? {})],
       );
       const id = rows[0]!.id;
       for (const role of body.roles) {

@@ -21,6 +21,8 @@ const createClaimSchema = z.object({
   // Catastrophe/occurrence coding: ties the FNOL to a market event so event-level
   // aggregation (hours clause, event limits) can roll claims up per occurrence.
   catEventId: z.string().uuid().optional(),
+  // Metadata-driven adaptive-form data (Dynamic Form Engine); persisted verbatim.
+  details: z.record(z.unknown()).optional(),
 });
 
 const reserveSchema = z.object({
@@ -65,7 +67,8 @@ export async function claimsModule(app: FastifyInstance): Promise<void> {
           `select cl.id, cl.reference, cl.contract_id as "contractId", cl.description,
                   cl.loss_date as "lossDate", cl.notified_date as "notifiedDate", cl.currency,
                   cl.gross_loss_minor as "grossLossMinor", cl.outstanding_minor as "outstandingMinor",
-                  cl.paid_minor as "paidMinor", cl.recovered_minor as "recoveredMinor", cl.status
+                  cl.paid_minor as "paidMinor", cl.recovered_minor as "recoveredMinor", cl.status,
+                  cl.details as "details"
              from claim cl where cl.id = $1 and not cl.is_deleted`,
           [req.params.id],
         );
@@ -96,9 +99,9 @@ export async function claimsModule(app: FastifyInstance): Promise<void> {
     return runAs(ctx, async (db) => {
       const ref = await nextReference(db, ctx.tenantId, 'claim_reference', 'CLM');
       const { rows } = await db.query<{ id: string }>(
-        `insert into claim (tenant_id, reference, contract_id, description, loss_date, currency, gross_loss_minor, outstanding_minor, status, created_by, cat_event_id)
-         values ($1,$2,$3,$4,$5,$6,$7,$7,'NOTIFIED',$8,$9) returning id`,
-        [ctx.tenantId, ref, b.contractId, b.description ?? null, b.lossDate ?? null, b.currency, gross.amount, ctx.userId, b.catEventId ?? null],
+        `insert into claim (tenant_id, reference, contract_id, description, loss_date, currency, gross_loss_minor, outstanding_minor, status, created_by, cat_event_id, details)
+         values ($1,$2,$3,$4,$5,$6,$7,$7,'NOTIFIED',$8,$9,$10) returning id`,
+        [ctx.tenantId, ref, b.contractId, b.description ?? null, b.lossDate ?? null, b.currency, gross.amount, ctx.userId, b.catEventId ?? null, JSON.stringify(b.details ?? {})],
       );
       const id = rows[0]!.id;
       if (gross.amount > 0) {

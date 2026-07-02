@@ -19,6 +19,8 @@ import { writeAudit } from '../audit.js';
 const cashCallSchema = z.object({
   amount: z.number(),
   priority: z.enum(['NORMAL', 'URGENT', 'SIMULTANEOUS_SETTLEMENT']).default('NORMAL'),
+  // Metadata-driven adaptive-form data (Dynamic Form Engine); persisted verbatim.
+  details: z.record(z.unknown()).optional(),
 });
 
 const reinstatementSchema = z.object({
@@ -74,10 +76,10 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
         const ccy = claim.currency;
         const amount = fromMajor(b.amount, ccy);
 
-        const { rows } = await db.query<{ id: string; status: string }>(
-          `insert into cash_call (tenant_id, claim_id, contract_id, amount_minor, currency, status, priority, created_by)
-           values ($1,$2,$3,$4,$5,'requested',$6,$7) returning id, status`,
-          [ctx.tenantId, claim.id, claim.contract_id, amount.amount, ccy, b.priority, ctx.userId],
+        const { rows } = await db.query<{ id: string; status: string; details: Record<string, unknown> }>(
+          `insert into cash_call (tenant_id, claim_id, contract_id, amount_minor, currency, status, priority, created_by, details)
+           values ($1,$2,$3,$4,$5,'requested',$6,$7,$8) returning id, status, details`,
+          [ctx.tenantId, claim.id, claim.contract_id, amount.amount, ccy, b.priority, ctx.userId, JSON.stringify(b.details ?? {})],
         );
         const cashCallId = rows[0]!.id;
 
@@ -104,6 +106,7 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
           currency: ccy,
           status: 'requested',
           priority: b.priority,
+          details: rows[0]!.details,
         };
       });
     },
@@ -184,7 +187,7 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
       const { rows } = await db.query(
         `select cc.id, cc.claim_id as "claimId", cl.reference as "claimReference",
                 cc.contract_id as "contractId", cc.amount_minor as "amountMinor", cc.currency,
-                cc.status, cc.priority,
+                cc.status, cc.priority, cc.details as "details",
                 to_char(cc.requested_date, 'YYYY-MM-DD') as "requestedDate",
                 cc.approved_at as "approvedAt"
            from cash_call cc
