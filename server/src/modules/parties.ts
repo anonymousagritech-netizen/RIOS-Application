@@ -9,6 +9,7 @@ import { applyFieldSecurity, type FieldSecurityPolicy } from '@rios/domain';
 import { runAs, type Db, type TenantContext } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { parsePaginationQuery } from '../lib/pagination.js';
 
 /**
  * Load active field-security policies for an entity (0071). Returned empty when
@@ -121,11 +122,17 @@ const createPartySchema = z.object({
 });
 
 export async function partiesModule(app: FastifyInstance): Promise<void> {
-  app.get<{ Querystring: { q?: string; role?: string } }>(
+  app.get<{ Querystring: { q?: string; role?: string; limit?: string; cursor?: string } }>(
     '/api/parties',
     { preHandler: requirePermission('party:read') },
     async (req) => {
       const ctx = authContext(req);
+      // OFFSET pagination: parties are ordered by legal_name (text), which makes
+      // keyset pagination unwieldy. Cursor encodes the page offset as base64url.
+      const { limit, cursor } = parsePaginationQuery(req.query as Record<string, unknown>);
+      const offset = cursor
+        ? (Number(Buffer.from(cursor, 'base64url').toString('utf8')) || 0)
+        : 0;
       return runAs(ctx, async (db) => {
         const { rows } = await db.query(
           `select p.id, p.reference, p.legal_name as "legalName", p.short_name as "shortName",
@@ -138,10 +145,17 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
               and ($2::citext is null or exists (
                     select 1 from party_role x where x.party_id = p.id and x.role_code = $2 and x.is_active))
             group by p.id
-            order by p.legal_name`,
+            order by p.legal_name
+            limit ${limit + 1} offset ${offset}`,
           [req.query.q ?? null, req.query.role ?? null],
         );
-        return { parties: rows };
+        const hasMore = rows.length > limit;
+        if (hasMore) rows.pop();
+        const nextOffset = offset + limit;
+        const nextCursor = hasMore
+          ? Buffer.from(String(nextOffset)).toString('base64url')
+          : null;
+        return { parties: rows, nextCursor };
       });
     },
   );

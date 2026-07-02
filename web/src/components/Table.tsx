@@ -18,10 +18,17 @@ interface TableProps<T> {
   onRowClick?: (row: T) => void;
   empty?: ReactNode;
   skeletonRows?: number;
+  /** Opaque cursor from the server. When non-null a "Load more" button is shown. */
+  nextCursor?: string | null;
+  /** Called when the user clicks "Load more". Caller appends new rows and updates nextCursor. */
+  onLoadMore?: () => void;
+  /** True while the next page is being fetched; disables the button and shows a spinner. */
+  loadingMore?: boolean;
 }
 
 export function Table<T>({
   columns, rows, loading = false, rowKey, onRowClick, empty, skeletonRows = 6,
+  nextCursor, onLoadMore, loadingMore = false,
 }: TableProps<T>) {
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
 
@@ -117,8 +124,34 @@ export function Table<T>({
                 ))}
               </tr>
             ))}
+
+          {/* Load-more skeleton row while fetching the next page */}
+          {loadingMore &&
+            Array.from({ length: 3 }).map((_, i) => (
+              <tr key={`lm-sk-${i}`} className={styles.skeletonRow}>
+                {columns.map((c) => (
+                  <td key={c.key} className={styles.td}>
+                    <span className={styles.skeleton} />
+                  </td>
+                ))}
+              </tr>
+            ))}
         </tbody>
       </table>
+
+      {/* "Load more" footer — shown only when the server signals a next page */}
+      {nextCursor && onLoadMore && !loading && (
+        <div className={styles.loadMore}>
+          <button
+            className={styles.loadMoreBtn}
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            aria-busy={loadingMore}
+          >
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

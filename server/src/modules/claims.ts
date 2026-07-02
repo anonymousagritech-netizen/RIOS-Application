@@ -11,6 +11,7 @@ import { runAs } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
 import { nextReference } from './parties.js';
+import { parsePaginationQuery, encodeCursor, decodeCursor } from '../lib/pagination.js';
 
 const createClaimSchema = z.object({
   contractId: z.string().uuid(),
@@ -33,26 +34,43 @@ const reserveSchema = z.object({
 });
 
 export async function claimsModule(app: FastifyInstance): Promise<void> {
-  app.get<{ Querystring: { status?: string; contractId?: string } }>(
+  app.get<{ Querystring: { status?: string; contractId?: string; limit?: string; cursor?: string } }>(
     '/api/claims',
     { preHandler: requirePermission('claims:read') },
     async (req) => {
       const ctx = authContext(req);
+      const { limit, cursor } = parsePaginationQuery(req.query as Record<string, unknown>);
+      const decoded = cursor ? decodeCursor(cursor) : null;
       return runAs(ctx, async (db) => {
-        const { rows } = await db.query(
+        // Keyset on (cl.created_at DESC, cl.id DESC) for stable ordering.
+        // Cursor uses created_at (timestamptz) as the primary sort key + id tiebreaker.
+        const params: unknown[] = [req.query.status ?? null, req.query.contractId ?? null];
+        let cursorClause = '';
+        if (decoded) {
+          params.push(decoded.createdAt, decoded.id);
+          cursorClause = `AND (cl.created_at, cl.id) < ($3::timestamptz, $4::uuid)`;
+        }
+        const { rows } = await db.query<{ id: string; createdAt: string } & Record<string, unknown>>(
           `select cl.id, cl.reference, cl.contract_id as "contractId", cl.description,
                   cl.loss_date as "lossDate", cl.notified_date as "notifiedDate", cl.currency,
                   cl.gross_loss_minor as "grossLossMinor", cl.outstanding_minor as "outstandingMinor",
                   cl.paid_minor as "paidMinor", cl.recovered_minor as "recoveredMinor", cl.status,
-                  c.name as "contractName"
+                  c.name as "contractName",
+                  cl.created_at::text as "createdAt"
              from claim cl join contract c on c.id = cl.contract_id
             where not cl.is_deleted
               and ($1::citext is null or cl.status = $1)
               and ($2::uuid is null or cl.contract_id = $2)
-            order by cl.notified_date desc`,
-          [req.query.status ?? null, req.query.contractId ?? null],
+              ${cursorClause}
+            order by cl.created_at desc, cl.id desc
+            limit ${limit + 1}`,
+          params,
         );
-        return { claims: rows };
+        const hasMore = rows.length > limit;
+        if (hasMore) rows.pop();
+        const last = rows[rows.length - 1];
+        const nextCursor = hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
+        return { claims: rows, nextCursor };
       });
     },
   );

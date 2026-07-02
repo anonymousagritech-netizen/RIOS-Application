@@ -138,6 +138,31 @@ export interface ClaimDTO {
   status: string;
 }
 
+// ── Pagination contract (G-04) ─────────────────────────────────────────────
+
+/**
+ * Keyset pagination query parameters.
+ * limit: max rows per page, default 50, capped at 200.
+ * cursor: opaque page token — base64url of "createdAt,id" from the last row.
+ */
+export interface PaginationQuery {
+  limit?: number;
+  cursor?: string;
+}
+
+/**
+ * Paginated response envelope.
+ * nextCursor is null on the final page.
+ * total is omitted from keyset responses (only present on OFFSET routes where cheap).
+ */
+export interface PaginatedResponse<T> {
+  rows: T[];
+  nextCursor: string | null;
+  total?: number;
+}
+
+// ── Assistant ──────────────────────────────────────────────────────────────
+
 /** Assistant intent + the prepared (not yet committed) action it resolves to (§12.4). */
 export interface AssistantRequest {
   message: string;
