@@ -204,9 +204,9 @@ function FormulaDetailPanel({ formulaKey, isAdmin }: { formulaKey: string; isAdm
 
 /* ---------------- Definition / dependencies ---------------- */
 function OverviewTab({ def }: { def: FormulaDetail }) {
-  const inputSet = new Set(def.inputs);
+  const inputSet = new Set(def.inputs ?? []);
   const constSet = new Set(Object.keys(def.constants ?? {}));
-  const termNames = new Set(def.terms.map((t) => t.name));
+  const termNames = new Set((def.terms ?? []).map((t) => t.name));
 
   const classify = (ref: string): 'input' | 'const' | 'term' | 'unknown' => {
     if (inputSet.has(ref)) return 'input';
@@ -223,7 +223,7 @@ function OverviewTab({ def }: { def: FormulaDetail }) {
           <div className={styles.chipGroup}>
             <span className={styles.chipGroupLabel}>Inputs</span>
             <div className={styles.chips}>
-              {def.inputs.length ? def.inputs.map((i) => (
+              {(def.inputs?.length) ? (def.inputs ?? []).map((i) => (
                 <span key={i} className={`${styles.varChip} ${styles.varInput}`}>{i}</span>
               )) : <span className={styles.emptyNote}>None</span>}
             </div>
@@ -232,7 +232,7 @@ function OverviewTab({ def }: { def: FormulaDetail }) {
             <div className={styles.chipGroup}>
               <span className={styles.chipGroupLabel}>Constants</span>
               <div className={styles.chips}>
-                {Object.entries(def.constants).map(([k, v]) => (
+                {Object.entries(def.constants ?? {}).map(([k, v]) => (
                   <span key={k} className={`${styles.varChip} ${styles.varConst}`}>{k} = {v}</span>
                 ))}
               </div>
@@ -246,7 +246,7 @@ function OverviewTab({ def }: { def: FormulaDetail }) {
           <CardHeader title="Terms & dependencies" subtitle="Each intermediate term and the variables it references." />
         </div>
         <div className={styles.termList}>
-          {def.terms.map((t) => {
+          {(def.terms ?? []).map((t) => {
             const refs = extractRefs(t.expr);
             return (
               <div key={t.name} className={styles.term}>
@@ -285,7 +285,7 @@ function OverviewTab({ def }: { def: FormulaDetail }) {
 /* ---------------- Test sandbox ---------------- */
 function SandboxTab({ def }: { def: FormulaDetail }) {
   const [inputs, setInputs] = useState<Record<string, string>>(
-    () => Object.fromEntries(def.inputs.map((i) => [i, ''])),
+    () => Object.fromEntries((def.inputs ?? []).map((i) => [i, ''])),
   );
   const [result, setResult] = useState<EvaluateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -319,7 +319,7 @@ function SandboxTab({ def }: { def: FormulaDetail }) {
       />
       <div className={styles.sandbox}>
         <div className={styles.inputGrid}>
-          {def.inputs.length ? def.inputs.map((i) => (
+          {(def.inputs?.length) ? (def.inputs ?? []).map((i) => (
             <FormField key={i} label={i}>
               <Input
                 type="number"

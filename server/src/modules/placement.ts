@@ -302,7 +302,7 @@ export async function placementModule(app: FastifyInstance): Promise<void> {
           reply.code(404);
           return { error: 'Slip not found' };
         }
-        const raw = slip.lines as {
+        const raw = slip.marketLines as {
           id: string;
           partyId: string;
           partyName: string | null;
@@ -429,6 +429,6 @@ async function loadSlip(db: Db, id: string): Promise<(SlipRow & Record<string, u
       where ml.slip_id = $1 order by ml.written_at, ml.created_at`,
     [id],
   );
-  slip.lines = lines.rows;
+  slip.marketLines = lines.rows;
   return slip;
 }

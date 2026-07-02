@@ -87,7 +87,19 @@ export async function formulasModule(app: FastifyInstance): Promise<void> {
            from formula_definition where key = $1 order by version desc`, [key]);
       const latest = await storedLatest(db, key) ?? getFormula(key);
       if (!latest) { reply.code(404); return { error: 'Formula not found' }; }
-      return { key, latest, versions: versions.rows, source: versions.rows.length ? 'tenant' : 'default' };
+      // Flatten the active definition with its version metadata so the client
+      // receives a single FormulaDetail (key/name/inputs/terms/constants +
+      // version/effectiveFrom + the version history).
+      const active = versions.rows.find((v) => v.isActive) ?? versions.rows[0];
+      return {
+        ...latest,
+        key,
+        version: active?.version ?? (latest as { version?: number }).version ?? 1,
+        effectiveFrom: active?.effectiveFrom ?? null,
+        effectiveTo: active?.effectiveTo ?? null,
+        versions: versions.rows,
+        source: versions.rows.length ? 'tenant' : 'default',
+      };
     });
   });
 

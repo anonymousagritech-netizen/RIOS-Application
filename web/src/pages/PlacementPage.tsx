@@ -265,7 +265,7 @@ function SlipDetailCard({ slipId, contractId, canWrite, statusColors }: { slipId
             <span className={styles.inlineMeta}>
               <Link to={`/treaties/${contractId}`}><Button variant="ghost" size="sm">View treaty</Button></Link>
               {canWrite ? (
-                <Button variant="secondary" onClick={() => setConfirmSign(true)} loading={signDown.isPending} disabled={!slip || !slip.marketLines.length}>
+                <Button variant="secondary" onClick={() => setConfirmSign(true)} loading={signDown.isPending} disabled={!slip || !slip.marketLines?.length}>
                   Sign down
                 </Button>
               ) : null}

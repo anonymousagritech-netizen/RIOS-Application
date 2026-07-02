@@ -47,6 +47,21 @@ describe('Formula engine', () => {
     expect(body.steps.map((s: { name: string }) => s.name)).toContain('gross_premium');
   });
 
+  it('returns a flat formula detail with inputs/terms arrays (client renders these directly)', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await loginToken('uw@demo.rios')}` };
+    const res = await app.inject({ method: 'GET', url: '/api/formulas/underwriting.technical_premium', headers: auth });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    // The client reads body.terms / body.inputs / body.name directly - a wrapped
+    // { latest } shape would leave these undefined and crash the render.
+    expect(body.key).toBe('underwriting.technical_premium');
+    expect(Array.isArray(body.inputs)).toBe(true);
+    expect(Array.isArray(body.terms)).toBe(true);
+    expect(typeof body.name).toBe('string');
+    expect(body.version).toBeGreaterThanOrEqual(1);
+  });
+
   it('lists formulas, falling back to the seed library when the tenant has none', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await loginToken('uw@demo.rios')}` };
