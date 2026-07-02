@@ -36,6 +36,7 @@ import { assetsModule } from './modules/assets.js';
 import { operationsModule } from './modules/operations.js';
 import { treatyAdjustmentsModule } from './modules/treatyAdjustments.js';
 import { claimsAdvancedModule } from './modules/claimsAdvanced.js';
+import { earningsModule } from './modules/earnings.js';
 import { payrollModule } from './modules/payroll.js';
 import { periodCloseModule } from './modules/periodClose.js';
 import { regulatoryAdvancedModule } from './modules/regulatoryAdvanced.js';
@@ -246,6 +247,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Depth modules (treaty adjustments, claims, payroll, period-close, regulatory)
   await app.register(treatyAdjustmentsModule);
   await app.register(claimsAdvancedModule);
+  await app.register(earningsModule);
   await app.register(payrollModule);
   await app.register(periodCloseModule);
   await app.register(regulatoryAdvancedModule);
