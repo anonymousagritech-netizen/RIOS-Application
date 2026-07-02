@@ -5,6 +5,7 @@
 
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
 import { z } from 'zod';
 import { login, completeMfaLogin, AuthError, requirePermission, authContext, authenticate } from './auth.js';
 import { runAs } from './db.js';
@@ -115,7 +116,25 @@ export async function buildApp(): Promise<FastifyInstance> {
     genReqId: () => crypto.randomUUID(),
   });
 
-  await app.register(cors, { origin: true, credentials: true });
+  await app.register(cors, {
+    origin: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(','),
+    credentials: true,
+  });
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        frameSrc: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  });
   // Called directly (not via register) so its metrics hooks are NOT encapsulated
   // and apply to every route registered afterwards.
   await observabilityPlugin(app);
