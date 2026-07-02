@@ -7,6 +7,7 @@ import {
   ShieldCheck, Clock, ThumbsUp, ThumbsDown, ArrowUpCircle,
   Sparkles, AlertTriangle, ScrollText, ClipboardCheck, GitCompareArrows,
   FolderOpen, FilePlus2, PenTool, History, ScanText,
+  Columns3, List, UserCheck, MessageSquarePlus, Zap,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { api, ApiError, downloadFile } from '../lib/api';
@@ -79,7 +80,11 @@ interface SubmissionRow {
   id: string; reference: string; title: string; kind: string; basis: string | null; structure: string | null;
   lineOfBusiness: string | null; currency: string; stage: string; riskScore: number | null; riskBand: string | null;
   estPremiumMinor: number | null; targetPremiumMinor: number | null; cedentName: string | null; brokerName: string | null;
+  daysInStage: number | null; assignedTo: string | null; assignedToName: string | null; createdAt: string;
 }
+interface UwUser { id: string; displayName: string; email: string; }
+interface CatEpPoint { returnPeriod: number; lossMinor: number; exceedanceProbPct: number; }
+interface CatModelResult { peril: string; aalMinor: number; epCurve: CatEpPoint[]; }
 interface Kpis { open: number; bound: number; declined: number; lapsed: number; pipelineEpiMinor: number; avgRiskScore: number; hitRatioPct: number; byStage: Record<string, number>; }
 interface ScoreContribution { factor: string; points: number; detail: string; }
 interface Activity { kind: string; fromStage: string | null; toStage: string | null; note: string | null; createdAt: string; }
@@ -105,6 +110,7 @@ interface ScenarioResult {
   grid: ScenarioCell[];
   sensitivity: { rate: SensitivityPoint[]; loss: SensitivityPoint[] };
   rateChanges: number[]; lossShocks: number[];
+  catModel: CatModelResult | null;
 }
 
 const money = (minor: number | null | undefined, ccy = 'USD') =>
@@ -115,6 +121,9 @@ const compact = (minor: number, ccy = 'USD') =>
 /* ---------------- Data hooks ---------------- */
 function useModelCatalog() {
   return useQuery({ queryKey: ['uw', 'models'], queryFn: () => api<ModelCatalog>('/api/underwriting/models'), staleTime: 60 * 60 * 1000 });
+}
+function useUwUsers() {
+  return useQuery({ queryKey: ['uw', 'users'], queryFn: () => api<{ users: UwUser[] }>('/api/underwriting/users'), staleTime: 5 * 60 * 1000 });
 }
 function useKpis() { return useQuery({ queryKey: ['uw', 'kpis'], queryFn: () => api<Kpis>('/api/underwriting/kpis') }); }
 function useSubmissions(stage: string) {
@@ -134,12 +143,14 @@ const DOC_KINDS = ['SLIP', 'SOV', 'LOSS_RUN', 'WORDING', 'FINANCIALS', 'BORDEREA
 export function UnderwritingPage() {
   const [params, setParams] = useSearchParams();
   const [stage, setStage] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [showNew, setShowNew] = useState(false);
   // Deep-link: /underwriting?submission=<id> opens that submission's drawer, so
   // other modules (broker/cedent portfolios) can link straight into it.
   const [detailId, setDetailId] = useState<string | null>(params.get('submission'));
   const kpis = useKpis();
-  const list = useSubmissions(stage);
+  // In kanban mode always fetch all submissions for grouping; in list mode use stage filter.
+  const list = useSubmissions(viewMode === 'kanban' ? '' : stage);
   const k = kpis.data;
 
   const columns: Column<SubmissionRow>[] = [
@@ -155,6 +166,7 @@ export function UnderwritingPage() {
     { key: 'structure', header: 'Structure', render: (r) => <span className={styles.cellSub}>{r.structure ? titleCase(r.structure.replace(/_/g, ' ')) : titleCase(r.kind)}</span> },
     { key: 'risk', header: 'Risk', render: (r) => r.riskBand ? <Badge color={BAND_COLOR[r.riskBand] ?? 'gray'}>{r.riskScore} · {titleCase(r.riskBand)}</Badge> : <span className={styles.cellSub}>—</span> },
     { key: 'epi', header: 'EPI', align: 'right', render: (r) => <span className={styles.num}>{money(r.estPremiumMinor, r.currency)}</span> },
+    { key: 'days', header: 'Age', align: 'right', render: (r) => <span className={styles.cellSub}>{r.daysInStage != null ? `${r.daysInStage}d` : '—'}</span> },
     { key: 'stage', header: 'Stage', align: 'right', render: (r) => <Badge color={STAGE_COLOR[r.stage] ?? 'slate'}>{titleCase(r.stage)}</Badge> },
   ];
 
@@ -193,35 +205,143 @@ export function UnderwritingPage() {
       />
 
       <Card padded={false}>
-        <CardHeader title="Submissions" subtitle="Every risk moving through underwriting" />
-        <div className={styles.filterBar}>
-          {stageFilters.map((s) => (
-            <button
-              key={s || 'all'}
-              className={`${styles.filterChip} ${stage === s ? styles.filterActive : ''}`}
-              onClick={() => setStage(s)}
-            >
-              {s ? titleCase(s) : 'All'}
-              {s && k?.byStage?.[s] ? <span className={styles.filterCount}>{k.byStage[s]}</span> : null}
-            </button>
-          ))}
-        </div>
-        <div className={styles.tableWrap}>
-          <Table
-            columns={columns}
-            rows={list.data?.submissions}
+        <CardHeader
+          title="Submissions"
+          subtitle="Every risk moving through underwriting"
+          actions={
+            <div className={styles.viewToggle}>
+              <button className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`} onClick={() => setViewMode('list')} title="List view">
+                <List size={15} />
+              </button>
+              <button className={`${styles.viewBtn} ${viewMode === 'kanban' ? styles.viewBtnActive : ''}`} onClick={() => setViewMode('kanban')} title="Kanban view">
+                <Columns3 size={15} />
+              </button>
+            </div>
+          }
+        />
+        {viewMode === 'list' && (
+          <>
+            <div className={styles.filterBar}>
+              {stageFilters.map((s) => (
+                <button
+                  key={s || 'all'}
+                  className={`${styles.filterChip} ${stage === s ? styles.filterActive : ''}`}
+                  onClick={() => setStage(s)}
+                >
+                  {s ? titleCase(s) : 'All'}
+                  {s && k?.byStage?.[s] ? <span className={styles.filterCount}>{k.byStage[s]}</span> : null}
+                </button>
+              ))}
+            </div>
+            <div className={styles.tableWrap}>
+              <Table
+                columns={columns}
+                rows={list.data?.submissions}
+                loading={list.isLoading}
+                rowKey={(r) => r.id}
+                onRowClick={(r) => setDetailId(r.id)}
+                empty={<EmptyState icon={<FileText size={18} />} title="No submissions" message="Create a submission to start the underwriting lifecycle." />}
+                skeletonRows={6}
+              />
+            </div>
+          </>
+        )}
+        {viewMode === 'kanban' && (
+          <KanbanBoard
+            submissions={list.data?.submissions ?? []}
             loading={list.isLoading}
-            rowKey={(r) => r.id}
-            onRowClick={(r) => setDetailId(r.id)}
-            empty={<EmptyState icon={<FileText size={18} />} title="No submissions" message="Create a submission to start the underwriting lifecycle." />}
-            skeletonRows={6}
+            kpiByStage={k?.byStage}
+            onSelect={(r) => setDetailId(r.id)}
           />
-        </div>
+        )}
       </Card>
 
       <NewSubmissionModal open={showNew} onClose={() => setShowNew(false)} onCreated={(id) => { setShowNew(false); setDetailId(id); }} />
       <SubmissionDrawer id={detailId} onClose={() => { setDetailId(null); if (params.has('submission')) { params.delete('submission'); setParams(params, { replace: true }); } }} />
     </>
+  );
+}
+
+/* ---------------- Kanban board (submission pipeline) ---------------- */
+// Pipeline columns + terminal columns rendered as a horizontally scrollable kanban.
+const KANBAN_COLS = [
+  ...PIPELINE.map((s) => ({ stage: s, label: titleCase(s) })),
+  { stage: 'DECLINED', label: 'Declined' },
+  { stage: 'LAPSED', label: 'Lapsed' },
+] as const;
+
+function KanbanBoard({
+  submissions, loading, kpiByStage, onSelect,
+}: {
+  submissions: SubmissionRow[]; loading: boolean; kpiByStage?: Record<string, number>; onSelect: (r: SubmissionRow) => void;
+}) {
+  const byStage = new Map<string, SubmissionRow[]>();
+  for (const col of KANBAN_COLS) byStage.set(col.stage, []);
+  for (const s of submissions) {
+    const arr = byStage.get(s.stage);
+    if (arr) arr.push(s); else byStage.set(s.stage, [s]);
+  }
+
+  if (loading) {
+    return (
+      <div className={styles.kanban}>
+        {KANBAN_COLS.slice(0, 5).map((c) => (
+          <div key={c.stage} className={styles.kanbanCol}>
+            <div className={styles.kanbanColHead}><span>{c.label}</span><span className={styles.filterCount}>—</span></div>
+            <div className={styles.kanbanSkeleton} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.kanban}>
+      {KANBAN_COLS.map((col) => {
+        const cards = byStage.get(col.stage) ?? [];
+        const count = kpiByStage?.[col.stage] ?? cards.length;
+        const isTerminal = col.stage === 'DECLINED' || col.stage === 'LAPSED' || col.stage === 'BOUND';
+        return (
+          <div key={col.stage} className={`${styles.kanbanCol} ${isTerminal ? styles.kanbanColTerminal : ''}`}>
+            <div className={styles.kanbanColHead}>
+              <span className={styles.kanbanColLabel}>{col.label}</span>
+              {count > 0 && <span className={styles.filterCount}>{count}</span>}
+            </div>
+            <div className={styles.kanbanCards}>
+              {cards.length === 0 ? (
+                <div className={styles.kanbanEmpty}>—</div>
+              ) : (
+                cards.map((r) => <KanbanCard key={r.id} row={r} onSelect={onSelect} />)
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function KanbanCard({ row, onSelect }: { row: SubmissionRow; onSelect: (r: SubmissionRow) => void }) {
+  const scoreColor = row.riskScore == null ? undefined : row.riskScore < 40 ? 'var(--accent-emerald)' : row.riskScore < 70 ? 'var(--accent-orange)' : 'var(--accent-rose)';
+  return (
+    <button className={styles.kanbanCard} onClick={() => onSelect(row)}>
+      <div className={styles.kanbanCardTitle}>{row.title}</div>
+      <div className={styles.kanbanCardMeta}>{row.reference} · {row.cedentName ?? 'TBC'}</div>
+      {row.lineOfBusiness && (
+        <div className={styles.kanbanCardMeta}>{titleCase(row.lineOfBusiness.replace(/_/g, ' '))}</div>
+      )}
+      <div className={styles.kanbanCardFooter}>
+        <span className={styles.kanbanCardEpi}>{money(row.estPremiumMinor, row.currency)}</span>
+        <span className={styles.kanbanCardStats}>
+          {row.riskScore != null && (
+            <span className={styles.kanbanCardScore} style={{ color: scoreColor }}>{row.riskScore}</span>
+          )}
+          {row.daysInStage != null && (
+            <span className={styles.kanbanCardDays}><Clock size={11} />{row.daysInStage}d</span>
+          )}
+        </span>
+      </div>
+    </button>
   );
 }
 
@@ -450,10 +570,17 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
   const { data: catalog } = useModelCatalog();
   const { data: advisor, isLoading: advisorLoading } = useAdvisor(id);
   const { data: docsData } = useDocuments(id);
+  const { data: usersData } = useUwUsers();
   const { hasPermission } = useAuth();
+  const canWrite = hasPermission('treaty:write');
   const canApprove = hasPermission('underwriting:approve');
   const [note, setNote] = useState('');
   const [scenario, setScenario] = useState<ScenarioResult | null>(null);
+  const [showAssign, setShowAssign] = useState(false);
+  const [assignUserId, setAssignUserId] = useState('');
+  const [infoDesc, setInfoDesc] = useState('');
+  const [showInfoReq, setShowInfoReq] = useState(false);
+  const uwUsers = usersData?.users ?? [];
 
   const runScenarios = useMutation({
     mutationFn: () => api<ScenarioResult>(`/api/underwriting/submissions/${id}/scenarios`, { body: {} }),
@@ -492,6 +619,20 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
         .catch((e) => { toast.error(e instanceof ApiError ? e.message : 'Decision failed'); throw e; }),
   });
 
+  const assign = useMutation({
+    mutationFn: (userId: string | null) =>
+      api(`/api/underwriting/submissions/${id}/assign`, { method: 'PATCH', body: { userId } })
+        .then((r) => { invalidate(); toast.success(userId ? 'Submission assigned' : 'Assignment cleared'); setShowAssign(false); return r; })
+        .catch((e) => { toast.error(e instanceof ApiError ? e.message : 'Assign failed'); throw e; }),
+  });
+
+  const infoRequest = useMutation({
+    mutationFn: (description: string) =>
+      api(`/api/underwriting/submissions/${id}/info-request`, { body: { description } })
+        .then((r) => { invalidate(); toast.success('Information requested'); setShowInfoReq(false); setInfoDesc(''); return r; })
+        .catch((e) => { toast.error(e instanceof ApiError ? e.message : 'Could not create info request'); throw e; }),
+  });
+
   const allowed = s ? (TRANSITIONS[s.stage] ?? []) : [];
 
   return (
@@ -517,6 +658,52 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
           </div>
           {(s.stage === 'DECLINED' || s.stage === 'LAPSED') && (
             <div className={styles.terminalBanner}><XCircle size={15} /> {titleCase(s.stage)}</div>
+          )}
+
+          {/* Quick actions: Assign, Request Info, Refer to Committee */}
+          {canWrite && (
+            <Card padded>
+              <CardHeader title="Quick actions" subtitle="Assign, request info or escalate" />
+              <div className={styles.quickActions}>
+                <Button size="sm" variant="secondary" icon={<UserCheck size={14} />} onClick={() => setShowAssign((v) => !v)}>
+                  {s.assignedToName ? `Assigned: ${s.assignedToName}` : 'Assign to UW'}
+                </Button>
+                <Button size="sm" variant="secondary" icon={<MessageSquarePlus size={14} />} onClick={() => setShowInfoReq((v) => !v)}>Request info</Button>
+                {!['BOUND', 'DECLINED', 'LAPSED'].includes(s.stage) && (
+                  <Button size="sm" variant="secondary" icon={<Zap size={14} />} loading={raiseReferral.isPending} onClick={() => raiseReferral.mutate()}>Refer to committee</Button>
+                )}
+              </div>
+              {showAssign && (
+                <div className={styles.quickPanel}>
+                  <FormField label="Assign to">
+                    <Select value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)}>
+                      <option value="">Unassign</option>
+                      {uwUsers.map((u) => <option key={u.id} value={u.id}>{u.displayName}</option>)}
+                    </Select>
+                  </FormField>
+                  <div className={styles.actions}>
+                    <Button size="sm" variant="primary" loading={assign.isPending} onClick={() => assign.mutate(assignUserId || null)}>Save</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowAssign(false)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+              {showInfoReq && (
+                <div className={styles.quickPanel}>
+                  <FormField label="What information is needed?">
+                    <Textarea
+                      value={infoDesc}
+                      onChange={(e) => setInfoDesc(e.target.value)}
+                      placeholder="Describe the missing information or clarification required…"
+                      rows={3}
+                    />
+                  </FormField>
+                  <div className={styles.actions}>
+                    <Button size="sm" variant="primary" loading={infoRequest.isPending} disabled={!infoDesc.trim()} onClick={() => infoRequest.mutate(infoDesc.trim())}>Send request</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowInfoReq(false)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+            </Card>
           )}
 
           {/* Risk score gauge + breakdown */}
@@ -662,6 +849,39 @@ function SubmissionDrawer({ id, onClose }: { id: string | null; onClose: () => v
                   <SensRow label="Rate change" points={scenario.sensitivity.rate} fmt={fmtRate} />
                   <SensRow label="Loss shock" points={scenario.sensitivity.loss} fmt={fmtShock} />
                 </div>
+
+                {/* Return period EP curve (cat-exposed risks) */}
+                {scenario.catModel && (
+                  <div className={styles.epBlock}>
+                    <div className={styles.epLabel}>Return period loss curve · {scenario.catModel.peril} (mock model)</div>
+                    <div className={styles.epRow}>
+                      <span className={styles.epStat}>
+                        <span className={styles.epStatLabel}>AAL</span>
+                        <span className={styles.epStatValue}>{money(scenario.catModel.aalMinor, s?.currency)}</span>
+                      </span>
+                    </div>
+                    <div className={styles.epTable}>
+                      <div className={styles.epTableHead}>
+                        <span>Return period</span><span>Exceedance prob.</span><span>Occurrence loss</span>
+                        {scenario.basePremiumMinor > 0 && <span>vs technical premium</span>}
+                      </div>
+                      {scenario.catModel.epCurve.map((pt) => {
+                        const vsTP = scenario.basePremiumMinor > 0
+                          ? Math.round((pt.lossMinor / scenario.basePremiumMinor) * 100)
+                          : null;
+                        const vsColor = vsTP == null ? undefined : vsTP < 100 ? 'var(--accent-emerald)' : vsTP < 200 ? 'var(--accent-orange)' : 'var(--accent-rose)';
+                        return (
+                          <div key={pt.returnPeriod} className={styles.epTableRow}>
+                            <span className={styles.epRp}>1:{pt.returnPeriod}</span>
+                            <span className={styles.cellSub}>{pt.exceedanceProbPct}%</span>
+                            <span className={styles.num}>{money(pt.lossMinor, s?.currency)}</span>
+                            {vsTP != null && <span className={styles.num} style={{ color: vsColor }}>{vsTP}%</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </Card>
