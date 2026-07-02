@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import type { LayerDTO, ParticipationDTO } from '@rios/shared';
 import {
   useTreaty, useFinancialEvents, useStatement, useTransitionTreaty,
@@ -35,6 +35,7 @@ const TABS = [
 export function TreatyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { hasPermission } = useAuth();
   const toast = useToast();
 
@@ -42,7 +43,10 @@ export function TreatyDetailPage() {
   const statusColors = useStatusColors('contract_status');
   const transition = useTransitionTreaty(id!);
 
-  const [tab, setTab] = useState('structure');
+  // Arriving from another surface (e.g. the Statements list) may request an
+  // initial tab via ?tab=; fall back to Structure for unknown/missing values.
+  const requestedTab = searchParams.get('tab');
+  const [tab, setTab] = useState(TABS.some((t) => t.id === requestedTab) ? requestedTab! : 'structure');
   const [confirmTo, setConfirmTo] = useState<string | null>(null);
 
   if (isLoading) return <PageLoader label="Loading treaty…" />;
@@ -188,7 +192,11 @@ function StructureTab({ treaty, currency }: { treaty: ReturnType<typeof useTreat
   return (
     <div className={styles.stack}>
       <section>
-        <CardHeader title="Layers" subtitle={`${layers.length} layer(s) · ${currency}`} />
+        <CardHeader
+          title="Layers"
+          subtitle={`${layers.length} layer(s) · ${currency}`}
+          actions={<Link className={styles.cedentLink} to="/pricing">Price this treaty →</Link>}
+        />
         <Table columns={layerCols} rows={layers} rowKey={(l) => l.id} empty={<EmptyState title="No layers" message="This treaty has no structured layers." />} skeletonRows={3} />
       </section>
       <section>
@@ -200,7 +208,16 @@ function StructureTab({ treaty, currency }: { treaty: ReturnType<typeof useTreat
 }
 
 function TermsTab({ terms }: { terms?: Record<string, unknown> }) {
-  const entries = Object.entries(terms ?? {});
+  // Flatten the adaptive class-detail bag into its own labelled rows rather than
+  // showing a raw JSON blob; everything else renders as a normal term.
+  const entries: [string, unknown][] = [];
+  for (const [k, v] of Object.entries(terms ?? {})) {
+    if (k === 'classDetails' && v && typeof v === 'object' && !Array.isArray(v)) {
+      for (const [ck, cv] of Object.entries(v as Record<string, unknown>)) entries.push([ck, cv]);
+    } else {
+      entries.push([k, v]);
+    }
+  }
   if (!entries.length) {
     return <EmptyState title="No terms recorded" message="Commercial terms for this treaty have not been captured." icon={<ClipboardList size={16} />} />;
   }
