@@ -5,6 +5,7 @@
 
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import { z } from 'zod';
 import { login, completeMfaLogin, AuthError, requirePermission, authContext, authenticate } from './auth.js';
 import { runAs } from './db.js';
@@ -116,6 +117,24 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(cors, { origin: true, credentials: true });
+
+  // Global distributed rate limiting (G-03).
+  // Uses an in-memory store by default, which is sufficient for single-instance
+  // deployments and tests. For multi-instance deployments, set REDIS_URL and
+  // wire an ioredis client to the `redis` option (see @fastify/rate-limit docs).
+  await app.register(rateLimit, {
+    global: true,
+    max: 100,
+    timeWindow: '1 minute',
+    // redis: redisClient, // uncomment and pass an ioredis client when REDIS_URL is configured
+    errorResponseBuilder: (_req, context) => ({
+      statusCode: 429,
+      error: 'Too Many Requests',
+      message: `Rate limit exceeded. Retry after ${context.after}`,
+      retryAfter: context.after,
+    }),
+  });
+
   // Called directly (not via register) so its metrics hooks are NOT encapsulated
   // and apply to every route registered afterwards.
   await observabilityPlugin(app);
@@ -132,7 +151,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   const loginFailures = new Map<string, { count: number; windowStart: number }>();
   const loginKey = (req: { ip: string }, email: string) => `${req.ip}|${email.toLowerCase()}`;
 
-  app.post('/api/auth/login', async (req, reply) => {
+  // Stricter per-route rate limit for login: 10 attempts per 15 minutes per IP.
+  // This supplements the existing in-memory failure counter (which tracks bad
+  // passwords), ensuring even well-formed requests are throttled at the HTTP layer.
+  app.post('/api/auth/login', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (req, reply) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
       reply.code(400);
