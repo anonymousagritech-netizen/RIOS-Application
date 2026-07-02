@@ -74,7 +74,14 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   engine (`@rios/domain/treasury`): `effectivePeriodRate` (yield to maturity by bisection) and
   `amortisedCostSchedule` (IFRS 9 premium/discount amortisation converging to par at maturity, semi-annual
   supported), on top of the existing accrued-interest and portfolio valuation. **Cash-flow forecasting and a
-  full treasury dealing/settlement sub-ledger** remain designed-for. (§9.8)
+  full treasury dealing/settlement sub-ledger are now delivered too** (migration `0067_treasury_dealing`):
+  a dealing sub-ledger (`investment_trade`) captures BUY/SELL, confirms, then **settles by posting a balanced
+  GL journal** through the accounting posting idiom (cash `1000` ↔ investments `1200`, illegal transitions
+  409, all audited); cash-flow forecasting gathers scheduled premium/claim/trade-settlement cash items and
+  buckets them via the pure `@rios/domain/cashflowForecast.bucketCashFlows` engine, persisting the forecast +
+  lines. Market data is served by a **deterministic in-repo MOCK provider** (`market_price`, `source='MOCK'`)
+  — a real vendor feed (Bloomberg/Refinitiv/ICE) is the labelled integration seam at
+  `POST /api/treasury/market-data/refresh`. (§9.8, §16)
 - **Statement-of-account lifecycle** (Open → Prepared → … → Settled) - **delivered**: guarded status
   transitions (`STATEMENT_TRANSITIONS`) with the AR/AP invoice spin-off on issue. (§28.5)
 - **Profit-commission jurisdictional variants** - one common basis delivered; others would be configuration.

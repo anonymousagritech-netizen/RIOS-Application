@@ -35,6 +35,7 @@ export * from './tax.js';
 export * from './riskcapital.js';
 export * from './forecast.js';
 export * from './cashflow.js';
+export * from './cashflowForecast.js';
 export * from './formula.js';
 export * from './formulaLibrary.js';
 export * from './retention.js';
@@ -103,6 +104,7 @@ export * from './earning.js';
 export * from './accountCurrent.js';
 export * from './retroAllocation.js';
 export * from './aveMonitoring.js';
+export * from './consolidation.js';
 export {
   projectZoneAggregates, accumulationSummary, rdsGrossLoss,
   type ZoneLimitMode, type ZoneVerdict, type ZoneLimitInput, type ZoneExposureInput,
