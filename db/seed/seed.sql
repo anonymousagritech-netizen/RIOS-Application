@@ -440,7 +440,8 @@ insert into gl_account (tenant_id, code, name, type, is_control) values
   (:'tenant_id'::uuid,'4000','Ceded Premium Income','income',false),
   (:'tenant_id'::uuid,'5000','Commission Expense','expense',false),
   (:'tenant_id'::uuid,'5100','Claims / Loss Expense','expense',false),
-  (:'tenant_id'::uuid,'1000','Cash at Bank','asset',false)
+  (:'tenant_id'::uuid,'1000','Cash at Bank','asset',false),
+  (:'tenant_id'::uuid,'1200','Investments','asset',false)
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
