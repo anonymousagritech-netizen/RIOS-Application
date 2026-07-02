@@ -17,6 +17,7 @@ import { Drawer } from '../components/Drawer';
 import { Modal } from '../components/Modal';
 import { BarChart } from '../components/BarChart';
 import { FormField, FormSection, Input, Select, TextField, Textarea } from '../components/Form';
+import { DocumentsPanel } from '../components/DocumentsPanel';
 import { titleCase } from '../lib/format';
 import { useAuth } from '../lib/auth';
 import type { TokenColor } from '../lib/status';
@@ -383,6 +384,9 @@ function CedentDrawer({ id, onClose }: { id: string | null; onClose: () => void 
 
           {/* Communications */}
           <CommunicationsCard cedentId={c.id} communications={c.communications} canWrite={canWrite} />
+
+          {/* Documents (cedents are parties → entityType="party") */}
+          <DocumentsPanel entityType="party" entityId={c.id} />
         </div>
       )}
 
