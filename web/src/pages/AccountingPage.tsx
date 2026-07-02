@@ -7,6 +7,7 @@ import { Card, CardHeader } from '../components/Card';
 import { KpiCard } from '../components/KpiCard';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
+import { AiActionPanel } from '../components/AiActionPanel';
 import { formatDate, formatNumber } from '../lib/format';
 import type { TreatyListItem } from '../lib/types';
 import shared from './shared.module.css';
@@ -58,6 +59,19 @@ export function AccountingPage() {
           <KpiCard label="Cedents" value={formatNumber(cedentCount)} hint="Distinct counterparties" icon={<Building2 size={20} />} accent="var(--accent-violet)" loading={isLoading} />
           <KpiCard label="Currencies" value={formatNumber(currencyCount)} hint="Settlement currencies in play" icon={<Coins size={20} />} accent="var(--accent-cyan)" loading={isLoading} />
         </div>
+
+        <AiActionPanel
+          title="AI journal & balance validation"
+          buttonLabel="AI insight"
+          note="Uses the finance insight domain (technical result & combined ratio) as a book-level balance sanity check."
+          insightDomain="finance"
+          context={{
+            postableTreaties: postable.length,
+            boundAndActive: activeCount,
+            cedents: cedentCount,
+            currencies: currencyCount,
+          }}
+        />
 
         <Card padded={false}>
           <div className={styles.cardHead}>

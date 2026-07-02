@@ -13,6 +13,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { FormField, Input, Select } from '../components/Form';
 import { CalculatedValue, type CalculationStep } from '../components/CalculatedValue';
+import { AiActionPanel } from '../components/AiActionPanel';
 import { formatMoney, formatPercent, formatDateTime, titleCase } from '../lib/format';
 import shared from './shared.module.css';
 import styles from './PricingPage.module.css';
@@ -111,6 +112,19 @@ export function PricingPage() {
         <BurningCostCard canWrite={canWrite} />
         <ExposureCard canWrite={canWrite} />
       </div>
+
+      <AiActionPanel
+        title="AI pricing insight"
+        buttonLabel="Ask AI"
+        note="No dedicated pricing model exists — this uses the general grounded assistant to assess rate adequacy."
+        prompt="Assess rate adequacy and pricing discipline for this excess-of-loss book. Relate the recent rating runs to the portfolio's technical result and loss ratio, and flag whether current rates on line look adequate."
+        context={{
+          ratingRuns: runs.length,
+          avgRateOnLine: runs.length ? formatPercent(avgRol) : 'n/a',
+          burningCostRuns: burningCount,
+          exposureRuns: exposureCount,
+        }}
+      />
 
       <Card padded={false}>
         <div className={styles.runsHeader}>

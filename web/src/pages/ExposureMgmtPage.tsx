@@ -24,6 +24,7 @@ import { Button } from '../components/Button';
 import { BarChart, type BarDatum } from '../components/BarChart';
 import { DonutChart, type DonutDatum } from '../components/DonutChart';
 import { Modal } from '../components/Modal';
+import { AiActionPanel } from '../components/AiActionPanel';
 import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { titleCase } from '../lib/format';
 import type { TokenColor } from '../lib/status';
@@ -205,6 +206,18 @@ export function ExposureMgmtPage() {
           loading={summaryQ.isLoading}
         />
       </div>
+
+      <AiActionPanel
+        title="AI risk & accumulation analysis"
+        buttonLabel="AI insight"
+        insightDomain="exposure"
+        context={{
+          totalTiv: compact(s?.totalTivMinor),
+          totalPml: compact(s?.totalPmlMinor),
+          peakZone: peak?.key ? titleCase(peak.key) : 'none',
+          concentrationPct: `${s?.concentrationPct ?? 0}%`,
+        }}
+      />
 
       {/* ---- Charts ---- */}
       <div className={styles.grid2}>

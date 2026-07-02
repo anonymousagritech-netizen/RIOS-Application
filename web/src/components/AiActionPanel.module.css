@@ -1,0 +1,222 @@
+/* AiActionPanel — contextual, grounded AI embedded inside a module page. */
+
+.panel {
+  margin-top: var(--space-5);
+}
+
+.titleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.note {
+  color: var(--text-subtle, var(--text-muted));
+  font-style: italic;
+}
+
+/* ---------------- Context chips ---------------- */
+.contextChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.contextChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  font-size: var(--text-xs);
+}
+.contextKey { color: var(--text-muted); }
+.contextVal {
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- States ---------------- */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+/* ---------------- Insight rows ---------------- */
+.insightList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-3);
+}
+.insight {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  padding-left: calc(var(--space-4) + 3px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+.accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--c-slate);
+}
+.insight[data-severity='RISK'] .accent { background: var(--c-red); }
+.insight[data-severity='WATCH'] .accent { background: var(--c-amber); }
+.insight[data-severity='INFO'] .accent { background: var(--c-blue); }
+.insight[data-severity='POSITIVE'] .accent { background: var(--c-green); }
+
+.insightHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.badgeInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.insightTitle {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  line-height: 1.35;
+}
+.insightDetail {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.metricPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: var(--text-xs);
+}
+.metricLabel { color: var(--text-muted); }
+.metricValue {
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.reco {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-soft-strong, var(--border));
+}
+.recoIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--primary);
+  margin-top: 1px;
+}
+.recoText {
+  font-size: var(--text-xs);
+  color: var(--text);
+  line-height: 1.45;
+}
+
+/* ---------------- Assistant reply ---------------- */
+.replyBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.replyText {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.grounding {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.groundChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.groundDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+}
+
+/* ---------------- Prepared (read-only) actions ---------------- */
+.prepared {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px dashed var(--border-strong, var(--border));
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.preparedNote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.preparedItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.preparedDesc {
+  font-size: var(--text-sm);
+  color: var(--text);
+  font-weight: var(--weight-medium);
+}
