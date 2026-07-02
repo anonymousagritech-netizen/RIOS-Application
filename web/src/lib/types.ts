@@ -57,7 +57,35 @@ export interface PartyListItem extends PartyDTO {}
 export interface PartyIdentifier { scheme?: string; value?: string; [k: string]: unknown; }
 export interface PartyDetail extends PartyDTO {
   identifiers?: PartyIdentifier[];
+  details?: Record<string, unknown>;
 }
+
+export interface PartyContact {
+  id: string;
+  kind: 'email' | 'phone' | 'address' | 'portal_user';
+  value: string;
+  label: string | null;
+  isPrimary: boolean;
+  createdAt: string;
+}
+export interface PartyContactsResponse { contacts: PartyContact[]; }
+
+export interface PartyClaimRow {
+  id: string;
+  reference: string | null;
+  description: string | null;
+  lossDate: string | null;
+  notifiedDate: string;
+  currency: string;
+  grossLossMinor: number;
+  outstandingMinor: number;
+  paidMinor: number;
+  status: string;
+  contractId: string;
+  contractName: string;
+  contractRef: string | null;
+}
+export interface PartyClaimsResponse { claims: PartyClaimRow[]; }
 
 export interface TreatyListItem {
   id: string;

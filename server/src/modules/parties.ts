@@ -485,6 +485,179 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
     },
   );
 
+  // ── Edit party ───────────────────────────────────────────────────────────
+
+  const updatePartySchema = z.object({
+    legalName: z.string().min(1).optional(),
+    shortName: z.string().nullable().optional(),
+    country: z.string().length(2).nullable().optional(),
+    status: z.enum(['active', 'inactive', 'prospect', 'archived']).optional(),
+  });
+
+  app.put<{ Params: { id: string } }>(
+    '/api/parties/:id',
+    { preHandler: requirePermission('party:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = updatePartySchema.safeParse(req.body);
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid update', details: parsed.error.flatten() };
+      }
+      const body = parsed.data;
+      return runAs(ctx, async (db) => {
+        const existing = await db.query(
+          `select id, legal_name as "legalName", short_name as "shortName", country, status
+             from party where id = $1 and not is_deleted`,
+          [req.params.id],
+        );
+        if (!existing.rows[0]) {
+          reply.code(404);
+          return { error: 'Party not found' };
+        }
+        const before = existing.rows[0];
+        const { rows } = await db.query(
+          `update party
+              set legal_name  = coalesce($2, legal_name),
+                  short_name  = case when $3::boolean then $4 else short_name end,
+                  country     = case when $5::boolean then $6 else country end,
+                  status      = coalesce($7, status),
+                  updated_at  = now()
+            where id = $1
+            returning id, reference, legal_name as "legalName", short_name as "shortName",
+                      kind, country, status`,
+          [
+            req.params.id,
+            body.legalName ?? null,
+            'shortName' in body,
+            body.shortName ?? null,
+            'country' in body,
+            body.country ?? null,
+            body.status ?? null,
+          ],
+        );
+        await writeAudit(db, ctx, {
+          action: 'update',
+          entityType: 'party',
+          entityId: req.params.id,
+          before,
+          after: rows[0],
+          actorLabel: req.auth?.displayName,
+        });
+        return rows[0];
+      });
+    },
+  );
+
+  // ── Contacts ─────────────────────────────────────────────────────────────
+
+  const createContactSchema = z.object({
+    kind: z.enum(['email', 'phone', 'address', 'portal_user']).default('email'),
+    value: z.string().min(1),
+    label: z.string().optional(),
+    isPrimary: z.boolean().optional(),
+  });
+
+  app.get<{ Params: { id: string } }>(
+    '/api/parties/:id/contacts',
+    { preHandler: requirePermission('party:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const party = await db.query(
+          `select id from party where id = $1 and not is_deleted`,
+          [req.params.id],
+        );
+        if (!party.rows[0]) {
+          reply.code(404);
+          return { error: 'Party not found' };
+        }
+        const { rows } = await db.query(
+          `select id, kind, value, label, is_primary as "isPrimary", created_at as "createdAt"
+             from party_contact where party_id = $1
+            order by is_primary desc, created_at`,
+          [req.params.id],
+        );
+        return { contacts: rows };
+      });
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    '/api/parties/:id/contacts',
+    { preHandler: requirePermission('party:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = createContactSchema.safeParse(req.body);
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid contact', details: parsed.error.flatten() };
+      }
+      const body = parsed.data;
+      return runAs(ctx, async (db) => {
+        const party = await db.query(
+          `select id from party where id = $1 and not is_deleted`,
+          [req.params.id],
+        );
+        if (!party.rows[0]) {
+          reply.code(404);
+          return { error: 'Party not found' };
+        }
+        const { rows } = await db.query<{ id: string }>(
+          `insert into party_contact (tenant_id, party_id, kind, value, label, is_primary)
+           values ($1,$2,$3,$4,$5,$6) returning id`,
+          [ctx.tenantId, req.params.id, body.kind, body.value, body.label ?? null, body.isPrimary ?? false],
+        );
+        await writeAudit(db, ctx, {
+          action: 'create',
+          entityType: 'party_contact',
+          entityId: rows[0]!.id,
+          after: { partyId: req.params.id, kind: body.kind, value: body.value, label: body.label ?? null },
+          actorLabel: req.auth?.displayName,
+        });
+        reply.code(201);
+        return { id: rows[0]!.id };
+      });
+    },
+  );
+
+  // ── Claims for this party's treaties ─────────────────────────────────────
+
+  app.get<{ Params: { id: string } }>(
+    '/api/parties/:id/claims',
+    { preHandler: requirePermission('party:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const party = await db.query(
+          `select id from party where id = $1 and not is_deleted`,
+          [req.params.id],
+        );
+        if (!party.rows[0]) {
+          reply.code(404);
+          return { error: 'Party not found' };
+        }
+        const { rows } = await db.query(
+          `select c.id, c.reference, c.description, c.loss_date as "lossDate",
+                  c.notified_date as "notifiedDate", c.currency,
+                  c.gross_loss_minor as "grossLossMinor",
+                  c.outstanding_minor as "outstandingMinor",
+                  c.paid_minor as "paidMinor",
+                  c.status,
+                  t.id as "contractId", t.name as "contractName", t.reference as "contractRef"
+             from claim c
+             join contract t on t.id = c.contract_id
+            where (t.cedent_party_id = $1 or t.broker_party_id = $1)
+              and not c.is_deleted
+            order by c.created_at desc
+            limit 100`,
+          [req.params.id],
+        );
+        return { claims: rows.map(asMinorNumbers) };
+      });
+    },
+  );
+
   // ── Sanctions screening ───────────────────────────────────────────────────
 
   app.post('/api/parties/screen', { preHandler: requirePermission('party:write') }, async (req, reply) => {
