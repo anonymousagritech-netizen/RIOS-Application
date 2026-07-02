@@ -12,6 +12,8 @@ interface BarChartProps {
   data: BarDatum[];
   metaColors?: Record<string, string>;
   emptyLabel?: string;
+  /** When set, each bar becomes a drill-through link. */
+  onSegmentClick?: (datum: BarDatum) => void;
 }
 
 const COLOR_VAR: Record<string, string> = {
@@ -22,7 +24,7 @@ const COLOR_VAR: Record<string, string> = {
 };
 
 /** Pure CSS horizontal bar chart - no charting dependency. */
-export function BarChart({ data, metaColors, emptyLabel = 'No data yet' }: BarChartProps) {
+export function BarChart({ data, metaColors, emptyLabel = 'No data yet', onSegmentClick }: BarChartProps) {
   const max = Math.max(1, ...data.map((d) => d.value));
   if (!data.length) {
     return <p className={styles.empty}>{emptyLabel}</p>;
@@ -33,7 +35,14 @@ export function BarChart({ data, metaColors, emptyLabel = 'No data yet' }: BarCh
         const color = COLOR_VAR[colorForStatus(d.status ?? d.label, metaColors)];
         const pct = (d.value / max) * 100;
         return (
-          <div key={`${d.label}-${i}`} className={styles.row}>
+          <div
+            key={`${d.label}-${i}`}
+            className={`${styles.row} ${onSegmentClick ? styles.clickable : ''}`}
+            onClick={onSegmentClick ? () => onSegmentClick(d) : undefined}
+            role={onSegmentClick ? 'button' : undefined}
+            tabIndex={onSegmentClick ? 0 : undefined}
+            onKeyDown={onSegmentClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSegmentClick(d); } } : undefined}
+          >
             <span className={styles.label}>{titleCase(d.label)}</span>
             <div className={styles.track}>
               <div

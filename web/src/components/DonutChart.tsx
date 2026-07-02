@@ -14,6 +14,8 @@ interface DonutChartProps {
   centerLabel?: string;
   centerValue?: string;
   emptyLabel?: string;
+  /** When set, segments and legend rows become drill-through links. */
+  onSegmentClick?: (datum: DonutDatum) => void;
 }
 
 const COLOR_VAR: Record<string, string> = {
@@ -24,7 +26,7 @@ const COLOR_VAR: Record<string, string> = {
 };
 
 /** Dependency-free SVG donut chart with a legend. */
-export function DonutChart({ data, metaColors, centerLabel, centerValue, emptyLabel = 'No data yet' }: DonutChartProps) {
+export function DonutChart({ data, metaColors, centerLabel, centerValue, emptyLabel = 'No data yet', onSegmentClick }: DonutChartProps) {
   const total = data.reduce((s, d) => s + d.value, 0);
   if (!data.length || total === 0) {
     return <p className={styles.empty}>{emptyLabel}</p>;
@@ -54,7 +56,7 @@ export function DonutChart({ data, metaColors, centerLabel, centerValue, emptyLa
       <div className={styles.chart}>
         <svg viewBox="0 0 140 140" className={styles.svg} role="img" aria-label="Donut chart">
           <circle cx="70" cy="70" r={R} fill="none" stroke="var(--surface-3)" strokeWidth={STROKE} />
-          {segments.map((s) => (
+          {segments.map((s, i) => (
             <circle
               key={s.key}
               cx="70" cy="70" r={R}
@@ -65,6 +67,8 @@ export function DonutChart({ data, metaColors, centerLabel, centerValue, emptyLa
               strokeDashoffset={0}
               transform={`rotate(${s.rotation - 90} 70 70)`}
               strokeLinecap="butt"
+              style={onSegmentClick ? { cursor: 'pointer' } : undefined}
+              onClick={onSegmentClick ? () => onSegmentClick(data[i]!) : undefined}
             />
           ))}
         </svg>
@@ -78,7 +82,14 @@ export function DonutChart({ data, metaColors, centerLabel, centerValue, emptyLa
           const color = COLOR_VAR[colorForStatus(d.status ?? d.label, metaColors)];
           const pct = Math.round((d.value / total) * 100);
           return (
-            <li key={d.label}>
+            <li
+              key={d.label}
+              className={onSegmentClick ? styles.clickable : undefined}
+              onClick={onSegmentClick ? () => onSegmentClick(d) : undefined}
+              role={onSegmentClick ? 'button' : undefined}
+              tabIndex={onSegmentClick ? 0 : undefined}
+              onKeyDown={onSegmentClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSegmentClick(d); } } : undefined}
+            >
               <span className={styles.dot} style={{ background: color }} />
               <span className={styles.legendLabel}>{titleCase(d.label)}</span>
               <span className={styles.legendVal}>{d.value}</span>

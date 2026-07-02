@@ -1006,3 +1006,33 @@ on conflict do nothing;
 
 update approval_request set status='pending', decided_by=null, decided_at=null
 where id in (select id from approval_request order by created_at desc limit 5);
+
+-- ---------------------------------------------------------------------------
+-- Semantic metric layer (§13): GLOBAL default metric definitions (tenant_id
+-- null) any tenant may read and resolve. Each maps to a governed source +
+-- measure + aggregation resolved by the reporting module (never raw SQL). A
+-- tenant may override a key by defining its own metric with the same key.
+-- Labelled global so it is clear these are shipped defaults, not tenant data.
+-- ---------------------------------------------------------------------------
+insert into metric_definition (tenant_id, key, name, description, source, expression, unit, format) values
+  (null, 'gross_written_premium', 'Gross Written Premium',
+   'Sum of premium financial events (global default metric).',
+   'financial_events',
+   '{"kind":"aggregation","source":"financial_events","measure":"amount_minor","agg":"sum","filters":[{"field":"event_type","op":"like","value":"%PREMIUM"}],"asOfField":"booked_at"}'::jsonb,
+   'currency_minor', 'money'),
+  (null, 'total_incurred_loss', 'Total Incurred Loss',
+   'Sum of gross loss across claims (global default metric).',
+   'claims',
+   '{"kind":"aggregation","source":"claims","measure":"gross_loss_minor","agg":"sum","asOfField":"loss_date"}'::jsonb,
+   'currency_minor', 'money'),
+  (null, 'claim_count', 'Claim Count',
+   'Number of claims recorded (global default metric).',
+   'claims',
+   '{"kind":"aggregation","source":"claims","measure":"*","agg":"count"}'::jsonb,
+   'count', 'number'),
+  (null, 'loss_ratio', 'Loss Ratio',
+   'Incurred loss divided by written premium (global default metric).',
+   'claims',
+   '{"kind":"ratio","numerator":{"source":"claims","measure":"gross_loss_minor","agg":"sum"},"denominator":{"source":"financial_events","measure":"amount_minor","agg":"sum","filters":[{"field":"event_type","op":"like","value":"%PREMIUM"}]}}'::jsonb,
+   'ratio', 'percent')
+on conflict do nothing;

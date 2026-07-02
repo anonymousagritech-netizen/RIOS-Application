@@ -14,6 +14,8 @@ import { z } from 'zod';
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { buildXlsx } from '../lib/xlsx.js';
+import { buildPdf } from '../lib/pdf.js';
 
 // ---------------------------------------------------------------------------
 // Governed allowlist: the ONLY tables/columns a report may touch.
@@ -119,8 +121,117 @@ function buildQuery(shape: ReportShape): BuiltQuery | ValidationError {
   return { text, params, source: shape.source as SourceKey };
 }
 
-function isValidationError(r: BuiltQuery | ValidationError): r is ValidationError {
+function isValidationError<T extends object>(r: T | ValidationError): r is ValidationError {
   return (r as ValidationError).error !== undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Semantic metric layer: a metric is a named business measure resolved through
+// the SAME governed allowlist as reports. The stored "expression" never reaches
+// SQL as text - it selects an allowlisted source + measure + aggregation, whose
+// values are bound as parameters. Two kinds are supported:
+//   aggregation: one agg over one source        -> a single numeric value
+//   ratio:       numerator / denominator aggs    -> numerator.value / denom.value
+// ---------------------------------------------------------------------------
+const AGGS = ['sum', 'avg', 'count', 'min', 'max'] as const;
+type Agg = (typeof AGGS)[number];
+
+interface AggSpec {
+  source: string;
+  measure: string; // a column, or '*' for count
+  agg: Agg;
+  filters?: { field: string; op: FilterOp; value: string | number | boolean | null }[];
+  asOfField?: string; // optional date column; when asOf is passed, adds `<= asOf`
+}
+
+const aggSpecSchema = z.object({
+  source: z.string().min(1),
+  measure: z.string().min(1),
+  agg: z.enum(AGGS),
+  filters: z.array(filterSchema).optional(),
+  asOfField: z.string().min(1).optional(),
+});
+
+const expressionSchema = z.union([
+  aggSpecSchema.extend({ kind: z.literal('aggregation').optional() }),
+  z.object({ kind: z.literal('ratio'), numerator: aggSpecSchema, denominator: aggSpecSchema }),
+]);
+type MetricExpression = z.infer<typeof expressionSchema>;
+
+interface BuiltAgg {
+  text: string;
+  params: unknown[];
+}
+
+/** Build a governed single-value aggregation query (identifiers from the allowlist only). */
+function buildAggregation(spec: AggSpec, asOf?: string | null): BuiltAgg | ValidationError {
+  const src = SOURCES[spec.source as SourceKey];
+  if (!src) return { error: `Unknown source: ${spec.source}` };
+  if (!AGGS.includes(spec.agg)) return { error: `Unsupported aggregation: ${spec.agg}` };
+  const allowed = new Set<string>(src.columns);
+
+  let measureSql: string;
+  if (spec.agg === 'count') {
+    if (!spec.measure || spec.measure === '*') measureSql = '*';
+    else if (allowed.has(spec.measure)) measureSql = spec.measure;
+    else return { error: `Unknown measure for source ${spec.source}: ${spec.measure}` };
+  } else {
+    if (!allowed.has(spec.measure)) return { error: `Unknown measure for source ${spec.source}: ${spec.measure}` };
+    measureSql = spec.measure;
+  }
+
+  const params: unknown[] = [];
+  const where: string[] = [];
+  for (const f of spec.filters ?? []) {
+    if (!allowed.has(f.field)) return { error: `Unknown filter column for source ${spec.source}: ${f.field}` };
+    if (!FILTER_OPS.includes(f.op)) return { error: `Unsupported filter op: ${f.op}` };
+    params.push(f.value);
+    where.push(`${f.field} ${f.op} $${params.length}`);
+  }
+  if (asOf && spec.asOfField) {
+    if (!allowed.has(spec.asOfField)) return { error: `Unknown asOf column for source ${spec.source}: ${spec.asOfField}` };
+    params.push(asOf);
+    where.push(`${spec.asOfField} <= $${params.length}`);
+  }
+
+  const measureExpr = spec.agg === 'count' ? `count(${measureSql})` : `coalesce(${spec.agg}(${measureSql}), 0)`;
+  let text = `select ${measureExpr} as value from ${src.table}`;
+  if (where.length > 0) text += ` where ${where.join(' and ')}`;
+  return { text, params };
+}
+
+/** Validate that a metric expression builds cleanly (catches bad source/measure at write time). */
+function validateExpression(expr: MetricExpression): ValidationError | null {
+  const specs: AggSpec[] = expr.kind === 'ratio' ? [expr.numerator, expr.denominator] : [expr as AggSpec];
+  for (const s of specs) {
+    const built = buildAggregation(s);
+    if (isValidationError(built)) return built;
+  }
+  return null;
+}
+
+/** Resolve a metric expression to a numeric value against live data. */
+async function resolveMetric(
+  db: Db,
+  expr: MetricExpression,
+  asOf?: string | null,
+): Promise<{ value: number | null } | ValidationError> {
+  const one = async (spec: AggSpec): Promise<number | ValidationError> => {
+    const built = buildAggregation(spec, asOf);
+    if (isValidationError(built)) return built;
+    const { rows } = await db.query<{ value: string | number }>(built.text, built.params);
+    return Number(rows[0]?.value ?? 0);
+  };
+  if (expr.kind === 'ratio') {
+    const num = await one(expr.numerator);
+    if (typeof num !== 'number') return num;
+    const den = await one(expr.denominator);
+    if (typeof den !== 'number') return den;
+    return { value: den === 0 ? null : num / den };
+  }
+  const value = await one(expr as AggSpec);
+  if (typeof value !== 'number') return value;
+  return { value };
 }
 
 function toCsv(rows: Record<string, unknown>[]): string {
@@ -344,6 +455,182 @@ export async function reportingModule(app: FastifyInstance): Promise<void> {
         const body = rows.length > 0 ? toCsv(rows) : header;
         reply.header('content-type', 'text/csv');
         return body;
+      });
+    },
+  );
+
+  // Export a definition's results as a real binary .xlsx workbook.
+  app.get<{ Params: { id: string } }>(
+    '/api/reports/definitions/:id/export.xlsx',
+    { preHandler: requirePermission('reporting:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const def = await loadDefinition(db, req.params.id);
+        if (!def) {
+          reply.code(404);
+          return { error: 'Definition not found' };
+        }
+        const built = buildQuery({ source: def.source, columns: def.columns, filters: def.filters, grouping: def.grouping });
+        if (isValidationError(built)) {
+          reply.code(400);
+          return built;
+        }
+        const { rows } = await db.query<Record<string, unknown>>(built.text, built.params);
+        const xlsx = buildXlsx(def.columns, rows, def.name.slice(0, 31));
+        reply.header('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        reply.header('content-disposition', `attachment; filename="${def.key}.xlsx"`);
+        return reply.send(xlsx);
+      });
+    },
+  );
+
+  // Export a definition's results as a real binary .pdf (simple tabular text PDF).
+  app.get<{ Params: { id: string } }>(
+    '/api/reports/definitions/:id/export.pdf',
+    { preHandler: requirePermission('reporting:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const def = await loadDefinition(db, req.params.id);
+        if (!def) {
+          reply.code(404);
+          return { error: 'Definition not found' };
+        }
+        const built = buildQuery({ source: def.source, columns: def.columns, filters: def.filters, grouping: def.grouping });
+        if (isValidationError(built)) {
+          reply.code(400);
+          return built;
+        }
+        const { rows } = await db.query<Record<string, unknown>>(built.text, built.params);
+        const pdf = buildPdf({
+          title: def.name,
+          subtitle: `Source: ${def.source} - ${rows.length} row(s) - generated ${new Date().toISOString().slice(0, 10)}`,
+          headers: def.columns,
+          rows,
+        });
+        reply.header('content-type', 'application/pdf');
+        reply.header('content-disposition', `attachment; filename="${def.key}.pdf"`);
+        return reply.send(pdf);
+      });
+    },
+  );
+
+  // ---- Semantic metric layer -----------------------------------------------
+  // List metrics visible to the tenant (its own + global defaults via RLS).
+  app.get('/api/reports/metrics', { preHandler: requirePermission('reporting:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query(
+        `select id, key, name, description, source, expression, unit, format,
+                (tenant_id is null) as "isGlobal",
+                to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') as "createdAt"
+           from metric_definition
+          order by (tenant_id is null) desc, key`,
+      );
+      return { metrics: rows };
+    });
+  });
+
+  // Define a (tenant-scoped) metric.
+  const createMetricSchema = z.object({
+    key: z.string().min(1),
+    name: z.string().min(1),
+    description: z.string().optional(),
+    source: z.string().min(1),
+    expression: expressionSchema,
+    unit: z.string().optional(),
+    format: z.string().optional(),
+  });
+  app.post('/api/reports/metrics', { preHandler: requirePermission('reporting:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const parsed = createMetricSchema.safeParse(req.body);
+    if (!parsed.success) {
+      reply.code(400);
+      return { error: 'Invalid metric definition', details: parsed.error.flatten() };
+    }
+    const b = parsed.data;
+    if (!SOURCES[b.source as SourceKey]) {
+      reply.code(400);
+      return { error: `Unknown source: ${b.source}` };
+    }
+    const exprError = validateExpression(b.expression);
+    if (exprError) {
+      reply.code(400);
+      return exprError;
+    }
+    return runAs(ctx, async (db) => {
+      try {
+        const { rows } = await db.query<{ id: string }>(
+          `insert into metric_definition (tenant_id, key, name, description, source, expression, unit, format, created_by)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id`,
+          [
+            ctx.tenantId,
+            b.key,
+            b.name,
+            b.description ?? null,
+            b.source,
+            JSON.stringify(b.expression),
+            b.unit ?? null,
+            b.format ?? null,
+            ctx.userId,
+          ],
+        );
+        const id = rows[0]!.id;
+        await writeAudit(db, ctx, {
+          action: 'create',
+          entityType: 'metric_definition',
+          entityId: id,
+          after: { key: b.key, name: b.name, source: b.source },
+          actorLabel: req.auth?.displayName,
+        });
+        reply.code(201);
+        return { id, key: b.key };
+      } catch {
+        reply.code(409);
+        return { error: 'A metric with that key already exists' };
+      }
+    });
+  });
+
+  // Resolve a metric to its current value (tenant metric overrides a global default).
+  app.get<{ Params: { key: string }; Querystring: { asOf?: string } }>(
+    '/api/reports/metrics/:key/value',
+    { preHandler: requirePermission('reporting:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const asOf = req.query.asOf ?? null;
+      if (asOf && !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
+        reply.code(400);
+        return { error: 'asOf must be YYYY-MM-DD' };
+      }
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{ key: string; name: string; expression: MetricExpression; unit: string | null; format: string | null }>(
+          `select key, name, expression, unit, format
+             from metric_definition
+            where key = $1
+            order by tenant_id nulls last
+            limit 1`,
+          [req.params.key],
+        );
+        const metric = rows[0];
+        if (!metric) {
+          reply.code(404);
+          return { error: 'Metric not found' };
+        }
+        const resolved = await resolveMetric(db, metric.expression, asOf);
+        if (isValidationError(resolved)) {
+          reply.code(400);
+          return resolved;
+        }
+        return {
+          key: metric.key,
+          name: metric.name,
+          value: resolved.value,
+          unit: metric.unit,
+          format: metric.format,
+          asOf: asOf,
+        };
       });
     },
   );

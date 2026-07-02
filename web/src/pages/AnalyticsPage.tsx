@@ -6,7 +6,7 @@
  * EP curve and a PML profile - rates are explicit assumptions, never invented).
  */
 
-import { DollarSign, Grid2x2, Hash, Sigma, Target, TrendingUp } from 'lucide-react';
+import { Columns3, DollarSign, Grid2x2, Hash, Sigma, Target, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
@@ -28,6 +28,13 @@ import styles from './AnalyticsPage.module.css';
 interface SourceMeta { key: string; label: string; dimensions: { key: string; label: string }[]; measures: { field: string; label: string }[] }
 interface PivotCell { key: Record<string, unknown>; values: Record<string, number>; count: number }
 interface PivotResult { source: string; dimensions: string[]; cells: PivotCell[]; totals: Record<string, number>; factCount: number }
+interface GridRow { row: string; cells: Record<string, number>; total: number; count: number }
+interface GridResult {
+  source: string; rowDimension: string; columnDimension: string;
+  measure: { field?: string; agg: string };
+  columns: string[]; rows: GridRow[];
+  columnTotals: Record<string, number>; grandTotal: number; factCount: number;
+}
 
 export function AnalyticsPage() {
   const [tab, setTab] = useState('pivot');
@@ -62,28 +69,39 @@ export function AnalyticsPage() {
 function PivotBuilder() {
   const sources = useQuery({ queryKey: ['analytics-sources'], queryFn: () => api<{ sources: SourceMeta[] }>('/api/analytics/sources') });
   const [sourceKey, setSourceKey] = useState('claim');
-  const [dimension, setDimension] = useState('');
+  const [rowDim, setRowDim] = useState('');
+  const [colDim, setColDim] = useState('');
   const [measureField, setMeasureField] = useState('');
-  const [result, setResult] = useState<PivotResult | null>(null);
+  const [agg, setAgg] = useState<'sum' | 'avg' | 'count'>('sum');
+  const [result, setResult] = useState<GridResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const source = sources.data?.sources.find((s) => s.key === sourceKey);
   const dims = source?.dimensions ?? [];
   const measures = source?.measures ?? [];
-  const activeDim = dimension || dims[0]?.key || '';
+  const activeRow = rowDim || dims[0]?.key || '';
+  // Default the column dimension to a different one so the grid is genuinely 2-D.
+  const activeCol = colDim || dims.find((d) => d.key !== activeRow)?.key || '';
   const activeMeasure = measureField || measures[0]?.field || '';
+  const needsField = agg !== 'count';
 
   const run = async () => {
+    setError(null);
+    if (activeRow === activeCol) { setError('Pick two different dimensions for the rows and columns.'); return; }
     setBusy(true);
     try {
-      const r = await api<PivotResult>('/api/analytics/pivot', {
+      const r = await api<GridResult>('/api/analytics/grid', {
         body: {
           source: sourceKey,
-          dimensions: activeDim ? [activeDim] : [],
-          measures: [{ field: activeMeasure, agg: 'sum', as: 'total' }, { agg: 'count' }],
+          rowDimension: activeRow,
+          columnDimension: activeCol,
+          measure: needsField ? { field: activeMeasure, agg } : { agg },
         },
       });
       setResult(r);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Could not run the pivot.');
     } finally {
       setBusy(false);
     }
@@ -91,49 +109,101 @@ function PivotBuilder() {
 
   if (sources.isLoading) return <PageLoader label="Loading sources…" />;
 
-  const cols: Column<PivotCell>[] = [
-    { key: 'dim', header: dims.find((d) => d.key === activeDim)?.label ?? 'Group', render: (c) => <span className={shared.cellMain}>{String(c.key[activeDim] ?? '-')}</span> },
-    { key: 'total', header: 'Total', align: 'right', sortValue: (c) => c.values.total ?? 0, render: (c) => formatMoney(c.values.total) },
-    { key: 'count', header: 'Facts', align: 'right', render: (c) => formatNumber(c.count) },
-  ];
+  // Money measures are minor units; count/plain measures render as numbers.
+  const isMoney = (result?.measure.agg ?? '') !== 'count' && /Minor$/.test(result?.measure.field ?? '');
+  const fmt = (v: number) => (isMoney ? formatMoney(v) : formatNumber(v));
+  const dimLabel = (key: string) => dims.find((d) => d.key === key)?.label ?? key;
 
   return (
     <div className={styles.stack5}>
       <div className={styles.toolbar}>
         <div className={styles.field}>
           <FormField label="Fact source">
-            <Select value={sourceKey} onChange={(e) => { setSourceKey(e.target.value); setDimension(''); setMeasureField(''); setResult(null); }}>
+            <Select value={sourceKey} onChange={(e) => { setSourceKey(e.target.value); setRowDim(''); setColDim(''); setMeasureField(''); setResult(null); }}>
               {sources.data?.sources.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
             </Select>
           </FormField>
         </div>
         <div className={styles.field}>
-          <FormField label="Group by">
-            <Select value={activeDim} onChange={(e) => setDimension(e.target.value)}>
+          <FormField label="Rows">
+            <Select value={activeRow} onChange={(e) => setRowDim(e.target.value)}>
               {dims.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
             </Select>
           </FormField>
         </div>
         <div className={styles.field}>
-          <FormField label="Measure (sum)">
-            <Select value={activeMeasure} onChange={(e) => setMeasureField(e.target.value)}>
-              {measures.map((m) => <option key={m.field} value={m.field}>{m.label}</option>)}
+          <FormField label="Columns">
+            <Select value={activeCol} onChange={(e) => setColDim(e.target.value)}>
+              {dims.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
             </Select>
           </FormField>
         </div>
+        <div className={styles.field}>
+          <FormField label="Aggregation">
+            <Select value={agg} onChange={(e) => setAgg(e.target.value as 'sum' | 'avg' | 'count')}>
+              <option value="sum">Sum</option>
+              <option value="avg">Average</option>
+              <option value="count">Count</option>
+            </Select>
+          </FormField>
+        </div>
+        {needsField && (
+          <div className={styles.field}>
+            <FormField label="Measure">
+              <Select value={activeMeasure} onChange={(e) => setMeasureField(e.target.value)}>
+                {measures.map((m) => <option key={m.field} value={m.field}>{m.label}</option>)}
+              </Select>
+            </FormField>
+          </div>
+        )}
         <Button variant="primary" onClick={run} loading={busy}>Run pivot</Button>
       </div>
+      {error && <p className={shared.cellSub} style={{ color: 'var(--danger)' }}>{error}</p>}
 
       {result && (
-        <>
-          <div className={shared.kpiGrid}>
-            <KpiCard label="Groups" value={formatNumber(result.cells.length)} icon={<Grid2x2 size={20} />} accent="var(--primary)" />
-            <KpiCard label="Facts" value={formatNumber(result.factCount)} icon={<Hash size={20} />} accent="var(--accent-violet)" />
-            <KpiCard label="Grand total" value={formatMoney(result.totals.total)} icon={<DollarSign size={20} />} accent="var(--accent-emerald)" />
-          </div>
-          <Table columns={cols} rows={result.cells} rowKey={(c) => JSON.stringify(c.key)}
-            empty={<EmptyState title="No facts" message="No rows match this source yet." />} />
-        </>
+        result.rows.length === 0 ? (
+          <EmptyState title="No facts" message="No rows match this source yet." />
+        ) : (
+          <>
+            <div className={shared.kpiGrid}>
+              <KpiCard label="Rows" value={formatNumber(result.rows.length)} icon={<Grid2x2 size={20} />} accent="var(--primary)" />
+              <KpiCard label="Columns" value={formatNumber(result.columns.length)} icon={<Columns3 size={20} />} accent="var(--accent-violet)" />
+              <KpiCard label="Facts" value={formatNumber(result.factCount)} icon={<Hash size={20} />} accent="var(--accent-cyan)" />
+              <KpiCard label="Grand total" value={fmt(result.grandTotal)} icon={<DollarSign size={20} />} accent="var(--accent-emerald)" />
+            </div>
+            <div className={styles.gridScroll}>
+              <table className={styles.pivotGrid}>
+                <thead>
+                  <tr>
+                    <th className={styles.pivotCorner}>{dimLabel(result.rowDimension)} \ {dimLabel(result.columnDimension)}</th>
+                    {result.columns.map((c) => <th key={c} className={styles.pivotColHead}>{titleCase(c)}</th>)}
+                    <th className={styles.pivotTotalHead}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((r) => (
+                    <tr key={r.row}>
+                      <th className={styles.pivotRowHead}>{titleCase(r.row)}</th>
+                      {result.columns.map((c) => (
+                        <td key={c} className={styles.pivotCell}>
+                          {r.cells[c] !== undefined ? fmt(r.cells[c]!) : <span className={styles.pivotEmpty}>–</span>}
+                        </td>
+                      ))}
+                      <td className={styles.pivotRowTotal}>{fmt(r.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th className={styles.pivotRowHead}>Total</th>
+                    {result.columns.map((c) => <td key={c} className={styles.pivotColTotal}>{fmt(result.columnTotals[c] ?? 0)}</td>)}
+                    <td className={styles.pivotGrand}>{fmt(result.grandTotal)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </>
+        )
       )}
     </div>
   );

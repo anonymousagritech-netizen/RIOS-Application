@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Crown, Landmark, Gavel, Activity, Banknote, ShieldAlert, Globe2, Radar,
@@ -45,7 +46,19 @@ function kpiValue(k: Kpi): string {
   return formatNumber(k.value);
 }
 
+/**
+ * Drill-through map: a status chart title -> the filtered list route for the
+ * clicked segment. Only charts whose segments map exactly onto a list filter the
+ * target page honours are wired (treaty/claim status), so we never fabricate a
+ * filtered view.
+ */
+export const CHART_DRILL: Record<string, (label: string) => string> = {
+  'Treaties by status': (l) => `/treaties?status=${encodeURIComponent(l)}`,
+  'Claims by status': (l) => `/claims?status=${encodeURIComponent(l)}`,
+};
+
 export function ExecutiveDashboardPage() {
+  const navigate = useNavigate();
   const [active, setActive] = useState('CEO');
   const { data, isLoading } = useQuery({
     queryKey: ['executive'],
@@ -123,6 +136,8 @@ export function ExecutiveDashboardPage() {
                 : c.data;
               const total = chartData.reduce((s, d) => s + d.value, 0);
               const title = c.money ? `${c.title} (USD m)` : c.title;
+              const drill = CHART_DRILL[c.title];
+              const onSegmentClick = drill ? (d: ChartDatum) => navigate(drill(d.label)) : undefined;
               return (
                 <Card key={`${c.title}-${i}`}>
                   <CardHeader title={title} />
@@ -132,9 +147,10 @@ export function ExecutiveDashboardPage() {
                       metaColors={meta}
                       centerValue={formatNumber(total)}
                       centerLabel="total"
+                      onSegmentClick={onSegmentClick}
                     />
                   ) : (
-                    <BarChart data={chartData} metaColors={meta} />
+                    <BarChart data={chartData} metaColors={meta} onSegmentClick={onSegmentClick} />
                   )}
                 </Card>
               );

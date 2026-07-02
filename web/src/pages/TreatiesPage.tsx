@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTreaties, useCreateTreaty, useCodeLists, useCurrencies, useStatusColors, useParties } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
@@ -26,7 +26,15 @@ const KINDS = ['TREATY', 'FACULTATIVE'];
 export function TreatiesPage() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
-  const [status, setStatus] = useState('');
+  // Status filter is URL-backed so dashboard/analytics drill-throughs can deep-link
+  // (e.g. /treaties?status=BOUND); the dropdown keeps the query param in sync.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const status = searchParams.get('status') ?? '';
+  const setStatus = (v: string) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (v) next.set('status', v); else next.delete('status');
+    return next;
+  }, { replace: true });
   const [kind, setKind] = useState('');
   const [showNew, setShowNew] = useState(false);
 
