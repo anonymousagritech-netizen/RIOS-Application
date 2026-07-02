@@ -43,6 +43,7 @@ export * from './retention.js';
 export * from './masking.js';
 export * from './scheduler.js';
 export * from './delegation.js';
+export * from './bindingAuthority.js';
 export * from './performance.js';
 export * from './product.js';
 export * from './capacity.js';
