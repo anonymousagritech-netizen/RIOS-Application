@@ -43,6 +43,7 @@ const WorkflowCenter = lazyPage(() => import('../pages/workspaces'), 'WorkflowCe
 const IntegrationHubWorkspace = lazyPage(() => import('../pages/workspaces'), 'IntegrationHubWorkspace');
 const AutomationStudioWorkspace = lazyPage(() => import('../pages/workspaces'), 'AutomationStudioWorkspace');
 const TreatyDetailPage = lazyPage(() => import('../pages/TreatyDetailPage'), 'TreatyDetailPage');
+const FacultativeDetailPage = lazyPage(() => import('../pages/FacultativeDetailPage'), 'FacultativeDetailPage');
 const PartiesPage = lazyPage(() => import('../pages/PartiesPage'), 'PartiesPage');
 const PartyDetailPage = lazyPage(() => import('../pages/PartyDetailPage'), 'PartyDetailPage');
 const ClaimsPage = lazyPage(() => import('../pages/ClaimsPage'), 'ClaimsPage');
@@ -161,6 +162,7 @@ export function App() {
           <Route path="/claims/:id" element={<ClaimDetailPage />} />
           <Route path="/accounting" element={<AccountingPage />} />
           <Route path="/facultative" element={<FacultativePage />} />
+          <Route path="/facultative/:id" element={<FacultativeDetailPage />} />
           <Route path="/retrocession" element={<RetrocessionPage />} />
           <Route path="/placement" element={<PlacementPage />} />
           <Route path="/pricing" element={<PricingPage />} />

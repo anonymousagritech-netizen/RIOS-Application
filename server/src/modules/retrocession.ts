@@ -25,30 +25,71 @@ const PREMIUM_EVENT_TYPES = ['DEPOSIT_PREMIUM', 'INSTALMENT_PREMIUM', 'ADJUSTMEN
 // Loss-type financial events count toward incurred-paid losses (gross inwards vs ceded outwards).
 const LOSS_EVENT_TYPES = ['PAID_LOSS', 'CASH_LOSS'];
 
+// Typed retro slip terms, mirroring the treaty term set (§28.1). The structure-
+// specific commercial terms of the outward programme live in the contract's term
+// bag; unknown keys pass through so tenant vocabulary is not rejected. Amounts
+// are major units (converted to minor at use); percentages are 0-100.
+const retroTermsSchema = z
+  .object({
+    attachment: z.number().nonnegative().optional(),
+    limit: z.number().nonnegative().optional(),
+    premium: z.number().nonnegative().optional(),
+    commissionPct: z.number().min(0).max(100).optional(),
+    cessionPct: z.number().min(0).max(100).optional(),
+    retentionLines: z.number().nonnegative().optional(),
+    maxLines: z.number().int().nonnegative().optional(),
+    rateOnLine: z.number().min(0).max(100).optional(),
+  })
+  .passthrough();
+
 const createRetrocessionSchema = z.object({
   name: z.string().min(1),
   basis: z.enum(['PROPORTIONAL', 'NON_PROPORTIONAL']),
+  proportionalType: z.enum(['QUOTA_SHARE', 'SURPLUS']).optional(),
   npType: z.enum(['PER_RISK_XL', 'CAT_XL', 'AGG_XL', 'STOP_LOSS']).optional(),
   currency: z.string().length(3),
   cedentPartyId: z.string().uuid().optional(),
   retrocessionairePartyId: z.string().uuid().optional(),
+  periodStart: z.string().optional(),
+  periodEnd: z.string().optional(),
+  terms: retroTermsSchema.optional(),
 });
 
 // A cession allocation rule: which retro contract takes what share of which
 // inward premium/claim events (Tier-2 gap #10). Business meaning of the LOB
-// filter comes from the line_of_business code list, not a hard-coded enum.
-const allocationRuleSchema = z.object({
-  retroContractId: z.string().uuid(),
-  name: z.string().min(1),
-  appliesTo: z.enum(['PREMIUM', 'CLAIM', 'BOTH']),
-  lob: z.string().min(1).optional(),
-  currency: z.string().length(3).optional(),
-  periodStart: z.string().optional(),
-  periodEnd: z.string().optional(),
-  method: z.literal('QUOTA_SHARE').default('QUOTA_SHARE'),
-  cessionPct: z.number().gt(0).max(100),
-  priority: z.number().int().min(0).default(100),
-});
+// filter comes from the line_of_business code list, not a hard-coded enum. Each
+// method reads its own params; the domain engine does the math.
+const allocationRuleSchema = z
+  .object({
+    retroContractId: z.string().uuid(),
+    name: z.string().min(1),
+    appliesTo: z.enum(['PREMIUM', 'CLAIM', 'BOTH']),
+    lob: z.string().min(1).optional(),
+    currency: z.string().length(3).optional(),
+    periodStart: z.string().optional(),
+    periodEnd: z.string().optional(),
+    method: z.enum(['QUOTA_SHARE', 'SURPLUS', 'XL']).default('QUOTA_SHARE'),
+    // QUOTA_SHARE
+    cessionPct: z.number().gt(0).max(100).optional(),
+    // SURPLUS (integer minor units for the line; lines of capacity)
+    retentionMinor: z.number().int().positive().optional(),
+    maxLines: z.number().int().min(0).optional(),
+    // XL (integer minor units)
+    attachmentMinor: z.number().int().min(0).optional(),
+    limitMinor: z.number().int().positive().optional(),
+    priority: z.number().int().min(0).default(100),
+  })
+  .superRefine((b, ctx) => {
+    if (b.method === 'QUOTA_SHARE' && b.cessionPct === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['cessionPct'], message: 'cessionPct is required for QUOTA_SHARE' });
+    }
+    if (b.method === 'SURPLUS' && (b.retentionMinor === undefined || b.maxLines === undefined)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['retentionMinor'], message: 'retentionMinor and maxLines are required for SURPLUS' });
+    }
+    if (b.method === 'XL' && (b.attachmentMinor === undefined || b.limitMinor === undefined)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['attachmentMinor'], message: 'attachmentMinor and limitMinor are required for XL' });
+    }
+  });
 
 const allocationRunSchema = z.object({
   from: z.string().optional(),
@@ -63,14 +104,20 @@ interface AllocationRuleRow {
   currency: string | null;
   period_start: string | null;
   period_end: string | null;
-  cession_pct: number;
+  method: string;
+  cession_pct: number | null;
+  retention_minor: number | null;
+  max_lines: number | null;
+  attachment_minor: number | null;
+  limit_minor: number | null;
   priority: number;
 }
 
 /**
  * Map a persisted rule row onto the pure domain rule shape. LOB columns are
  * citext (case-insensitive) in the DB, while the domain predicate compares
- * exactly, so both sides are lower-cased at the comparison boundary.
+ * exactly, so both sides are lower-cased at the comparison boundary. Each method
+ * carries its own params (validated by the DB check + the domain engine).
  */
 function toDomainRule(r: AllocationRuleRow): RetroAllocationRule {
   return {
@@ -83,8 +130,12 @@ function toDomainRule(r: AllocationRuleRow): RetroAllocationRule {
       periodStart: r.period_start,
       periodEnd: r.period_end,
     },
-    method: 'QUOTA_SHARE',
-    cessionPct: Number(r.cession_pct),
+    method: r.method as RetroAllocationRule['method'],
+    cessionPct: r.cession_pct === null ? undefined : Number(r.cession_pct),
+    retentionMinor: r.retention_minor === null ? undefined : Number(r.retention_minor),
+    maxLines: r.max_lines === null ? undefined : Number(r.max_lines),
+    attachmentMinor: r.attachment_minor === null ? undefined : Number(r.attachment_minor),
+    limitMinor: r.limit_minor === null ? undefined : Number(r.limit_minor),
     priority: r.priority,
   };
 }
@@ -100,7 +151,8 @@ export async function retrocessionModule(app: FastifyInstance): Promise<void> {
           `select c.id, c.reference, c.name, c.contract_kind as "contractKind", c.basis,
                   c.proportional_type as "proportionalType", c.np_type as "npType",
                   c.line_of_business as "lineOfBusiness", c.direction, c.currency,
-                  c.period_start as "periodStart", c.period_end as "periodEnd", c.status,
+                  to_char(c.period_start, 'YYYY-MM-DD') as "periodStart",
+                  to_char(c.period_end, 'YYYY-MM-DD') as "periodEnd", c.status,
                   ced.short_name as "cedentName"
              from contract c
              left join party ced on ced.id = c.cedent_party_id
@@ -252,16 +304,32 @@ export async function retrocessionModule(app: FastifyInstance): Promise<void> {
       return { error: 'Invalid retrocession', details: parsed.error.flatten() };
     }
     const b = parsed.data;
+    if (b.periodStart && b.periodEnd && b.periodStart > b.periodEnd) {
+      reply.code(400);
+      return { error: 'periodStart must not be after periodEnd' };
+    }
     return runAs(ctx, async (db) => {
       const ref = await nextReference(db, ctx.tenantId, 'retrocession_reference', 'RETRO');
       const { rows } = await db.query<{ id: string }>(
         `insert into contract
-           (tenant_id, reference, name, contract_kind, basis, np_type,
-            direction, cedent_party_id, currency, status, created_by)
-         values ($1,$2,$3,'RETROCESSION',$4,$5,'OUTWARDS',$6,$7,'DRAFT',$8) returning id`,
-        [ctx.tenantId, ref, b.name, b.basis, b.npType ?? null, b.cedentPartyId ?? null, b.currency, ctx.userId],
+           (tenant_id, reference, name, contract_kind, basis, proportional_type, np_type,
+            direction, cedent_party_id, currency, period_start, period_end, status, created_by)
+         values ($1,$2,$3,'RETROCESSION',$4,$5,$6,'OUTWARDS',$7,$8,$9::date,$10::date,'DRAFT',$11) returning id`,
+        [
+          ctx.tenantId, ref, b.name, b.basis, b.proportionalType ?? null, b.npType ?? null,
+          b.cedentPartyId ?? null, b.currency, b.periodStart ?? null, b.periodEnd ?? null, ctx.userId,
+        ],
       );
       const id = rows[0]!.id;
+
+      // Slip terms of the outward programme → the contract's first term set (§28.1),
+      // the same shape and path the inward treaty uses.
+      if (b.terms && Object.keys(b.terms).length > 0) {
+        await db.query(
+          `insert into term_set (tenant_id, contract_id, terms, created_by) values ($1,$2,$3,$4)`,
+          [ctx.tenantId, id, JSON.stringify(b.terms), ctx.userId],
+        );
+      }
 
       // The retrocessionaire takes the outwards line (recorded as a participation).
       if (b.retrocessionairePartyId) {
@@ -276,7 +344,11 @@ export async function retrocessionModule(app: FastifyInstance): Promise<void> {
         action: 'create',
         entityType: 'contract',
         entityId: id,
-        after: { name: b.name, contractKind: 'RETROCESSION', direction: 'OUTWARDS', status: 'DRAFT' },
+        after: {
+          name: b.name, contractKind: 'RETROCESSION', direction: 'OUTWARDS', status: 'DRAFT',
+          basis: b.basis, proportionalType: b.proportionalType ?? null, npType: b.npType ?? null,
+          periodStart: b.periodStart ?? null, periodEnd: b.periodEnd ?? null,
+        },
         actorLabel: req.auth?.displayName,
       });
       reply.code(201);
@@ -324,12 +396,15 @@ export async function retrocessionModule(app: FastifyInstance): Promise<void> {
         const { rows } = await db.query<{ id: string }>(
           `insert into retro_allocation_rule
              (tenant_id, retro_contract_id, name, applies_to, lob, currency,
-              period_start, period_end, method, cession_pct, priority, created_by)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
+              period_start, period_end, method, cession_pct,
+              retention_minor, max_lines, attachment_minor, limit_minor, priority, created_by)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning id`,
           [
             ctx.tenantId, b.retroContractId, b.name, b.appliesTo, b.lob ?? null,
             b.currency?.toUpperCase() ?? null, b.periodStart ?? null, b.periodEnd ?? null,
-            b.method, b.cessionPct, b.priority, ctx.userId,
+            b.method, b.cessionPct ?? null,
+            b.retentionMinor ?? null, b.maxLines ?? null, b.attachmentMinor ?? null, b.limitMinor ?? null,
+            b.priority, ctx.userId,
           ],
         );
         const id = rows[0]!.id;
@@ -339,13 +414,21 @@ export async function retrocessionModule(app: FastifyInstance): Promise<void> {
           entityId: id,
           after: {
             name: b.name, retroContractId: b.retroContractId, appliesTo: b.appliesTo,
-            method: b.method, cessionPct: b.cessionPct, lob: b.lob ?? null,
-            currency: b.currency?.toUpperCase() ?? null, priority: b.priority,
+            method: b.method, cessionPct: b.cessionPct ?? null,
+            retentionMinor: b.retentionMinor ?? null, maxLines: b.maxLines ?? null,
+            attachmentMinor: b.attachmentMinor ?? null, limitMinor: b.limitMinor ?? null,
+            lob: b.lob ?? null, currency: b.currency?.toUpperCase() ?? null, priority: b.priority,
           },
           actorLabel: req.auth?.displayName,
         });
         reply.code(201);
-        return { id, name: b.name, appliesTo: b.appliesTo, method: b.method, cessionPct: b.cessionPct, priority: b.priority, active: true };
+        return {
+          id, name: b.name, appliesTo: b.appliesTo, method: b.method,
+          cessionPct: b.cessionPct ?? null,
+          retentionMinor: b.retentionMinor ?? null, maxLines: b.maxLines ?? null,
+          attachmentMinor: b.attachmentMinor ?? null, limitMinor: b.limitMinor ?? null,
+          priority: b.priority, active: true,
+        };
       });
     },
   );
@@ -361,8 +444,10 @@ export async function retrocessionModule(app: FastifyInstance): Promise<void> {
                   rc.name as "retroContractName", r.name, r.applies_to as "appliesTo", r.lob, r.currency,
                   to_char(r.period_start, 'YYYY-MM-DD') as "periodStart",
                   to_char(r.period_end, 'YYYY-MM-DD') as "periodEnd",
-                  r.method, r.cession_pct as "cessionPct", r.priority, r.active,
-                  r.created_at as "createdAt"
+                  r.method, r.cession_pct as "cessionPct",
+                  r.retention_minor as "retentionMinor", r.max_lines as "maxLines",
+                  r.attachment_minor as "attachmentMinor", r.limit_minor as "limitMinor",
+                  r.priority, r.active, r.created_at as "createdAt"
              from retro_allocation_rule r
              join contract rc on rc.id = r.retro_contract_id
             order by r.priority, r.created_at`,
@@ -419,7 +504,8 @@ export async function retrocessionModule(app: FastifyInstance): Promise<void> {
           `select r.id, r.retro_contract_id, r.applies_to, r.lob, r.currency,
                   to_char(r.period_start, 'YYYY-MM-DD') as period_start,
                   to_char(r.period_end, 'YYYY-MM-DD') as period_end,
-                  r.cession_pct, r.priority
+                  r.method, r.cession_pct, r.retention_minor, r.max_lines,
+                  r.attachment_minor, r.limit_minor, r.priority
              from retro_allocation_rule r
              join contract rc on rc.id = r.retro_contract_id
             where r.active and not rc.is_deleted

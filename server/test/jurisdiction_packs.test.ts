@@ -198,7 +198,10 @@ describe('jurisdiction report packs (content over the report-pack assembler)', (
 
     const run = await app.inject({ method: 'POST', url: '/api/retrocession/allocation/run', headers: auth, payload: {} });
     expect(run.statusCode).toBe(200);
-    expect(run.json().allocated).toBeGreaterThanOrEqual(2);
+    // Tenant-wide idempotent run: under parallel tests a concurrent run may have
+    // already inserted these two cessions (reported as skipped), so assert the
+    // robust invariant. The Schedule F assembly below verifies the ceded book.
+    expect(run.json().allocated + run.json().skipped).toBeGreaterThanOrEqual(2);
   });
 
   it('assembles NAIC Schedule F with the security-driven provision for reinsurance', async () => {
