@@ -86,6 +86,10 @@ export interface ContractDTO {
   direction: string;
   cedentPartyId: string | null;
   brokerPartyId: string | null;
+  /** Joined from the party table; present on the detail endpoint, null-able. */
+  cedentName?: string | null;
+  /** Joined from the party table; present on the detail endpoint, null-able. */
+  brokerName?: string | null;
   currency: string;
   periodStart: string | null;
   periodEnd: string | null;

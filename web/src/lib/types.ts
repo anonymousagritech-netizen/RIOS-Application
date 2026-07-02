@@ -58,7 +58,13 @@ export interface TreatyListItem {
 }
 export interface TreatiesResponse { treaties: TreatyListItem[]; }
 
-export type TreatyDetail = ContractDTO & { cedentName?: string | null };
+/** Full treaty detail as returned by GET /api/treaties/:id — includes joined party names. */
+export type TreatyDetail = ContractDTO & {
+  /** Short name of the cedent party, joined server-side. */
+  cedentName?: string | null;
+  /** Short name of the broker party, joined server-side. */
+  brokerName?: string | null;
+};
 
 export interface TransitionResponse {
   id: string;

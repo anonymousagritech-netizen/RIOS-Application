@@ -418,8 +418,12 @@ async function loadContract(db: Db, id: string): Promise<(ContractRow & Record<s
             c.proportional_type as "proportionalType", c.np_type as "npType",
             c.line_of_business as "lineOfBusiness", c.direction, c.currency,
             c.cedent_party_id as "cedentPartyId", c.broker_party_id as "brokerPartyId",
+            ced.short_name as "cedentName", brk.short_name as "brokerName",
             c.period_start as "periodStart", c.period_end as "periodEnd", c.status, c.wording_ref as "wordingRef"
-       from contract c where c.id = $1 and not c.is_deleted`,
+       from contract c
+       left join party ced on ced.id = c.cedent_party_id
+       left join party brk on brk.id = c.broker_party_id
+      where c.id = $1 and not c.is_deleted`,
     [id],
   );
   const c = rows[0] as (ContractRow & Record<string, unknown>) | undefined;
