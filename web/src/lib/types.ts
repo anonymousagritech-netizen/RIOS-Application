@@ -27,8 +27,19 @@ export interface CurrencyDTO {
   name: string;
   minorUnits: number;
   symbol: string;
+  isActive?: boolean;
 }
 export interface CurrenciesResponse { currencies: CurrencyDTO[]; }
+
+export interface ExchangeRateDTO {
+  id: string;
+  fromCcy: string;
+  toCcy: string;
+  rate: number;
+  rateDate: string;
+  source: string;
+}
+export interface ExchangeRatesResponse { rates: ExchangeRateDTO[]; }
 
 export interface PartiesResponse { parties: PartyListItem[]; }
 export interface PartyListItem extends PartyDTO {}

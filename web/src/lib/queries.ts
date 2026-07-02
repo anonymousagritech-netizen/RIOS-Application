@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs } from './api';
 import type {
-  DashboardSummary, CodeListsResponse, CurrenciesResponse, PartiesResponse,
-  PartyDetail, TreatiesResponse, TreatyDetail, FinancialEventsResponse,
+  DashboardSummary, CodeListsResponse, CurrenciesResponse, CurrencyDTO,
+  ExchangeRatesResponse, ExchangeRateDTO,
+  PartiesResponse, PartyDetail, TreatiesResponse, TreatyDetail, FinancialEventsResponse,
   StatementResponse, PostResponse, ClaimsResponse, ClaimDetail,
   TransitionResponse, AssistantReply,
 } from './types';
@@ -39,6 +40,32 @@ export function useAddCodeValue(key: string) {
     mutationFn: (body: { code: string; label: string; meta?: Record<string, unknown> }) =>
       api<CodeValueDTO>(`/api/config/code-lists/${key}/values`, { body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['code-lists'] }),
+  });
+}
+
+export function useAddCurrency() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { code: string; name: string; symbol?: string; minorUnits?: number }) =>
+      api<CurrencyDTO>('/api/config/currencies', { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['currencies'] }),
+  });
+}
+
+export function useExchangeRates() {
+  return useQuery({
+    queryKey: ['exchange-rates'],
+    queryFn: () => api<ExchangeRatesResponse>('/api/config/exchange-rates'),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useAddExchangeRate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { fromCcy: string; toCcy: string; rate: number; rateDate?: string }) =>
+      api<ExchangeRateDTO>('/api/config/exchange-rates', { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['exchange-rates'] }),
   });
 }
 
