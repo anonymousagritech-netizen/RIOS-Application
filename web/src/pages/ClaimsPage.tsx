@@ -1,9 +1,9 @@
-import { Plus, ShieldAlert, FolderOpen, Coins, Wallet, CircleDollarSign } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Plus, ShieldAlert, FolderOpen, Coins, Wallet, CircleDollarSign, Download } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useClaims, useCreateClaim, useTreaties, useCurrencies, useStatusColors, useCodeLists } from '../lib/queries';
+import { useClaims, useCreateClaim, useTreaties, useCurrencies, useStatusColors, useCodeLists, usePreference } from '../lib/queries';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { api, downloadFile, qs } from '../lib/api';
 import { DynamicForm, collectVisibleValues, type FormContext } from '../lib/formEngine';
 import { LOB_CLASS_GROUPS } from '../lib/lobSchema';
 import { CLAIM_FNOL_GROUPS } from '../lib/claimSchema';
@@ -32,11 +32,34 @@ export function ClaimsPage() {
   // (e.g. /claims?status=OPEN); the dropdown keeps the query param in sync.
   const [searchParams, setSearchParams] = useSearchParams();
   const status = searchParams.get('status') ?? '';
-  const setStatus = (v: string) => setSearchParams((prev) => {
-    const next = new URLSearchParams(prev);
-    if (v) next.set('status', v); else next.delete('status');
-    return next;
-  }, { replace: true });
+
+  // Saved filter preference: persists the status filter across sessions.
+  // When the page loads without a URL param, restore the last-used status.
+  const { value: savedFilters, save: saveFilters } = usePreference('filters:claims', { status: '' });
+  const savedApplied = useRef(false);
+  useEffect(() => {
+    if (!savedApplied.current && savedFilters.status !== undefined) {
+      savedApplied.current = true;
+      // Only restore if the URL doesn't already specify a status (deep-link takes priority).
+      if (!searchParams.get('status') && savedFilters.status) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('status', savedFilters.status);
+          return next;
+        }, { replace: true });
+      }
+    }
+  }, [savedFilters]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setStatus = (v: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (v) next.set('status', v); else next.delete('status');
+      return next;
+    }, { replace: true });
+    void saveFilters({ status: v });
+  };
+
   const [showNew, setShowNew] = useState(false);
 
   const { data, isLoading } = useClaims({ status: status || undefined });
@@ -103,6 +126,14 @@ export function ClaimsPage() {
           </div>
           <div className={shared.spacer} />
           <span className={shared.cellSub}>{claims.length} result{claims.length === 1 ? '' : 's'}</span>
+          <Button
+            variant="ghost"
+            icon={<Download size={15} />}
+            onClick={() => downloadFile(`/api/claims/export.csv${qs({ status: status || undefined })}`, 'claims.csv')}
+            aria-label="Export claims as CSV"
+          >
+            Export CSV
+          </Button>
         </div>
 
         <Table

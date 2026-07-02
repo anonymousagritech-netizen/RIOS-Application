@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useTreaties, useCreateTreaty, useCodeLists, useCurrencies, useStatusColors, useParties } from '../lib/queries';
+import { useTreaties, useCreateTreaty, useCodeLists, useCurrencies, useStatusColors, useParties, usePreference } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -15,9 +15,9 @@ import { formatDate, titleCase } from '../lib/format';
 import { t } from '../lib/i18n';
 import { DynamicForm, collectVisibleValues, type FormContext } from '../lib/formEngine';
 import { LOB_CLASS_GROUPS } from '../lib/lobSchema';
-import { ApiError } from '../lib/api';
+import { ApiError, downloadFile, qs } from '../lib/api';
 import type { TreatyListItem } from '../lib/types';
-import { Plus, FileText, Layers, CheckCircle2, Activity, FileSignature } from 'lucide-react';
+import { Plus, FileText, Layers, CheckCircle2, Activity, FileSignature, Download } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './TreatiesPage.module.css';
 
@@ -36,7 +36,24 @@ export function TreatiesPage() {
     if (v) next.set('status', v); else next.delete('status');
     return next;
   }, { replace: true });
+
+  // Saved filter preference: persists the kind filter across sessions.
+  const { value: savedFilters, save: saveFilters } = usePreference('filters:treaties', { kind: '' });
   const [kind, setKind] = useState('');
+  // Apply the saved preference on first load (only once, before the user has touched the filter).
+  const savedApplied = useRef(false);
+  useEffect(() => {
+    if (!savedApplied.current && savedFilters.kind !== undefined) {
+      savedApplied.current = true;
+      setKind(savedFilters.kind);
+    }
+  }, [savedFilters]);
+
+  const updateKind = (v: string) => {
+    setKind(v);
+    void saveFilters({ kind: v });
+  };
+
   const [showNew, setShowNew] = useState(false);
 
   const { data, isLoading } = useTreaties({ status: status || undefined, kind: kind || undefined });
@@ -127,13 +144,21 @@ export function TreatiesPage() {
           </div>
           <div className={shared.filter}>
             <span className={shared.filterLabel}>Kind</span>
-            <Select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Filter by kind">
+            <Select value={kind} onChange={(e) => updateKind(e.target.value)} aria-label="Filter by kind">
               <option value="">All</option>
               {KINDS.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
             </Select>
           </div>
           <div className={shared.spacer} />
           <span className={styles.resultCount}>{rows.length} result{rows.length === 1 ? '' : 's'}</span>
+          <Button
+            variant="ghost"
+            icon={<Download size={15} />}
+            onClick={() => downloadFile(`/api/treaties/export.csv${qs({ status: status || undefined, kind: kind || undefined })}`, 'treaties.csv')}
+            aria-label="Export treaties as CSV"
+          >
+            Export CSV
+          </Button>
         </div>
 
         <Table

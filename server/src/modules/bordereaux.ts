@@ -15,6 +15,7 @@ import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
 import { CsvParseError, parseCsvRecords } from '../csv.js';
 import { nextReference } from './parties.js';
+import { notify } from './notifications.js';
 
 const createMappingSchema = z.object({
   name: z.string().min(1),
@@ -206,6 +207,21 @@ export async function bordereauxModule(app: FastifyInstance): Promise<void> {
         after: { kind: b.kind, rowCount: lines.length, errorCount, status, reconciles: result.reconciles },
         actorLabel: req.auth?.displayName,
       });
+
+      // Notify operations when a bordereau is rejected (has validation errors).
+      if (status === 'REJECTED') {
+        await notify(db, ctx.tenantId, {
+          userId: ctx.userId,
+          title: 'Bordereau rejected',
+          body: `Bordereau ${ref} (${b.kind}) was rejected with ${errorCount} line error${errorCount === 1 ? '' : 's'}.`,
+          kind: 'SYSTEM',
+          severity: 'WARNING',
+          link: `/bordereaux/${id}`,
+          entityType: 'bordereau',
+          entityId: id,
+        });
+      }
+
       reply.code(201);
       return {
         id,

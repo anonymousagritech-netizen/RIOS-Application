@@ -187,6 +187,45 @@ export function useReserveMovement(claimId: string) {
   });
 }
 
+/* ---------------- User Preferences ---------------- */
+
+/**
+ * Per-user, per-page preference store backed by /api/preferences/:key.
+ * Typical use: persist last-used filter settings so users return to the same
+ * view they left. The preference is loaded once (staleTime: Infinity) and
+ * updated on mutation.
+ *
+ * Usage:
+ *   const { value, save } = usePreference('filters:treaties', { kind: '' });
+ */
+export function usePreference<T>(key: string, defaultValue: T) {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ['preference', key],
+    queryFn: async () => {
+      const res = await api<{ value: T | null }>(`/api/preferences/${encodeURIComponent(key)}`);
+      return (res.value ?? defaultValue) as T;
+    },
+    // Treat preferences as stable within a session; they only change via mutation.
+    staleTime: Infinity,
+    // A 404 means the preference has never been saved — treat it as the default.
+    retry: (count, err: unknown) => {
+      if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 404) return false;
+      return count < 2;
+    },
+  });
+  const mutation = useMutation({
+    mutationFn: (value: T) =>
+      api(`/api/preferences/${encodeURIComponent(key)}`, { method: 'PUT', body: { value } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['preference', key] }),
+  });
+  return {
+    value: query.data ?? defaultValue,
+    save: mutation.mutateAsync,
+    isLoading: query.isLoading,
+  };
+}
+
 /* ---------------- Assistant ---------------- */
 export function useAssistant() {
   return useMutation({
