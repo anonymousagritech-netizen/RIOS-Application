@@ -6,7 +6,10 @@
  * are fractions (0.045 = 4.5%). No I/O - unit-tested so valuations reconcile.
  */
 
-export type InstrumentType = 'BOND' | 'BILL' | 'EQUITY' | 'CASH' | 'FUND';
+export type InstrumentType =
+  | 'BOND' | 'BILL' | 'EQUITY' | 'CASH' | 'FUND'
+  | 'FIXED_DEPOSIT' | 'MUTUAL_FUND' | 'GOVERNMENT_BOND' | 'CORPORATE_BOND'
+  | 'TREASURY_BILL' | 'MONEY_MARKET' | 'STRUCTURED';
 
 export interface Holding {
   id?: string;
@@ -90,6 +93,42 @@ export function portfolioSummary(holdings: Holding[], days = 0): PortfolioSummar
     accruedInterestMinor: accrued,
     bookYield: yieldBase > 0 ? weightedCoupon / yieldBase : 0,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Fixed-deposit and mutual-fund valuation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Accrued interest on a fixed deposit using simple interest.
+ *   fdAccruedInterest(face, rate, days) → minor units
+ * `annualRatePercent` is a percentage (e.g. 7.5 for 7.5%).
+ * Returns 0n for non-positive days or rate.
+ */
+export function fdAccruedInterest(
+  faceValueMinor: bigint,
+  annualRatePercent: number,
+  days: number,
+): bigint {
+  if (days <= 0 || annualRatePercent <= 0) return 0n;
+  // Simple interest: face × rate × days / 365
+  const interest = Number(faceValueMinor) * (annualRatePercent / 100) * (days / 365);
+  return BigInt(Math.round(interest));
+}
+
+/**
+ * Book value of a mutual fund position.
+ *   mutualFundBookValue(units, navPerUnitMajor) → minor units
+ * `navPerUnitMajor` is in major currency units (e.g. 10.50 per unit).
+ * Converts to minor by multiplying by 100 (assumes 2 decimal minor units).
+ * Returns 0n for non-positive units or NAV.
+ */
+export function mutualFundBookValue(
+  units: number,
+  navPerUnitMajor: number,
+): bigint {
+  if (units <= 0 || navPerUnitMajor <= 0) return 0n;
+  return BigInt(Math.round(units * navPerUnitMajor * 100));
 }
 
 // ---------------------------------------------------------------------------
