@@ -22,6 +22,7 @@ import { pricingModule } from './modules/pricing.js';
 import { bordereauxModule } from './modules/bordereaux.js';
 import { exposureModule } from './modules/exposure.js';
 import { statementsModule } from './modules/statements.js';
+import { soaVerificationModule } from './modules/soaVerification.js';
 import { financeModule } from './modules/finance.js';
 import { financialStatementsModule } from './modules/financialStatements.js';
 import { regulatoryModule } from './modules/regulatory.js';
@@ -230,6 +231,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(exposureModule);
   // Accounting, regulatory & automation modules
   await app.register(statementsModule);
+  await app.register(soaVerificationModule);
   await app.register(financeModule);
   await app.register(financialStatementsModule);
   await app.register(regulatoryModule);

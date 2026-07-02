@@ -69,6 +69,10 @@ export {
   type StopLossRecoveryInput, type StopLossRecoveryResult,
   type Reinstatement, type ReinstatementChargeDetail, type LayerReinstatementCapacityInput,
 } from './xlStructures.js';
+export {
+  expectedCedingCommission, compareSoaItems,
+  type ExpectedCommissionTerms, type SoaItemComparison, type SoaVerifiedItem, type SoaVerificationResult,
+} from './soaVerification.js';
 export * from './simulation.js';
 export * from './geofence.js';
 export * from './parametric.js';
