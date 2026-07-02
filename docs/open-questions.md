@@ -181,6 +181,18 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 - **Frontend** - design tokens delivered; the full component library (accessible, themed, RTL), the
   metadata-driven form renderer, command palette, global search, saved views, skeletons/empty states, and the
   module UIs are **in progress**. (§11)
+- **Treasury write paths (G-09)** — **delivered**: `TreasuryPage` now exposes all three server-side write
+  paths: (1) `POST /api/treasury/holdings` via "Add holding" modal (name, instrument type, currency, book/market
+  value, coupon, maturity); (2) `POST /api/treasury/levies` via "Add / update levy" modal (code, name, rate,
+  jurisdiction, basis, active); (3) full dealing lifecycle — `POST /api/treasury/trades` + confirm + settle —
+  via a new "Deals" tab with "Capture trade" modal and per-row Confirm / Settle buttons. Market-data refresh
+  (`POST /api/treasury/market-data/refresh`) is wired as a "Refresh prices" button in the Investments tab.
+  Remaining server write paths with no UI: `POST /api/treasury/cash-flow-forecast` (the forecast form is
+  not yet surfaced — add a "Cash flow forecast" section if cash planning is needed in the UI).
+- **AccountingPage write paths (G-09)** — **already covered**: the accounting POST
+  (`POST /api/treaties/:id/post`) is fully accessible via the TreatyDetailPage → Statement tab → "Post to GL"
+  button (gated on `accounting:post`). The AccountingPage itself is intentionally a navigation hub listing
+  postable treaties; no further write UI is required on that page.
 - **i18n / multi-language / RTL / WCAG 2.2 AA** verification - supported by tokens; not yet verified. (§19, §11.6)
 
 ## 7. Architecture, scale & operability
