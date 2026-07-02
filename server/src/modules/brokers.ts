@@ -2,8 +2,10 @@
  * Broker management (brief §7 / §28). Brokers are parties (party_role 'broker').
  * This module adds the relationship profile, terms-of-business contracts,
  * communications log and derives the broker's portfolio / performance /
- * profitability from the submission and claim books. Reinsurance scoring lives in
- * @rios/domain (counterparty); this module orchestrates + persists.
+ * profitability. GWP and commission are the BOUND book from the financial-event
+ * ledger, attributed via contract.broker_party_id (not the submission pipeline,
+ * which is surfaced separately as pipeline/quoted GWP). Reinsurance scoring lives
+ * in @rios/domain (counterparty); this module orchestrates + persists.
  *
  * Reads gate on party:read, writes on party:write. Money is integer minor units.
  */
@@ -76,26 +78,29 @@ export async function brokersModule(app: FastifyInstance): Promise<void> {
   app.get('/api/brokers', { preHandler: requirePermission('party:read') }, async (req) => {
     const ctx = authContext(req);
     return runAs(ctx, async (db) => {
+      // GWP = bound premium from the financial-event ledger, attributed via
+      // contract.broker_party_id; the submission funnel is the (separate)
+      // pipeline figure. boundCount is the count of the broker's bound contracts.
       const { rows } = await db.query(
         `select p.id, p.legal_name as "legalName", p.short_name as "shortName", p.country,
                 bp.tier, bp.region, bp.relationship_score as "relationshipScore",
-                coalesce(prem.gwp,0)::bigint as "gwpMinor", coalesce(pipe.bound,0)::int as "boundCount",
+                coalesce(prem.gwp,0)::bigint as "gwpMinor",
+                coalesce(pipe.pipeline,0)::bigint as "pipelineGwpMinor",
+                coalesce(ctr.bound,0)::int as "boundCount",
                 coalesce(bc.n,0)::int as "contractCount"
            from party p
            join party_role pr on pr.party_id = p.id and pr.role_code = 'broker' and pr.is_active
            left join broker_profile bp on bp.party_id = p.id
-           left join (
-             select ct.broker_party_id,
-                    coalesce(sum(fe.amount_minor) filter (where fe.event_type ilike '%premium%'),0) gwp
-               from contract ct
-               join financial_event fe on fe.contract_id = ct.id
-              where not ct.is_deleted
-              group by ct.broker_party_id
-           ) prem on prem.broker_party_id = p.id
-           left join (
-             select broker_party_id, count(*) filter (where stage='BOUND') bound
-               from submission group by broker_party_id
-           ) pipe on pipe.broker_party_id = p.id
+           left join (select ct.broker_party_id,
+                             coalesce(sum(fe.amount_minor) filter (where fe.event_type ilike '%premium%'),0) gwp
+                        from contract ct join financial_event fe on fe.contract_id = ct.id
+                       where ct.broker_party_id is not null and not ct.is_deleted
+                       group by ct.broker_party_id) prem on prem.broker_party_id = p.id
+           left join (select broker_party_id, count(*) filter (where status in ('BOUND','ACTIVE')) bound
+                        from contract where broker_party_id is not null and not is_deleted
+                       group by broker_party_id) ctr on ctr.broker_party_id = p.id
+           left join (select broker_party_id, sum(est_premium_minor) pipeline
+                        from submission group by broker_party_id) pipe on pipe.broker_party_id = p.id
            left join (select broker_party_id, count(*) n from broker_contract group by broker_party_id) bc on bc.broker_party_id = p.id
           where not p.is_deleted
           order by "gwpMinor" desc, p.legal_name`,
@@ -109,6 +114,8 @@ export async function brokersModule(app: FastifyInstance): Promise<void> {
   app.get('/api/brokers/analytics', { preHandler: requirePermission('party:read') }, async (req) => {
     const ctx = authContext(req);
     return runAs(ctx, async (db) => {
+      // Tier donut + top-broker bar populate from real bound premium
+      // (Σ premium-type financial_event over each broker's bound contracts).
       const { rows } = await db.query<{ id: string; legalName: string; gwp: string }>(
         `select p.id, p.legal_name as "legalName",
                 coalesce(sum(fe.amount_minor) filter (where fe.event_type ilike '%premium%'),0)::bigint as gwp
@@ -138,16 +145,14 @@ export async function brokersModule(app: FastifyInstance): Promise<void> {
     return runAs(ctx, async (db) => {
       const { rows } = await db.query<{ legalName: string; country: string | null; tier: string | null; region: string | null; relationshipScore: number | null; gwpMinor: string; boundCount: number; contractCount: number }>(
         `select p.legal_name as "legalName", p.country, bp.tier, bp.region, bp.relationship_score as "relationshipScore",
-                coalesce(prem.gwp,0)::bigint as "gwpMinor", coalesce(pipe.bound,0)::int as "boundCount", coalesce(bc.n,0)::int as "contractCount"
+                coalesce(prem.gwp,0)::bigint as "gwpMinor", coalesce(ctr.bound,0)::int as "boundCount", coalesce(bc.n,0)::int as "contractCount"
            from party p join party_role pr on pr.party_id=p.id and pr.role_code='broker' and pr.is_active
            left join broker_profile bp on bp.party_id=p.id
-           left join (
-             select ct.broker_party_id,
-                    coalesce(sum(fe.amount_minor) filter (where fe.event_type ilike '%premium%'),0) gwp
-               from contract ct join financial_event fe on fe.contract_id=ct.id
-              where not ct.is_deleted group by ct.broker_party_id
-           ) prem on prem.broker_party_id=p.id
-           left join (select broker_party_id, count(*) filter (where stage='BOUND') bound from submission group by broker_party_id) pipe on pipe.broker_party_id=p.id
+           left join (select ct.broker_party_id, coalesce(sum(fe.amount_minor) filter (where fe.event_type ilike '%premium%'),0) gwp
+                        from contract ct join financial_event fe on fe.contract_id=ct.id
+                       where ct.broker_party_id is not null and not ct.is_deleted group by ct.broker_party_id) prem on prem.broker_party_id=p.id
+           left join (select broker_party_id, count(*) filter (where status in ('BOUND','ACTIVE')) bound
+                        from contract where broker_party_id is not null and not is_deleted group by broker_party_id) ctr on ctr.broker_party_id=p.id
            left join (select broker_party_id, count(*) n from broker_contract group by broker_party_id) bc on bc.broker_party_id=p.id
           where not p.is_deleted order by "gwpMinor" desc`,
       );

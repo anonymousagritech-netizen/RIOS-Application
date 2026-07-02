@@ -120,10 +120,12 @@ export async function buildApp(): Promise<FastifyInstance> {
     genReqId: () => crypto.randomUUID(),
   });
 
-  await app.register(cors, {
-    origin: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(','),
-    credentials: true,
-  });
+  // When CORS_ORIGINS is explicitly set (production), use it as the allowlist.
+  // When unset, reflect the request origin so cross-origin dev/staging works.
+  const corsOrigin: string[] | true = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
+    : true;
+  await app.register(cors, { origin: corsOrigin, credentials: true });
   await app.register(helmet, {
     contentSecurityPolicy: {
       directives: {
