@@ -12,6 +12,7 @@
 import type { FastifyInstance } from 'fastify';
 import { runAs } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
+import { parsePaginationQuery, encodeCursor, decodeCursor } from '../lib/pagination.js';
 
 interface AuditRow {
   id: string; occurred_at: string; actor_label: string | null; action: string;
@@ -29,20 +30,37 @@ const shape = (r: AuditRow) => ({
 
 export async function auditLogModule(app: FastifyInstance): Promise<void> {
   // ---- Timeline (filterable) -----------------------------------------------
-  app.get<{ Querystring: { entityType?: string; action?: string; limit?: string } }>('/api/audit', { preHandler: requirePermission('ops:read') }, async (req) => {
+  app.get<{ Querystring: { entityType?: string; action?: string; limit?: string; cursor?: string } }>('/api/audit', { preHandler: requirePermission('ops:read') }, async (req) => {
     const ctx = authContext(req);
     const { entityType, action } = req.query;
-    const limit = Math.min(500, Math.max(1, Number(req.query.limit ?? 100) || 100));
+    // audit_log.id is a bigint sequence — use it directly as the keyset cursor.
+    // The shared pagination contract caps at 200; the pre-existing default was 100.
+    const { limit, cursor } = parsePaginationQuery({ ...req.query, limit: req.query.limit ?? 100 } as Record<string, unknown>);
+    const decoded = cursor ? decodeCursor(cursor) : null;
     return runAs(ctx, async (db) => {
+      const params: unknown[] = [entityType ?? null, action ?? null];
+      let cursorClause = '';
+      if (decoded) {
+        params.push(decoded.id); // id stored in both parts of the cursor
+        cursorClause = `AND id < $3::bigint`;
+      }
       const { rows } = await db.query<AuditRow>(
         `select id, occurred_at, actor_label, action, entity_type, entity_id, context, row_hash, before, after
            from audit_log
           where ($1::text is null or entity_type = $1)
             and ($2::text is null or action = $2)
+            ${cursorClause}
           order by id desc
-          limit $3`,
-        [entityType ?? null, action ?? null, limit],
+          limit ${limit + 1}`,
+        params,
       );
+      const hasMore = rows.length > limit;
+      if (hasMore) rows.pop();
+      const last = rows[rows.length - 1];
+      // Encode the bigint id in both cursor fields (createdAt slot holds the id string).
+      const nextCursor = hasMore && last
+        ? encodeCursor(String(last.id), String(last.id))
+        : null;
       // Distinct entity types + actions for the filter chips (bounded).
       const facets = await db.query<{ kind: string; val: string; n: number }>(
         `select 'entity' kind, entity_type val, count(*)::int n from audit_log group by entity_type
@@ -55,6 +73,7 @@ export async function auditLogModule(app: FastifyInstance): Promise<void> {
       );
       return {
         entries: rows.map(shape),
+        nextCursor,
         entityTypes: facets.rows.filter((f) => f.kind === 'entity').map((f) => ({ key: f.val, n: f.n })),
         actions: facets.rows.filter((f) => f.kind === 'action').map((f) => ({ key: f.val, n: f.n })),
         chain: { total: Number(chainLen.rows[0]!.n), hashed: Number(chainLen.rows[0]!.hashed) },

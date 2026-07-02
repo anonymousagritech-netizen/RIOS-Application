@@ -17,6 +17,7 @@ import {
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { parsePaginationQuery, encodeCursor, decodeCursor } from '../lib/pagination.js';
 
 const CONTROL_ACCOUNT = '1100'; // Reinsurance Debtors (Control)
 
@@ -42,19 +43,37 @@ const POSTING_RULES: Record<string, { drAccount: string; crAccount: string }> = 
 };
 
 export async function accountingModule(app: FastifyInstance): Promise<void> {
-  app.get<{ Params: { id: string } }>(
+  app.get<{ Params: { id: string }; Querystring: { limit?: string; cursor?: string } }>(
     '/api/treaties/:id/financial-events',
     { preHandler: requirePermission('accounting:read') },
     async (req) => {
       const ctx = authContext(req);
+      const { limit, cursor } = parsePaginationQuery(req.query as Record<string, unknown>);
+      const decoded = cursor ? decodeCursor(cursor) : null;
       return runAs(ctx, async (db) => {
-        const { rows } = await db.query(
+        // Keyset on (booked_at ASC, id ASC): financial events are ordered chronologically.
+        // Cursor uses booked_at (timestamptz cast to text) + id (uuid) for stable ordering.
+        const params: unknown[] = [req.params.id];
+        let cursorClause = '';
+        if (decoded) {
+          params.push(decoded.createdAt, decoded.id);
+          cursorClause = `AND (booked_at, id) > ($2::timestamptz, $3::uuid)`;
+        }
+        const { rows } = await db.query<{ id: string; bookedAt: string } & Record<string, unknown>>(
           `select id, contract_id as "contractId", event_type as "eventType", direction,
-                  amount_minor as "amountMinor", currency, booked_at as "bookedAt", narrative
-             from financial_event where contract_id = $1 order by booked_at, created_at`,
-          [req.params.id],
+                  amount_minor as "amountMinor", currency, booked_at::text as "bookedAt", narrative
+             from financial_event
+            where contract_id = $1
+              ${cursorClause}
+            order by booked_at asc, id asc
+            limit ${limit + 1}`,
+          params,
         );
-        return { events: rows };
+        const hasMore = rows.length > limit;
+        if (hasMore) rows.pop();
+        const last = rows[rows.length - 1];
+        const nextCursor = hasMore && last ? encodeCursor(last.bookedAt, last.id) : null;
+        return { events: rows, nextCursor };
       });
     },
   );
