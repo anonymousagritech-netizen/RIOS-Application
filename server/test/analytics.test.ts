@@ -92,6 +92,46 @@ describe('Pivot / data warehouse', () => {
     expect(render.json().widgets[0].groups).toBeGreaterThan(0);
   });
 
+  it('pivots claims into a 2-D grid (status × currency) that reconciles to the grand total', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };
+    const res = await app.inject({
+      method: 'POST', url: '/api/analytics/grid', headers: auth,
+      payload: {
+        source: 'claim', rowDimension: 'status', columnDimension: 'currency',
+        measure: { field: 'grossLossMinor', agg: 'sum' },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      columns: string[];
+      rows: { row: string; cells: Record<string, number>; total: number }[];
+      columnTotals: Record<string, number>;
+      grandTotal: number;
+    };
+    expect(body.rows.length).toBeGreaterThan(0);
+    expect(body.columns.length).toBeGreaterThan(0);
+    // Every row's cells sum to its row total, and all row totals sum to the grand total.
+    for (const r of body.rows) {
+      const rowSum = Object.values(r.cells).reduce((a, b) => a + b, 0);
+      expect(rowSum).toBe(r.total);
+    }
+    const rowTotalSum = body.rows.reduce((a, r) => a + r.total, 0);
+    const colTotalSum = Object.values(body.columnTotals).reduce((a, b) => a + b, 0);
+    expect(rowTotalSum).toBe(body.grandTotal);
+    expect(colTotalSum).toBe(body.grandTotal);
+  });
+
+  it('rejects a grid dimension outside the source whitelist', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };
+    const res = await app.inject({
+      method: 'POST', url: '/api/analytics/grid', headers: auth,
+      payload: { source: 'claim', rowDimension: 'ssn', columnDimension: 'currency', measure: { agg: 'count' } },
+    });
+    expect(res.statusCode).toBe(422);
+  });
+
   it('rejects a dimension outside the source whitelist', async () => {
     if (!dbUp) return;
     const auth = { authorization: `Bearer ${await loginToken('admin@demo.rios')}` };

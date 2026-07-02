@@ -9,6 +9,15 @@
   align-items: center;
   gap: var(--space-3);
 }
+.row.clickable {
+  cursor: pointer;
+  padding: 2px var(--space-2);
+  margin: -2px calc(-1 * var(--space-2));
+  border-radius: var(--radius-sm);
+  transition: background var(--motion-fast);
+}
+.row.clickable:hover { background: var(--surface-2); }
+.row.clickable:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 .label {
   font-size: var(--text-sm);
   color: var(--text-muted);

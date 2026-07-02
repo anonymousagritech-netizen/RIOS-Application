@@ -21,3 +21,47 @@
 .chipButton { cursor: pointer; border: none; background: transparent; padding: 0; }
 
 .rateInput { width: 90px; text-align: right; }
+
+/* ----------------------------- 2-D pivot grid ----------------------------- */
+.gridScroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.pivotGrid {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.pivotGrid th, .pivotGrid td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.pivotGrid thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-align: right;
+}
+.pivotCorner { text-align: left !important; color: var(--text) !important; }
+.pivotColHead { text-align: right; }
+.pivotTotalHead { text-align: right; }
+.pivotRowHead {
+  text-align: left;
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  background: var(--surface);
+}
+.pivotCell { text-align: right; color: var(--text); }
+.pivotEmpty { color: var(--text-muted); }
+.pivotRowTotal { text-align: right; font-weight: var(--weight-semibold); background: var(--surface-2); }
+.pivotGrid tfoot td, .pivotGrid tfoot th {
+  font-weight: var(--weight-bold);
+  background: var(--surface-2);
+  border-top: 2px solid var(--border);
+}
+.pivotColTotal { text-align: right; }
+.pivotGrand { text-align: right; color: var(--primary); }

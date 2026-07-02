@@ -21,6 +21,7 @@ import { Button } from '../components/Button';
 import { Tabs } from '../components/Tabs';
 import { ErrorState, PageLoader } from '../components/Feedback';
 import { formatMoneyCompact, formatNumber, formatPercent } from '../lib/format';
+import { CHART_DRILL } from './ExecutiveDashboardPage';
 import type { DashboardSummary } from '../lib/types';
 import shared from './shared.module.css';
 import styles from './DashboardPage.module.css';
@@ -70,6 +71,7 @@ function kpiValue(k: Kpi): string {
 
 /* Render a single saved tile by resolving its ref against the LIVE exec packs. */
 function TileView({ tile, exec }: { tile: Tile; exec: ExecResponse }) {
+  const navigate = useNavigate();
   const pack = exec.packs[tile.persona];
   if (tile.kind === 'kpi') {
     const k = pack?.kpis.find((x) => x.label === tile.ref);
@@ -85,12 +87,14 @@ function TileView({ tile, exec }: { tile: Tile; exec: ExecResponse }) {
     : c.data;
   const total = chartData.reduce((s, d) => s + d.value, 0);
   const title = c.money ? `${c.title} (USD m)` : c.title;
+  const drill = CHART_DRILL[c.title];
+  const onSegmentClick = drill ? (d: ChartDatum) => navigate(drill(d.label)) : undefined;
   return (
     <Card>
       <CardHeader title={title} />
       {c.kind === 'donut'
-        ? <DonutChart data={chartData} metaColors={meta} centerValue={formatNumber(total)} centerLabel="total" />
-        : <BarChart data={chartData} metaColors={meta} />}
+        ? <DonutChart data={chartData} metaColors={meta} centerValue={formatNumber(total)} centerLabel="total" onSegmentClick={onSegmentClick} />
+        : <BarChart data={chartData} metaColors={meta} onSegmentClick={onSegmentClick} />}
     </Card>
   );
 }
@@ -114,10 +118,10 @@ function OverviewTab() {
   return (
     <>
       <div className={shared.kpiGrid}>
-        <KpiCard label="Treaties" value={formatNumber(k?.treaties)} loading={isLoading} icon={<FileText size={20} />} accent="var(--primary)" />
-        <KpiCard label="Active treaties" value={formatNumber(k?.activeTreaties)} loading={isLoading} icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" />
-        <KpiCard label="Parties" value={formatNumber(k?.parties)} loading={isLoading} icon={<Users size={20} />} accent="var(--accent-cyan)" />
-        <KpiCard label="Open claims" value={formatNumber(k?.openClaims)} loading={isLoading} icon={<ShieldAlert size={20} />} accent="var(--accent-orange)" />
+        <KpiCard label="Treaties" value={formatNumber(k?.treaties)} loading={isLoading} icon={<FileText size={20} />} accent="var(--primary)" onClick={() => navigate('/treaties')} />
+        <KpiCard label="Active treaties" value={formatNumber(k?.activeTreaties)} loading={isLoading} icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" onClick={() => navigate('/treaties')} />
+        <KpiCard label="Parties" value={formatNumber(k?.parties)} loading={isLoading} icon={<Users size={20} />} accent="var(--accent-cyan)" onClick={() => navigate('/parties')} />
+        <KpiCard label="Open claims" value={formatNumber(k?.openClaims)} loading={isLoading} icon={<ShieldAlert size={20} />} accent="var(--accent-orange)" onClick={() => navigate('/claims')} />
         <KpiCard label="Gross written premium" value={k ? formatMoneyCompact(k.gwpMinor, k.currency) : '-'} hint={k?.currency} loading={isLoading} icon={<Wallet size={20} />} accent="var(--accent-indigo)" />
         <KpiCard label="Outstanding reserves" value={k ? formatMoneyCompact(k.outstandingMinor, k.currency) : '-'} hint={k?.currency} loading={isLoading} icon={<PiggyBank size={20} />} accent="var(--accent-rose)" />
       </div>
@@ -157,6 +161,7 @@ function OverviewTab() {
               data={(data?.treatiesByStatus ?? []).map((s) => ({ label: s.status, value: s.n, status: s.status }))}
               metaColors={statusColors}
               centerLabel="treaties"
+              onSegmentClick={(d) => navigate(`/treaties?status=${encodeURIComponent(d.label)}`)}
             />
           )}
         </Card>

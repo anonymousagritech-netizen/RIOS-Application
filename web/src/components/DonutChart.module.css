@@ -37,6 +37,15 @@
   gap: var(--space-3);
   font-size: var(--text-sm);
 }
+.legend li.clickable {
+  cursor: pointer;
+  padding: 2px var(--space-2);
+  margin: -2px calc(-1 * var(--space-2));
+  border-radius: var(--radius-sm);
+  transition: background var(--motion-fast);
+}
+.legend li.clickable:hover { background: var(--surface-2); }
+.legend li.clickable:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 .dot { width: 10px; height: 10px; border-radius: 3px; }
 .legendLabel { color: var(--text); }
 .legendVal { color: var(--text); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }

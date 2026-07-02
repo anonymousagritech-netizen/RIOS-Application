@@ -21,6 +21,15 @@
   box-shadow: var(--shadow-md);
   transform: translateY(-3px);
 }
+/* Drill-through affordance: a clickable KPI card. */
+.clickable { cursor: pointer; }
+.clickable:hover {
+  border-color: color-mix(in srgb, var(--kpi-accent, var(--primary)) 55%, var(--border));
+}
+.clickable:focus-visible {
+  outline: 2px solid var(--kpi-accent, var(--primary));
+  outline-offset: 2px;
+}
 /* Colored top accent bar - the premium KPI-card signature. */
 .accentBar {
   position: absolute;

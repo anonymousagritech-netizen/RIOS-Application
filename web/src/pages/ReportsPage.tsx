@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { BarChart3, FileBarChart, FileText, AlertTriangle, Receipt, FileSpreadsheet, Building2, Database, Save, Plus, X } from 'lucide-react';
+import { BarChart3, FileBarChart, FileText, AlertTriangle, Receipt, FileSpreadsheet, Building2, Database, Save, Plus, X, FileDown, Gauge } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
@@ -10,6 +10,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
+import { Tabs } from '../components/Tabs';
 import { FormField, Input, Select, TextField } from '../components/Form';
 import { formatDate, formatNumber, titleCase } from '../lib/format';
 import { api, ApiError, getToken, API_BASE } from '../lib/api';
@@ -44,6 +45,18 @@ interface Filter { field: string; op: Op; value: string }
 interface RunResult { rows: Record<string, unknown>[]; rowCount: number; source: string }
 interface ReportDefinition {
   id: string; key: string; name: string; source: string; status: string; is_certified: boolean;
+}
+interface MetricDefinition {
+  id: string; key: string; name: string; description: string | null; source: string;
+  unit: string | null; format: string | null; isGlobal: boolean;
+}
+interface MetricValue { key: string; name: string; value: number | null; unit: string | null; format: string | null }
+
+/* Present a resolved metric value per its declared display format. */
+function formatMetricValue(value: number | null, format: string | null): string {
+  if (value == null) return '-';
+  if (format === 'percent') return `${(value * 100).toFixed(1)}%`;
+  return formatNumber(value);
 }
 
 function isDateCol(c: string) { return /_(at|date)$/.test(c) || c.endsWith('_start') || c.endsWith('_end'); }
@@ -90,12 +103,45 @@ function useSaveDefinition() {
   });
 }
 
+function useMetrics() {
+  return useQuery({
+    queryKey: ['report-metrics'],
+    queryFn: () => api<{ metrics: MetricDefinition[] }>('/api/reports/metrics'),
+  });
+}
+
+function useMetricValue(key: string) {
+  return useQuery({
+    queryKey: ['report-metric-value', key],
+    queryFn: () => api<MetricValue>(`/api/reports/metrics/${encodeURIComponent(key)}/value`),
+  });
+}
+
+/* Download a saved definition in a binary format (xlsx/pdf) via an authed fetch. */
+async function downloadDefinition(def: ReportDefinition, format: 'xlsx' | 'pdf'): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/api/reports/definitions/${def.id}/export.${format}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!res.ok) throw new ApiError(res.status, res.statusText || 'Export failed');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${def.key}.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /* ---------------- Page ---------------- */
 export function ReportsPage() {
   const { hasPermission } = useAuth();
   const toast = useToast();
   const canWrite = hasPermission('reporting:write');
 
+  const [tab, setTab] = useState<'builder' | 'metrics'>('builder');
   const [source, setSource] = useState<string>(SOURCE_KEYS[0]!);
   const [columns, setColumns] = useState<string[]>(SOURCES[SOURCE_KEYS[0]!]!.slice(0, 5));
   const [filters, setFilters] = useState<Filter[]>([]);
@@ -161,14 +207,29 @@ export function ReportsPage() {
         description="Build ad-hoc reports over portfolio data, then run, export or save reusable definitions."
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Reports' }]}
         actions={
-          canWrite ? (
+          canWrite && tab === 'builder' ? (
             <Button variant="primary" icon={<Save size={16} />} onClick={() => setShowSave(true)} disabled={!columns.length}>
               Save definition
             </Button>
-          ) : <Badge color="slate">read-only</Badge>
+          ) : <Badge color="slate">{canWrite ? 'semantic layer' : 'read-only'}</Badge>
         }
       />
 
+      <div style={{ marginBottom: 'var(--space-5)' }}>
+        <Tabs
+          tabs={[
+            { id: 'builder', label: 'Report builder' },
+            { id: 'metrics', label: 'Metrics' },
+          ]}
+          active={tab}
+          onChange={(id) => setTab(id as 'builder' | 'metrics')}
+        />
+      </div>
+
+      {tab === 'metrics' ? (
+        <MetricsPanel />
+      ) : (
+        <>
       <div className={styles.kpiRow} style={{ marginBottom: 'var(--space-5)' }}>
         <KpiCard label="Data sources" value={formatNumber(SOURCE_KEYS.length)} hint="Reportable domains" icon={<Database size={20} />} accent="var(--primary)" />
         <KpiCard label="Selected source" value={sourceMeta(source).label} hint={`${allCols.length} fields available`} icon={sourceMeta(source).icon} accent={sourceMeta(source).accent} />
@@ -293,8 +354,53 @@ export function ReportsPage() {
         columns={columns}
         filters={activeFilters()}
       />
+        </>
+      )}
     </>
   );
+}
+
+/* ---------------- Metrics (semantic layer) ---------------- */
+function MetricsPanel() {
+  const { data, isLoading } = useMetrics();
+
+  const columns: Column<MetricDefinition>[] = [
+    { key: 'key', header: 'Key', sortValue: (m) => m.key, render: (m) => <span className={shared.cellRef}>{m.key}</span> },
+    { key: 'name', header: 'Metric', sortValue: (m) => m.name, render: (m) => (
+      <div>
+        <span className={shared.cellMain}>{m.name}</span>
+        {m.description && <div className={shared.cellSub}>{m.description}</div>}
+      </div>
+    ) },
+    { key: 'source', header: 'Source', sortValue: (m) => m.source, render: (m) => titleCase(m.source) },
+    { key: 'scope', header: 'Scope', render: (m) => (m.isGlobal ? <Badge color="violet">Global</Badge> : <Badge color="slate">Tenant</Badge>) },
+    { key: 'value', header: 'Current value', align: 'right', render: (m) => <MetricValueCell metricKey={m.key} format={m.format} /> },
+  ];
+
+  return (
+    <Card padded={false}>
+      <div className={styles.cardPad}>
+        <CardHeader
+          title="Business metrics"
+          subtitle="Named measures defined once and resolved consistently against live data through the governed aggregation layer."
+        />
+      </div>
+      <Table
+        columns={columns}
+        rows={data?.metrics}
+        loading={isLoading}
+        rowKey={(m) => m.id}
+        empty={<EmptyState title="No metrics defined" message="Global default metrics ship with the platform; tenants can add their own." icon={<Gauge size={16} />} />}
+      />
+    </Card>
+  );
+}
+
+function MetricValueCell({ metricKey, format }: { metricKey: string; format: string | null }) {
+  const { data, isLoading, isError } = useMetricValue(metricKey);
+  if (isLoading) return <span className={shared.cellSub}>…</span>;
+  if (isError || !data) return <span className={shared.cellSub}>-</span>;
+  return <span className={shared.money}>{formatMetricValue(data.value, format)}</span>;
 }
 
 /* ---------------- Saved definitions ---------------- */
@@ -314,8 +420,8 @@ function SavedDefinitions() {
     }
   };
 
-  const onExport = async (def: ReportDefinition) => {
-    setExporting(def.id);
+  const onExportCsv = async (def: ReportDefinition) => {
+    setExporting(`${def.id}:csv`);
     try {
       const token = getToken();
       const res = await fetch(`${API_BASE}/api/reports/definitions/${def.id}/export?format=csv`, {
@@ -333,6 +439,18 @@ function SavedDefinitions() {
       a.remove();
       URL.revokeObjectURL(url);
       toast.success(`Exported ${def.key}.csv`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not export the report.');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const onExportBinary = async (def: ReportDefinition, format: 'xlsx' | 'pdf') => {
+    setExporting(`${def.id}:${format}`);
+    try {
+      await downloadDefinition(def, format);
+      toast.success(`Exported ${def.key}.${format}`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Could not export the report.');
     } finally {
@@ -364,8 +482,14 @@ function SavedDefinitions() {
           >
             Run
           </Button>
-          <Button size="sm" variant="subtle" icon={<FileSpreadsheet size={14} />} onClick={() => onExport(d)} loading={exporting === d.id}>
-            Export CSV
+          <Button size="sm" variant="subtle" icon={<FileSpreadsheet size={14} />} onClick={() => onExportCsv(d)} loading={exporting === `${d.id}:csv`}>
+            CSV
+          </Button>
+          <Button size="sm" variant="subtle" icon={<FileSpreadsheet size={14} />} onClick={() => onExportBinary(d, 'xlsx')} loading={exporting === `${d.id}:xlsx`}>
+            Excel
+          </Button>
+          <Button size="sm" variant="subtle" icon={<FileDown size={14} />} onClick={() => onExportBinary(d, 'pdf')} loading={exporting === `${d.id}:pdf`}>
+            PDF
           </Button>
         </div>
       ),

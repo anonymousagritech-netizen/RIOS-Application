@@ -1,6 +1,6 @@
 import { Plus, ShieldAlert, FolderOpen, Coins, Wallet, CircleDollarSign } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useClaims, useCreateClaim, useTreaties, useCurrencies, useStatusColors, useCodeLists } from '../lib/queries';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
@@ -27,7 +27,15 @@ const STATUSES = ['OPEN', 'NOTIFIED', 'RESERVED', 'PAID', 'CLOSED', 'REOPENED'];
 export function ClaimsPage() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
-  const [status, setStatus] = useState('');
+  // Status filter is URL-backed so dashboard/analytics drill-throughs can deep-link
+  // (e.g. /claims?status=OPEN); the dropdown keeps the query param in sync.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const status = searchParams.get('status') ?? '';
+  const setStatus = (v: string) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (v) next.set('status', v); else next.delete('status');
+    return next;
+  }, { replace: true });
   const [showNew, setShowNew] = useState(false);
 
   const { data, isLoading } = useClaims({ status: status || undefined });
