@@ -281,6 +281,85 @@
 .sensPoint[data-band='amber'] .sensPointCr { color: var(--accent-orange); }
 .sensPoint[data-band='red'] .sensPointCr { color: var(--accent-rose); }
 
+/* View mode toggle */
+.viewToggle { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.viewBtn {
+  display: grid; place-items: center; padding: var(--space-1) var(--space-2);
+  background: var(--surface-2); color: var(--text-muted); border: none; cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.viewBtn:hover { background: var(--surface-3); color: var(--text); }
+.viewBtnActive { background: var(--primary-soft); color: var(--primary); }
+
+/* Kanban board */
+.kanban {
+  display: flex; gap: var(--space-3);
+  overflow-x: auto; padding: var(--space-3) var(--space-4) var(--space-4);
+  scroll-snap-type: x mandatory;
+}
+.kanbanCol {
+  flex: 0 0 220px; display: flex; flex-direction: column; gap: var(--space-2);
+  scroll-snap-align: start;
+}
+.kanbanColTerminal { opacity: 0.8; }
+.kanbanColHead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md); background: var(--surface-3);
+  font-size: var(--text-xs); font-weight: var(--weight-semibold); color: var(--text-muted);
+  sticky: top; position: sticky; top: 0;
+}
+.kanbanColLabel { text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--text-2xs); }
+.kanbanCards { display: flex; flex-direction: column; gap: var(--space-2); min-height: 80px; }
+.kanbanEmpty { font-size: var(--text-xs); color: var(--text-faint); padding: var(--space-2) var(--space-3); text-align: center; }
+.kanbanSkeleton { height: 100px; border-radius: var(--radius-md); background: var(--surface-3); animation: pulse 1.4s ease-in-out infinite; }
+
+.kanbanCard {
+  display: flex; flex-direction: column; gap: var(--space-1);
+  padding: var(--space-3); border-radius: var(--radius-md);
+  background: var(--surface-1); border: 1px solid var(--border);
+  cursor: pointer; text-align: left; width: 100%;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.kanbanCard:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 15%, transparent);
+}
+.kanbanCardTitle { font-size: var(--text-xs); font-weight: var(--weight-semibold); color: var(--text); line-height: 1.3; }
+.kanbanCardMeta { font-size: var(--text-2xs); color: var(--text-muted); }
+.kanbanCardFooter { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-1); }
+.kanbanCardEpi { font-size: var(--text-xs); font-variant-numeric: tabular-nums; font-weight: var(--weight-semibold); color: var(--text); }
+.kanbanCardStats { display: inline-flex; align-items: center; gap: var(--space-2); }
+.kanbanCardScore { font-size: var(--text-xs); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; }
+.kanbanCardDays { display: inline-flex; align-items: center; gap: 2px; font-size: var(--text-2xs); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* Quick actions panel in the drawer */
+.quickActions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.quickPanel { margin-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-2); border: 1px dashed var(--border); }
+
+/* Return period / EP curve */
+.epBlock { display: flex; flex-direction: column; gap: var(--space-2); }
+.epLabel { font-size: var(--text-2xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
+.epRow { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.epStat { display: flex; flex-direction: column; gap: 2px; }
+.epStatLabel { font-size: var(--text-2xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
+.epStatValue { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--text); font-variant-numeric: tabular-nums; }
+.epTable { display: flex; flex-direction: column; gap: 2px; }
+.epTableHead {
+  display: grid; grid-template-columns: 56px 1fr 1fr 1fr;
+  font-size: var(--text-2xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-faint); padding: var(--space-1) var(--space-2);
+}
+.epTableRow {
+  display: grid; grid-template-columns: 56px 1fr 1fr 1fr;
+  align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-2); border-radius: var(--radius-sm);
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+}
+.epRp { font-weight: var(--weight-semibold); color: var(--text); }
+
 @media (max-width: 560px) {
   .facts { grid-template-columns: 1fr; }
+  .kanbanCol { flex: 0 0 180px; }
 }

@@ -18,6 +18,7 @@ import {
   requiredApproval, levelCovers, LEVEL_PERMISSION,
   recommendedClauses, missingInformation, attentionFlags, executiveSummary,
   extractDocument, inferKind, nextVersion, signatureDigest,
+  defaultCatModel, RETURN_PERIODS,
   type UwStage, type RiskFactorInput, type RiskBand, type ApprovalLevel, type AdvisorInput, type DocumentKind,
 } from '@rios/domain';
 import { runAs, type Db } from '../db.js';
@@ -79,6 +80,18 @@ function approvalRequired(to: string, band: string | null, limitMinor: number | 
   if (band === 'HIGH') return 'HIGH risk band';
   if ((limitMinor ?? 0) >= LARGE_LIMIT_MINOR) return 'limit ≥ 25m';
   return null;
+}
+
+/** Map a line-of-business key to a CAT model peril for the mock EP curve. */
+function lobToPeril(lob: string | null): string {
+  if (!lob) return 'HURRICANE';
+  const u = lob.toUpperCase();
+  if (u.includes('MARINE')) return 'STORMSURGE';
+  if (u.includes('QUAKE') || u.includes('EQ')) return 'EARTHQUAKE';
+  if (u.includes('FLOOD')) return 'FLOOD';
+  if (u.includes('FIRE') || u.includes('WILDFIRE')) return 'WILDFIRE';
+  if (u.includes('WIND') || u.includes('STORM') || u.includes('CYCLONE')) return 'WINDSTORM';
+  return 'HURRICANE';
 }
 
 async function logActivity(
@@ -145,10 +158,14 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
                 s.est_premium_minor as "estPremiumMinor", s.target_premium_minor as "targetPremiumMinor",
                 to_char(s.inception,'YYYY-MM-DD') as inception, to_char(s.expiry,'YYYY-MM-DD') as expiry,
                 ced.short_name as "cedentName", brk.short_name as "brokerName",
-                s.created_at as "createdAt"
+                s.created_at as "createdAt",
+                extract(day from now() - s.updated_at)::int as "daysInStage",
+                s.assigned_to as "assignedTo",
+                u.display_name as "assignedToName"
            from submission s
            left join party ced on ced.id = s.cedent_party_id
            left join party brk on brk.id = s.broker_party_id
+           left join app_user u on u.id = s.assigned_to
           where ($1::text is null or s.stage = $1)
           order by s.created_at desc`,
         [stage ?? null],
@@ -403,14 +420,40 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
     const rateChanges = Array.isArray(body.rateChanges) && body.rateChanges.length ? body.rateChanges : [-0.15, -0.05, 0, 0.05, 0.15, 0.25];
     const lossShocks = Array.isArray(body.lossShocks) && body.lossShocks.length ? body.lossShocks : [0.8, 0.9, 1, 1.1, 1.25, 1.5];
     return runAs(ctx, async (db) => {
-      const { rows } = await db.query<{ est_premium_minor: number | null; loss_ratio_pct: number | null; target_premium_minor: number | null }>(
-        `select est_premium_minor, loss_ratio_pct, target_premium_minor from submission where id = $1`, [req.params.id],
+      const { rows } = await db.query<{
+        est_premium_minor: number | null; loss_ratio_pct: number | null; target_premium_minor: number | null;
+        cat_exposed: boolean; sum_insured_minor: number | null; line_of_business: string | null;
+      }>(
+        `select est_premium_minor, loss_ratio_pct, target_premium_minor, cat_exposed, sum_insured_minor, line_of_business from submission where id = $1`,
+        [req.params.id],
       );
       const r = rows[0];
       if (!r) { reply.code(404); return { error: 'Submission not found' }; }
       const basePremium = Number(r.target_premium_minor ?? r.est_premium_minor ?? 0);
       const expectedLoss = Math.round(Number(r.est_premium_minor ?? 0) * ((r.loss_ratio_pct ?? 60) / 100));
       const expenseRatio = body.expenseRatio ?? 0.15;
+
+      // CAT EP curve for cat-exposed risks (mock model; real adapter wired via connectors).
+      // Return periods filtered to the four the task spec highlights plus extras.
+      const DISPLAY_RPS = [10, 50, 100, 250] as const;
+      let catModel: { peril: string; aalMinor: number; epCurve: { returnPeriod: number; lossMinor: number; exceedanceProbPct: number }[] } | null = null;
+      if (r.cat_exposed) {
+        const exposure = Number(r.sum_insured_minor ?? r.est_premium_minor ?? 0);
+        if (exposure > 0) {
+          const peril = lobToPeril(r.line_of_business);
+          const result = defaultCatModel.run({ aggregateExposureMinor: exposure, peril });
+          catModel = {
+            peril,
+            aalMinor: result.aalMinor,
+            epCurve: DISPLAY_RPS.map((rp) => ({
+              returnPeriod: rp,
+              lossMinor: result.pmlMinor[rp] ?? 0,
+              exceedanceProbPct: Math.round((1 / rp) * 10000) / 100,
+            })),
+          };
+        }
+      }
+
       return {
         basePremiumMinor: basePremium,
         expectedLossMinor: expectedLoss,
@@ -418,6 +461,7 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
         grid: scenarioGrid({ basePremiumMinor: basePremium, expectedLossMinor: expectedLoss, expenseRatio, rateChanges, lossShocks }),
         sensitivity: sensitivity({ basePremiumMinor: basePremium, expectedLossMinor: expectedLoss, expenseRatio, rateChanges, lossShocks }),
         rateChanges, lossShocks,
+        catModel,
       };
     });
   });
@@ -631,6 +675,99 @@ export async function underwritingModule(app: FastifyInstance): Promise<void> {
         [status],
       );
       return { approvals: rows };
+    });
+  });
+
+  // ---- Users (for assign dropdown) ----------------------------------------
+  // Returns all users in the tenant for the assignment picker. Read-only.
+  app.get('/api/underwriting/users', { preHandler: requirePermission('treaty:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query(
+        `select u.id, u.display_name as "displayName", u.email
+           from app_user u
+          where u.tenant_id = $1
+          order by u.display_name`,
+        [ctx.tenantId],
+      );
+      return { users: rows };
+    });
+  });
+
+  // ---- Assign to underwriter -----------------------------------------------
+  // Updates the `assigned_to` field on a submission, logs the activity and
+  // notifies the assignee. Uses PATCH (partial update, not a stage transition).
+  app.patch<{ Params: { id: string } }>('/api/underwriting/submissions/:id/assign', { preHandler: requirePermission('treaty:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const { userId } = (req.body ?? {}) as { userId?: string | null };
+    return runAs(ctx, async (db) => {
+      const cur = await db.query<{ reference: string; title: string }>(
+        `select reference, title from submission where id = $1`, [req.params.id],
+      );
+      if (!cur.rows[0]) { reply.code(404); return { error: 'Submission not found' }; }
+      const s = cur.rows[0];
+
+      let assignedName: string | null = null;
+      if (userId) {
+        const u = await db.query<{ display_name: string }>(
+          `select display_name from app_user where id = $1 and tenant_id = $2`, [userId, ctx.tenantId],
+        );
+        if (!u.rows[0]) { reply.code(400); return { error: 'User not found in this tenant' }; }
+        assignedName = u.rows[0].display_name;
+      }
+
+      await db.query(`update submission set assigned_to = $2, updated_at = now() where id = $1`, [req.params.id, userId ?? null]);
+      const note = userId ? `Assigned to ${assignedName}` : 'Assignment cleared';
+      await logActivity(db, ctx.tenantId, req.params.id, ctx.userId, 'ASSIGN', { note });
+      await writeAudit(db, ctx, { action: 'assign', entityType: 'submission', entityId: req.params.id, after: { assignedTo: userId } });
+
+      // Notify the newly assigned UW (if different from the actor).
+      if (userId && userId !== ctx.userId) {
+        await notify(db, ctx.tenantId, {
+          userId, kind: 'TASK', severity: 'INFO',
+          title: `Submission ${s.reference} assigned to you`,
+          body: s.title,
+          link: `/underwriting?submission=${req.params.id}`,
+          entityType: 'submission', entityId: req.params.id,
+        });
+      }
+
+      return { id: req.params.id, assignedTo: userId ?? null, assignedToName: assignedName };
+    });
+  });
+
+  // ---- Request information checklist ---------------------------------------
+  // Creates a REVIEW task linked to the submission for the underwriter to track
+  // missing information items. Does not transition the submission stage.
+  app.post<{ Params: { id: string } }>('/api/underwriting/submissions/:id/info-request', { preHandler: requirePermission('treaty:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const { description } = (req.body ?? {}) as { description?: string };
+    return runAs(ctx, async (db) => {
+      const cur = await db.query<{ reference: string; title: string; assigned_to: string | null }>(
+        `select reference, title, assigned_to from submission where id = $1`, [req.params.id],
+      );
+      if (!cur.rows[0]) { reply.code(404); return { error: 'Submission not found' }; }
+      const s = cur.rows[0];
+      const desc = description?.trim() || 'Additional underwriting information required before this submission can progress.';
+      const ins = await db.query<{ id: string }>(
+        `insert into task (tenant_id, title, description, kind, priority, entity_type, entity_id, entity_label, created_by)
+         values ($1,$2,$3,'REVIEW','MEDIUM','submission',$4,$5,$6) returning id`,
+        [ctx.tenantId, `Info request: ${s.reference}`, desc, req.params.id, s.title, ctx.userId],
+      );
+      await logActivity(db, ctx.tenantId, req.params.id, ctx.userId, 'NOTE', { note: `Info requested: ${desc}` });
+      await writeAudit(db, ctx, { action: 'info_request', entityType: 'submission', entityId: req.params.id, after: { taskId: ins.rows[0]!.id } });
+
+      // Notify the assigned underwriter (or requester).
+      await notify(db, ctx.tenantId, {
+        userId: s.assigned_to ?? ctx.userId, kind: 'TASK', severity: 'INFO',
+        title: `Info requested on ${s.reference}`,
+        body: desc,
+        link: `/underwriting?submission=${req.params.id}`,
+        entityType: 'submission', entityId: req.params.id,
+      });
+
+      reply.code(201);
+      return { id: ins.rows[0]!.id, submissionId: req.params.id, description: desc };
     });
   });
 
