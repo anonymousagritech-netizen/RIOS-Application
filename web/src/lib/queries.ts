@@ -5,6 +5,7 @@ import type {
   PartyDetail, TreatiesResponse, TreatyDetail, FinancialEventsResponse,
   StatementResponse, PostResponse, ClaimsResponse, ClaimDetail,
   TransitionResponse, AssistantReply,
+  JournalsResponse, TrialBalanceResponse, UnpostedResponse,
 } from './types';
 import type { CodeValueDTO } from '@rios/shared';
 
@@ -224,6 +225,54 @@ export function usePreference<T>(key: string, defaultValue: T) {
     save: mutation.mutateAsync,
     isLoading: query.isLoading,
   };
+}
+
+/* ---------------- Accounting GL (P2-05) ---------------- */
+
+export function useGlJournals(params: {
+  from?: string; to?: string; treatyRef?: string; eventType?: string; page?: number;
+}) {
+  return useQuery({
+    queryKey: ['gl-journals', params],
+    queryFn: () =>
+      api<JournalsResponse>(
+        `/api/accounting/journals${qs({
+          from: params.from,
+          to: params.to,
+          treatyRef: params.treatyRef,
+          eventType: params.eventType,
+          page: params.page != null ? String(params.page) : undefined,
+        })}`,
+      ),
+  });
+}
+
+export function useTrialBalance(params: { from: string; to: string }) {
+  return useQuery({
+    queryKey: ['trial-balance', params],
+    queryFn: () => api<TrialBalanceResponse>(`/api/accounting/trial-balance${qs(params)}`),
+    enabled: !!params.from && !!params.to,
+  });
+}
+
+export function useUnpostedEvents() {
+  return useQuery({
+    queryKey: ['unposted-events'],
+    queryFn: () => api<UnpostedResponse>('/api/accounting/unposted'),
+  });
+}
+
+export function usePostAll() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ posted: number; journals: number }>('/api/accounting/post-all', { body: {} }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['unposted-events'] });
+      void qc.invalidateQueries({ queryKey: ['gl-journals'] });
+      void qc.invalidateQueries({ queryKey: ['trial-balance'] });
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
 }
 
 /* ---------------- Assistant ---------------- */

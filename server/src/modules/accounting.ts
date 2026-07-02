@@ -43,6 +43,368 @@ const POSTING_RULES: Record<string, { drAccount: string; crAccount: string }> = 
 };
 
 export async function accountingModule(app: FastifyInstance): Promise<void> {
+
+  // ---------------------------------------------------------------------------
+  // GL Journal drill-down: paginated list of posted journal entries (P2-05)
+  // ---------------------------------------------------------------------------
+  app.get<{
+    Querystring: { from?: string; to?: string; treatyRef?: string; eventType?: string; page?: string; limit?: string };
+  }>(
+    '/api/accounting/journals',
+    { preHandler: requirePermission('accounting:read') },
+    async (req) => {
+      const ctx = authContext(req);
+      const { from, to, treatyRef, eventType } = req.query;
+      const pageLimit = Math.min(Number(req.query.limit) || 25, 100);
+      const pageOffset = (Math.max(Number(req.query.page) || 0, 0)) * pageLimit;
+
+      return runAs(ctx, async (db) => {
+        // Build dynamic filter for parameterized query
+        const conditions: string[] = ['lp_dr.debit_minor > 0'];
+        const params: unknown[] = [];
+        let p = 0;
+        const add = (v: unknown) => { params.push(v); return `$${++p}`; };
+
+        if (from) conditions.push(`j.posted_at >= ${add(from)}::date`);
+        if (to)   conditions.push(`j.posted_at <= ${add(to)}::date`);
+        if (treatyRef) conditions.push(`c.reference ILIKE ${add(`%${treatyRef}%`)}`);
+        if (eventType) conditions.push(`fe.event_type = ${add(eventType)}`);
+
+        const limitP  = add(pageLimit + 1);
+        const offsetP = add(pageOffset);
+
+        const { rows } = await db.query<{
+          journal_reference: string | null;
+          posted_at: string;
+          currency: string;
+          treaty_reference: string | null;
+          event_type: string | null;
+          debit_account: string | null;
+          credit_account: string | null;
+          amount_minor: number;
+        }>(
+          `SELECT
+             j.reference       AS journal_reference,
+             j.posted_at::text AS posted_at,
+             lp_dr.currency,
+             c.reference       AS treaty_reference,
+             fe.event_type,
+             dr_acc.code       AS debit_account,
+             cr_acc.code       AS credit_account,
+             lp_dr.debit_minor AS amount_minor
+           FROM ledger_posting lp_dr
+           JOIN journal       j      ON j.id      = lp_dr.journal_id
+           JOIN gl_account    dr_acc ON dr_acc.id = lp_dr.gl_account_id
+           LEFT JOIN ledger_posting lp_cr
+                  ON lp_cr.journal_id      = lp_dr.journal_id
+                 AND lp_cr.source_event_id = lp_dr.source_event_id
+                 AND lp_cr.credit_minor    > 0
+           LEFT JOIN gl_account    cr_acc ON cr_acc.id = lp_cr.gl_account_id
+           LEFT JOIN financial_event fe   ON fe.id     = lp_dr.source_event_id
+           LEFT JOIN contract        c    ON c.id      = fe.contract_id
+           WHERE ${conditions.join(' AND ')}
+           ORDER BY j.posted_at DESC, lp_dr.id ASC
+           LIMIT ${limitP} OFFSET ${offsetP}`,
+          params,
+        );
+
+        const hasMore = rows.length > pageLimit;
+        if (hasMore) rows.pop();
+        return {
+          entries: rows.map((r) => ({
+            journalReference: r.journal_reference,
+            postedAt: r.posted_at,
+            currency: r.currency,
+            treatyReference: r.treaty_reference,
+            eventType: r.event_type,
+            debitAccount: r.debit_account,
+            creditAccount: r.credit_account,
+            amountMinor: Number(r.amount_minor),
+          })),
+          hasMore,
+          page: Math.max(Number(req.query.page) || 0, 0),
+        };
+      });
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Trial balance: aggregated account balances for a period (P2-05)
+  // ---------------------------------------------------------------------------
+  app.get<{ Querystring: { from?: string; to?: string } }>(
+    '/api/accounting/trial-balance',
+    { preHandler: requirePermission('accounting:read') },
+    async (req) => {
+      const ctx = authContext(req);
+      // Default: current month
+      const now = new Date();
+      const from = req.query.from ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const to   = req.query.to   ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${lastDay}`;
+
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{
+          account_code: string;
+          account_name: string;
+          debit_minor: number;
+          credit_minor: number;
+          net_minor: number;
+        }>(
+          `SELECT
+             ga.code AS account_code,
+             ga.name AS account_name,
+             SUM(lp.debit_minor)                         AS debit_minor,
+             SUM(lp.credit_minor)                        AS credit_minor,
+             SUM(lp.debit_minor) - SUM(lp.credit_minor) AS net_minor
+           FROM ledger_posting lp
+           JOIN gl_account ga ON ga.id = lp.gl_account_id
+           JOIN journal    j  ON j.id  = lp.journal_id
+           WHERE j.posted_at BETWEEN $1::date AND $2::date
+           GROUP BY ga.code, ga.name
+           ORDER BY ga.code`,
+          [from, to],
+        );
+
+        return {
+          rows: rows.map((r) => ({
+            accountCode:  r.account_code,
+            accountName:  r.account_name,
+            debitMinor:   Number(r.debit_minor),
+            creditMinor:  Number(r.credit_minor),
+            netMinor:     Number(r.net_minor),
+          })),
+          from,
+          to,
+        };
+      });
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // CSV export of GL journal entries (P2-05)
+  // ---------------------------------------------------------------------------
+  app.get<{
+    Querystring: { from?: string; to?: string; treatyRef?: string; eventType?: string };
+  }>(
+    '/api/accounting/export.csv',
+    { preHandler: requirePermission('accounting:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const { from, to, treatyRef, eventType } = req.query;
+
+      return runAs(ctx, async (db) => {
+        const conditions: string[] = ['lp_dr.debit_minor > 0'];
+        const params: unknown[] = [];
+        let p = 0;
+        const add = (v: unknown) => { params.push(v); return `$${++p}`; };
+
+        if (from) conditions.push(`j.posted_at >= ${add(from)}::date`);
+        if (to)   conditions.push(`j.posted_at <= ${add(to)}::date`);
+        if (treatyRef) conditions.push(`c.reference ILIKE ${add(`%${treatyRef}%`)}`);
+        if (eventType) conditions.push(`fe.event_type = ${add(eventType)}`);
+
+        const { rows } = await db.query<{
+          journal_reference: string | null;
+          posted_at: string;
+          currency: string;
+          treaty_reference: string | null;
+          event_type: string | null;
+          debit_account: string | null;
+          credit_account: string | null;
+          amount_minor: number;
+        }>(
+          `SELECT
+             j.reference       AS journal_reference,
+             j.posted_at::text AS posted_at,
+             lp_dr.currency,
+             c.reference       AS treaty_reference,
+             fe.event_type,
+             dr_acc.code       AS debit_account,
+             cr_acc.code       AS credit_account,
+             lp_dr.debit_minor AS amount_minor
+           FROM ledger_posting lp_dr
+           JOIN journal       j      ON j.id      = lp_dr.journal_id
+           JOIN gl_account    dr_acc ON dr_acc.id = lp_dr.gl_account_id
+           LEFT JOIN ledger_posting lp_cr
+                  ON lp_cr.journal_id      = lp_dr.journal_id
+                 AND lp_cr.source_event_id = lp_dr.source_event_id
+                 AND lp_cr.credit_minor    > 0
+           LEFT JOIN gl_account    cr_acc ON cr_acc.id = lp_cr.gl_account_id
+           LEFT JOIN financial_event fe   ON fe.id     = lp_dr.source_event_id
+           LEFT JOIN contract        c    ON c.id      = fe.contract_id
+           WHERE ${conditions.join(' AND ')}
+           ORDER BY j.posted_at DESC, lp_dr.id ASC
+           LIMIT 10000`,
+          params,
+        );
+
+        const escape = (v: unknown) => {
+          const s = v == null ? '' : String(v);
+          return s.includes(',') || s.includes('"') || s.includes('\n')
+            ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        const header = 'Journal Reference,Posted At,Currency,Treaty Reference,Event Type,Debit Account,Credit Account,Amount';
+        const csvRows = rows.map((r) =>
+          [
+            r.journal_reference, r.posted_at, r.currency, r.treaty_reference,
+            r.event_type, r.debit_account, r.credit_account,
+            (Number(r.amount_minor) / 100).toFixed(2),
+          ].map(escape).join(','),
+        );
+        const csv = [header, ...csvRows].join('\r\n');
+
+        void reply.header('Content-Type', 'text/csv; charset=utf-8');
+        void reply.header('Content-Disposition', 'attachment; filename="gl-journal.csv"');
+        return reply.send(csv);
+      });
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Unposted financial events (not yet in any ledger_posting) (P2-05)
+  // ---------------------------------------------------------------------------
+  app.get(
+    '/api/accounting/unposted',
+    { preHandler: requirePermission('accounting:read') },
+    async (req) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{
+          id: string;
+          contract_id: string;
+          contract_reference: string | null;
+          contract_name: string;
+          event_type: string;
+          direction: string;
+          amount_minor: number;
+          currency: string;
+          booked_at: string;
+          narrative: string | null;
+        }>(
+          `SELECT
+             fe.id,
+             fe.contract_id,
+             c.reference   AS contract_reference,
+             c.name        AS contract_name,
+             fe.event_type,
+             fe.direction,
+             fe.amount_minor,
+             fe.currency,
+             fe.booked_at::text AS booked_at,
+             fe.narrative
+           FROM financial_event fe
+           JOIN contract c ON c.id = fe.contract_id AND NOT c.is_deleted
+           WHERE NOT EXISTS (
+             SELECT 1 FROM ledger_posting lp WHERE lp.source_event_id = fe.id
+           )
+           ORDER BY fe.booked_at, fe.created_at
+           LIMIT 500`,
+        );
+
+        return {
+          events: rows.map((r) => ({
+            id: r.id,
+            contractId: r.contract_id,
+            contractReference: r.contract_reference,
+            contractName: r.contract_name,
+            eventType: r.event_type,
+            direction: r.direction,
+            amountMinor: Number(r.amount_minor),
+            currency: r.currency,
+            bookedAt: r.booked_at,
+            narrative: r.narrative,
+          })),
+          count: rows.length,
+        };
+      });
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Post ALL unposted events across all contracts (P2-05)
+  // ---------------------------------------------------------------------------
+  app.post(
+    '/api/accounting/post-all',
+    { preHandler: requirePermission('accounting:post') },
+    async (req) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        // Find all contracts that have at least one unposted financial event
+        const { rows: contractRows } = await db.query<{ contract_id: string }>(
+          `SELECT DISTINCT fe.contract_id
+           FROM financial_event fe
+           WHERE NOT EXISTS (
+             SELECT 1 FROM ledger_posting lp WHERE lp.source_event_id = fe.id
+           )
+           ORDER BY fe.contract_id`,
+        );
+
+        if (contractRows.length === 0) {
+          return { posted: 0, journals: 0, message: 'Nothing to post' };
+        }
+
+        const accounts = await accountMap(db);
+        let totalPosted = 0;
+        const journalIds: string[] = [];
+
+        for (const { contract_id } of contractRows) {
+          const { contract, events } = await loadEvents(db, contract_id);
+          if (!contract) continue;
+
+          const postedIds = new Set(
+            (
+              await db.query<{ source_event_id: string }>(
+                `SELECT DISTINCT source_event_id FROM ledger_posting
+                  WHERE source_event_id IS NOT NULL AND source_event_id = ANY($1::uuid[])`,
+                [events.map((e) => e.id)],
+              )
+            ).rows.map((r) => r.source_event_id),
+          );
+
+          const toPost = events.filter((e) => !postedIds.has(e.id));
+          if (toPost.length === 0) continue;
+
+          const journal = await db.query<{ id: string }>(
+            `INSERT INTO journal (tenant_id, reference, description, currency, source, created_by)
+             VALUES ($1, $2, $3, $4, 'technical_accounting', $5) RETURNING id`,
+            [ctx.tenantId, `JNL-${contract.reference ?? contract.id.slice(0, 8)}`, `Technical accounting for ${contract.name}`, contract.currency, ctx.userId],
+          );
+          const journalId = journal.rows[0]!.id;
+
+          for (const e of toPost) {
+            const rule = POSTING_RULES[e.type];
+            if (!rule) continue;
+            const drAcc = accounts.get(rule.drAccount);
+            const crAcc = accounts.get(rule.crAccount);
+            if (!drAcc || !crAcc) continue;
+            await db.query(
+              `INSERT INTO ledger_posting (tenant_id, journal_id, gl_account_id, debit_minor, credit_minor, currency, source_event_id, narrative)
+               VALUES ($1,$2,$3,$4,0,$5,$6,$7), ($1,$2,$8,0,$4,$5,$6,$7)`,
+              [ctx.tenantId, journalId, drAcc, e.amount.amount, contract.currency, e.id, e.type, crAcc],
+            );
+          }
+
+          await writeAudit(db, ctx, {
+            action: 'post',
+            entityType: 'journal',
+            entityId: journalId,
+            after: { events: toPost.length, contractId: contract.id },
+            actorLabel: (req as { auth?: { displayName?: string } }).auth?.displayName,
+          });
+
+          totalPosted += toPost.length;
+          journalIds.push(journalId);
+        }
+
+        return { posted: totalPosted, journals: journalIds.length, journalIds };
+      });
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Existing per-treaty endpoints (below)
+  // ---------------------------------------------------------------------------
+
   app.get<{ Params: { id: string }; Querystring: { limit?: string; cursor?: string } }>(
     '/api/treaties/:id/financial-events',
     { preHandler: requirePermission('accounting:read') },

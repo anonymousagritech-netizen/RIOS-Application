@@ -111,3 +111,56 @@ export interface AssistantReply {
 }
 
 export interface MeResponse { user: AuthUser; }
+
+// ---------------------------------------------------------------------------
+// Accounting GL types (P2-05)
+// ---------------------------------------------------------------------------
+
+export interface JournalEntry {
+  journalReference: string | null;
+  postedAt: string;
+  currency: string;
+  treatyReference: string | null;
+  eventType: string | null;
+  debitAccount: string | null;
+  creditAccount: string | null;
+  amountMinor: number;
+}
+
+export interface JournalsResponse {
+  entries: JournalEntry[];
+  hasMore: boolean;
+  page: number;
+}
+
+export interface TrialBalanceRow {
+  accountCode: string;
+  accountName: string;
+  debitMinor: number;
+  creditMinor: number;
+  netMinor: number;
+}
+
+export interface TrialBalanceResponse {
+  rows: TrialBalanceRow[];
+  from: string;
+  to: string;
+}
+
+export interface UnpostedEvent {
+  id: string;
+  contractId: string;
+  contractReference: string | null;
+  contractName: string;
+  eventType: string;
+  direction: string;
+  amountMinor: number;
+  currency: string;
+  bookedAt: string;
+  narrative: string | null;
+}
+
+export interface UnpostedResponse {
+  events: UnpostedEvent[];
+  count: number;
+}
