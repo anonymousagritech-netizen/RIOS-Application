@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardHeader } from '../components/Card';
 import { Table, type Column, EmptyState } from '../components/Table';
-import { StatusPill } from '../components/Badge';
+import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select, Textarea, TextField } from '../components/Form';
@@ -13,7 +13,13 @@ import { Tabs } from '../components/Tabs';
 import { KpiCard } from '../components/KpiCard';
 import { formatDate, formatNumber, titleCase } from '../lib/format';
 import { api, qs, ApiError } from '../lib/api';
-import { FileText, Lock, Clock, FolderOpen, LayoutTemplate, FileStack, Sparkles } from 'lucide-react';
+import {
+  DOC_CATEGORIES, ACCEPT_EXTENSIONS, ALLOWED_LABEL, inferMimeType, readFileAsBase64,
+  downloadBase64, DocumentPreviewModal, type DocContent,
+} from '../components/documentShared';
+import {
+  FileText, Lock, Clock, FolderOpen, LayoutTemplate, FileStack, Sparkles, Search, Upload, Download, Eye,
+} from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './DocumentsPage.module.css';
 
@@ -22,7 +28,19 @@ const DOC_TYPES = ['SLIP', 'COVER_NOTE', 'ENDORSEMENT', 'STATEMENT', 'LETTER', '
 /* ---------------- Local data hooks ---------------- */
 interface DocTemplate { id: string; key: string; name: string; doc_type: string | null; version: number | null }
 interface DocSummary { id: string; title: string; doc_type: string | null; status: string; created_at: string }
-interface DocDetail extends DocSummary { content: string }
+interface SearchRow {
+  id: string;
+  title: string;
+  fileName: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  category: string | null;
+  docStatus: string | null;
+  currentVersion: number | null;
+  tags: string[] | null;
+  docType: string | null;
+  createdAt: string;
+}
 
 function useDocTemplates() {
   return useQuery({
@@ -38,11 +56,11 @@ function useDocuments(docType: string) {
   });
 }
 
-function useDocument(id: string | null) {
+interface SearchParams { q?: string; entityType?: string; category?: string; tag?: string }
+function useSearchDocuments(params: SearchParams) {
   return useQuery({
-    queryKey: ['document', id],
-    queryFn: () => api<DocDetail>(`/api/documents/${id}`),
-    enabled: !!id,
+    queryKey: ['documents-search', params],
+    queryFn: () => api<{ documents: SearchRow[] }>(`/api/documents/search${qs(params as Record<string, string | undefined>)}`),
   });
 }
 
@@ -67,11 +85,23 @@ function useGenerateDocument() {
   });
 }
 
+interface UploadBody {
+  fileName: string; mimeType: string; contentBase64: string;
+  category?: string; entityType: string; entityId: string; tags?: string[];
+}
+function useUploadDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UploadBody) => api<{ id: string }>('/api/documents/upload', { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['documents-search'] }),
+  });
+}
+
 /* ---------------- Page ---------------- */
 export function DocumentsPage() {
   const { hasPermission } = useAuth();
   const canWrite = hasPermission('documents:write');
-  const [tab, setTab] = useState('templates');
+  const [tab, setTab] = useState('search');
 
   const templates = useDocTemplates();
   const documents = useDocuments('');
@@ -82,8 +112,8 @@ export function DocumentsPage() {
   return (
     <div className={styles.page}>
       <PageHeader
-        title="Documents"
-        description="Author reusable templates with merge placeholders and generate documents across the portfolio."
+        title="Document Workspace"
+        description="Search every document across the portfolio, upload real files, and author reusable templates."
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Documents' }]}
         actions={
           canWrite ? (
@@ -108,7 +138,7 @@ export function DocumentsPage() {
         <KpiCard
           label="Documents"
           value={formatNumber(docCount)}
-          hint="Generated across the portfolio"
+          hint="Across the portfolio"
           icon={<FileStack size={20} />}
           accent="var(--accent-violet)"
           loading={documents.isLoading}
@@ -125,18 +155,229 @@ export function DocumentsPage() {
 
       <Tabs
         tabs={[
+          { id: 'search', label: 'Search & upload' },
           { id: 'templates', label: 'Templates' },
           { id: 'generate', label: 'Generate' },
-          { id: 'documents', label: 'Documents' },
         ]}
         active={tab}
         onChange={setTab}
       />
 
+      {tab === 'search' && <SearchTab canWrite={canWrite} />}
       {tab === 'templates' && <TemplatesTab canWrite={canWrite} />}
       {tab === 'generate' && <GenerateTab canWrite={canWrite} />}
-      {tab === 'documents' && <DocumentsTab />}
     </div>
+  );
+}
+
+/* ---------------- Search & upload tab ---------------- */
+function SearchTab({ canWrite }: { canWrite: boolean }) {
+  const toast = useToast();
+  const [q, setQ] = useState('');
+  const [category, setCategory] = useState('');
+  const [entityType, setEntityType] = useState('');
+  const [tag, setTag] = useState('');
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const params: SearchParams = {
+    q: q.trim() || undefined,
+    category: category || undefined,
+    entityType: entityType.trim() || undefined,
+    tag: tag.trim() || undefined,
+  };
+  const { data, isLoading } = useSearchDocuments(params);
+  const rows = data?.documents ?? [];
+
+  const runDownload = async (row: SearchRow) => {
+    setDownloadingId(row.id);
+    try {
+      const c = await api<DocContent>(`/api/documents/${row.id}/content`);
+      downloadBase64(c.fileName, c.mimeType, c.contentBase64);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not download the document.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const columns: Column<SearchRow>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      sortValue: (d) => d.fileName ?? d.title,
+      render: (d) => (
+        <div>
+          <span className={shared.cellMain}>{d.fileName ?? d.title}</span>
+          {d.tags && d.tags.length > 0 && (
+            <div className={styles.tagRow}>
+              {d.tags.map((t) => <Badge key={t} color="slate" variant="outline">{t}</Badge>)}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Category',
+      sortValue: (d) => d.category ?? d.docType ?? '',
+      render: (d) =>
+        d.category ? <Badge color="indigo" variant="outline">{d.category}</Badge>
+          : d.docType ? <Badge color="slate" variant="outline">{titleCase(d.docType)}</Badge>
+            : '-',
+    },
+    { key: 'status', header: 'Status', sortValue: (d) => d.docStatus ?? '', render: (d) => <StatusPill status={d.docStatus} /> },
+    { key: 'version', header: 'Version', align: 'right', sortValue: (d) => d.currentVersion ?? 0, render: (d) => (d.currentVersion ? `v${d.currentVersion}` : '-') },
+    { key: 'created', header: 'Created', align: 'right', sortValue: (d) => d.createdAt, render: (d) => formatDate(d.createdAt) },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      render: (d) => (
+        <span className={styles.rowActions} onClick={(e) => e.stopPropagation()}>
+          <Button size="sm" variant="ghost" icon={<Eye size={15} />} title="Preview" onClick={() => setPreviewId(d.id)} />
+          <Button
+            size="sm" variant="ghost" icon={<Download size={15} />} title="Download"
+            loading={downloadingId === d.id} onClick={() => runDownload(d)}
+          />
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className={shared.stack}>
+      {canWrite && <UploadCard />}
+
+      <Card padded={false}>
+        <div className={`${shared.toolbar} ${styles.toolbarPad}`}>
+          <div className={shared.filter}>
+            <Search size={16} className={shared.filterLabel} aria-hidden />
+            <Input
+              className={shared.searchInput}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search file names, captured text, titles…"
+              aria-label="Search documents"
+            />
+          </div>
+          <div className={shared.filter}>
+            <span className={shared.filterLabel}>Category</span>
+            <Select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Filter by category">
+              <option value="">All</option>
+              {DOC_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+          </div>
+          <div className={shared.filter}>
+            <span className={shared.filterLabel}>Entity</span>
+            <Input value={entityType} onChange={(e) => setEntityType(e.target.value)} placeholder="e.g. contract" aria-label="Filter by entity type" />
+          </div>
+          <div className={shared.filter}>
+            <span className={shared.filterLabel}>Tag</span>
+            <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. renewal" aria-label="Filter by tag" />
+          </div>
+          <div className={shared.spacer} />
+          <span className={shared.cellSub}>{rows.length} result{rows.length === 1 ? '' : 's'}</span>
+        </div>
+        <Table
+          columns={columns}
+          rows={rows}
+          loading={isLoading}
+          rowKey={(d) => d.id}
+          onRowClick={(d) => setPreviewId(d.id)}
+          empty={<EmptyState title="No documents found" message="Adjust the search or filters, or upload a file above." icon={<Search size={16} />} />}
+        />
+      </Card>
+
+      <DocumentPreviewModal docId={previewId} onClose={() => setPreviewId(null)} />
+    </div>
+  );
+}
+
+/* ---------------- General upload (to a chosen entity) ---------------- */
+function UploadCard() {
+  const toast = useToast();
+  const upload = useUploadDocument();
+  const [entityType, setEntityType] = useState('');
+  const [entityId, setEntityId] = useState('');
+  const [category, setCategory] = useState<string>(DOC_CATEGORIES[0]);
+  const [tagsText, setTagsText] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+  const process = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    if (!entityType.trim() || !entityId.trim()) {
+      toast.error('Set a target entity type and ID first - every upload links to a record.');
+      return;
+    }
+    const tags = tagsText.split(',').map((t) => t.trim()).filter(Boolean);
+    setUploading(true);
+    for (const file of Array.from(fileList)) {
+      const mimeType = inferMimeType(file.name, file.type);
+      if (mimeType === 'application/octet-stream') { toast.error(`"${file.name}" is not an allowed file type.`); continue; }
+      if (file.size > MAX_FILE_BYTES) { toast.error(`"${file.name}" exceeds the 10 MB limit.`); continue; }
+      try {
+        const contentBase64 = await readFileAsBase64(file);
+        await upload.mutateAsync({
+          fileName: file.name,
+          mimeType,
+          contentBase64,
+          category,
+          entityType: entityType.trim(),
+          entityId: entityId.trim(),
+          tags: tags.length ? tags : undefined,
+        });
+        toast.success(`Uploaded ${file.name}`);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? `${file.name}: ${err.message}` : `Could not upload ${file.name}.`);
+      }
+    }
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  return (
+    <Card>
+      <CardHeader title="Upload a file" subtitle="Every upload links to a target record; the backend has no unlinked store." />
+      <FormSection title="Target & classification">
+        <FormField label="Entity type" required hint="e.g. contract, party, claim">
+          <Input value={entityType} onChange={(e) => setEntityType(e.target.value)} placeholder="e.g. contract" />
+        </FormField>
+        <FormField label="Entity ID (UUID)" required>
+          <Input value={entityId} onChange={(e) => setEntityId(e.target.value)} placeholder="e.g. 5f0e…" />
+        </FormField>
+        <FormField label="Category">
+          <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+            {DOC_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </FormField>
+        <FormField label="Tags (comma-separated)">
+          <Input value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="e.g. 2026, renewal" />
+        </FormField>
+      </FormSection>
+      <div className={styles.uploadRow}>
+        <Button
+          variant="secondary"
+          icon={<Upload size={15} />}
+          loading={uploading}
+          onClick={() => fileRef.current?.click()}
+        >
+          Choose files & upload
+        </Button>
+        <span className={shared.cellSub}>{ALLOWED_LABEL}</span>
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          accept={ACCEPT_EXTENSIONS}
+          style={{ display: 'none' }}
+          onChange={(e) => process(e.target.files)}
+        />
+      </div>
+    </Card>
   );
 }
 
@@ -383,72 +624,5 @@ function GenerateTab({ canWrite }: { canWrite: boolean }) {
         )}
       </Card>
     </div>
-  );
-}
-
-/* ---------------- Documents tab ---------------- */
-function DocumentsTab() {
-  const [docType, setDocType] = useState('');
-  const { data, isLoading } = useDocuments(docType);
-  const [openId, setOpenId] = useState<string | null>(null);
-
-  const columns: Column<DocSummary>[] = [
-    { key: 'title', header: 'Title', sortValue: (d) => d.title, render: (d) => <span className={shared.cellMain}>{d.title}</span> },
-    { key: 'docType', header: 'Type', sortValue: (d) => d.doc_type ?? '', render: (d) => titleCase(d.doc_type) || '-' },
-    { key: 'status', header: 'Status', sortValue: (d) => d.status, render: (d) => <StatusPill status={d.status} /> },
-    { key: 'created', header: 'Created', align: 'right', sortValue: (d) => d.created_at, render: (d) => formatDate(d.created_at) },
-  ];
-
-  return (
-    <>
-      <Card padded={false}>
-        <div className={`${shared.toolbar} ${styles.toolbarPad}`}>
-          <div className={shared.filter}>
-            <span className={shared.filterLabel}>Type</span>
-            <Select value={docType} onChange={(e) => setDocType(e.target.value)} aria-label="Filter by document type">
-              <option value="">All</option>
-              {DOC_TYPES.map((d) => <option key={d} value={d}>{titleCase(d)}</option>)}
-            </Select>
-          </div>
-          <div className={shared.spacer} />
-          <span className={shared.cellSub}>
-            {data?.documents.length ?? 0} document{(data?.documents.length ?? 0) === 1 ? '' : 's'}
-          </span>
-        </div>
-        <Table
-          columns={columns}
-          rows={data?.documents}
-          loading={isLoading}
-          rowKey={(d) => d.id}
-          onRowClick={(d) => setOpenId(d.id)}
-          empty={<EmptyState title="No documents" message="Generate a document to see it here." icon={<FolderOpen size={16} />} />}
-        />
-      </Card>
-
-      <DocumentModal id={openId} onClose={() => setOpenId(null)} />
-    </>
-  );
-}
-
-function DocumentModal({ id, onClose }: { id: string | null; onClose: () => void }) {
-  const { data, isLoading, isError } = useDocument(id);
-
-  return (
-    <Modal
-      open={!!id}
-      onClose={onClose}
-      title={data?.title ?? 'Document'}
-      description={data ? `${titleCase(data.doc_type) || 'Document'} · ${formatDate(data.created_at)}` : undefined}
-      size="lg"
-      footer={<Button variant="ghost" onClick={onClose}>Close</Button>}
-    >
-      {isLoading && <p className={shared.cellSub}>Loading…</p>}
-      {isError && <p className={styles.error} role="alert">Could not load the document.</p>}
-      {data && (
-        <pre className={`${styles.preview} ${styles.previewScroll}`}>
-          {data.content}
-        </pre>
-      )}
-    </Modal>
   );
 }
