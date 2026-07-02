@@ -18,8 +18,12 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
 ## 1. Reinsurance domain depth
 
 - **Cat modelling / exposure & aggregate management** - `risk.peril_zone` exists and the assistant can
-  aggregate by zone, but zonal aggregates, PML/MFL, RDS, and third-party cat-model integration (Verisk/Moody's
-  RMS) are designed-for. (§7.8, §9.9)
+  aggregate by zone; zonal aggregates, PML/MFL and RDS are delivered. **Third-party cat-model integration is
+  now delivered as an ELT import**: the `catmodel` module imports an Event Loss Table (working CSV and JSON
+  adapters, with a licensed RMS/AIR/CoreLogic vendor API as the labelled seam behind the same `CatEltImporter`
+  interface), persists it (`cat_elt`/`cat_elt_event`), and computes + caches the standard cat metrics - AAL,
+  the OEP exceedance curve and the PML profile at return periods - via the pure `@rios/domain/catastrophe`
+  engine. Surfaced at `/cat-model`. (§7.8, §9.9, §13)
 - **Pricing & rating** - burning-cost/experience rating, exposure rating (exposure curves + ILFs),
   capacity/authority checks and now **swing (retrospectively) rating** (`swingRatedPremium`: provisional vs
   loss-driven adjusted premium collared to [min, max]) are delivered in `@rios/domain/rating` and

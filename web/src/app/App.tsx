@@ -80,6 +80,7 @@ const DesignerPage = lazyPage(() => import('../pages/DesignerPage'), 'DesignerPa
 const AnalyticsPage = lazyPage(() => import('../pages/AnalyticsPage'), 'AnalyticsPage');
 const TreasuryPage = lazyPage(() => import('../pages/TreasuryPage'), 'TreasuryPage');
 const BureauPage = lazyPage(() => import('../pages/BureauPage'), 'BureauPage');
+const CatModelPage = lazyPage(() => import('../pages/CatModelPage'), 'CatModelPage');
 const RiskCapitalPage = lazyPage(() => import('../pages/RiskCapitalPage'), 'RiskCapitalPage');
 const SearchPage = lazyPage(() => import('../pages/SearchPage'), 'SearchPage');
 const RetentionPage = lazyPage(() => import('../pages/RetentionPage'), 'RetentionPage');
@@ -193,6 +194,7 @@ export function App() {
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/treasury" element={<TreasuryPage />} />
           <Route path="/bureau" element={<BureauPage />} />
+          <Route path="/cat-model" element={<CatModelPage />} />
           <Route path="/risk-capital" element={<RiskCapitalPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/retention" element={<RetentionPage />} />

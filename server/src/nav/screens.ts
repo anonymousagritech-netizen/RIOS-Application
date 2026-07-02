@@ -95,6 +95,7 @@ export const SCREENS: Screen[] = [
   { path: '/scheduled-reports', label: 'Scheduled Reports', aliases: ['scheduled reports', 'report schedule', 'report subscriptions'], permission: 'reporting:read' },
   { path: '/analytics', label: 'Analytics', aliases: ['analytics', 'pivot', 'cube', 'aal', 'pml', 'data analytics'], permission: 'reporting:read' },
   { path: '/risk-capital', label: 'Risk & Capital', aliases: ['risk capital', 'risk & capital', 'risk and capital', 'capital', 'scr', 'var', 'solvency ratio', 'risk'], permission: 'risk:read' },
+  { path: '/cat-model', label: 'Cat Model / ELT', aliases: ['cat model', 'catastrophe model', 'elt', 'event loss table', 'aal', 'pml', 'oep', 'rms', 'air', 'verisk', 'exceedance'], permission: 'exposure:read' },
   { path: '/regulatory', label: 'Regulatory', aliases: ['regulatory', 'regulation', 'ifrs', 'solvency', 'schedule f', 'qrt', 'regulator'], permission: 'regulatory:read' },
   { path: '/compliance', label: 'Compliance', aliases: ['compliance', 'controls', 'compliant', 'kyc', 'aml'], permission: 'regulatory:read' },
   { path: '/returns', label: 'Returns', aliases: ['returns', 'regulatory returns', 'filings', 'disclosures'], permission: 'regulatory:read' },
