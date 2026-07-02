@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className={`${styles.layout} ${collapsed ? styles.collapsed : ''}`}>
-      <aside className={`${styles.sidebar} ${navOpen ? styles.sidebarOpen : ''}`}>
+      <aside className={`${styles.sidebar} ${navOpen ? styles.sidebarOpen : ''}`} aria-label="Application navigation">
         <div className={styles.brand}>
           <span className={styles.logo} aria-hidden>R</span>
           {!collapsed && (
@@ -131,10 +131,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             className={styles.assistantBtn}
             onClick={() => setAssistantOpen(true)}
+            aria-label="Ask RIOS Assistant"
             title="Ask RIOS Assistant"
           >
-            <Sparkles size={18} className={styles.assistantSpark} />
-            {!collapsed && <span>Ask RIOS Assistant</span>}
+            <Sparkles size={18} className={styles.assistantSpark} aria-hidden />
+            {!collapsed && <span aria-hidden>Ask RIOS Assistant</span>}
           </button>
           <button
             className={styles.collapseBtn}

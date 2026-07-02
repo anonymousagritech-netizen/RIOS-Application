@@ -1,6 +1,6 @@
-import type { enStrings } from '../i18n';
+import type { i18nStrings } from '../i18n';
 
-export const es: typeof enStrings = {
+export const es: i18nStrings = {
   'treaty': 'Tratado',
   'cession': 'Cesión',
   'cedent': 'Cedente',

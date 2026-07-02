@@ -41,7 +41,39 @@ export async function financeModule(app: FastifyInstance): Promise<void> {
   });
 
   // Trial balance: per-account debit/credit sums plus totals. balanced proves the GL self-balances.
-  app.get('/api/finance/trial-balance', { preHandler: requirePermission('finance:read') }, async (req) => {
+  app.get('/api/finance/trial-balance', {
+    preHandler: requirePermission('finance:read'),
+    schema: {
+      summary: 'General ledger trial balance',
+      description: 'Returns per-account debit/credit totals. balanced=true proves the GL self-balances (total debits === total credits).',
+      tags: ['finance'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            rows: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  code: { type: 'string' },
+                  name: { type: 'string' },
+                  type: { type: 'string' },
+                  debitMinor: { type: 'integer' },
+                  creditMinor: { type: 'integer' },
+                  netMinor: { type: 'integer' },
+                },
+              },
+            },
+            totalDebitMinor: { type: 'integer' },
+            totalCreditMinor: { type: 'integer' },
+            balanced: { type: 'boolean' },
+          },
+        },
+      },
+    },
+  }, async (req) => {
     const ctx = authContext(req);
     return runAs(ctx, async (db) => {
       const { rows } = await db.query<{

@@ -35,10 +35,10 @@ export function TopBar({ onOpenPalette, onOpenAssistant, onToggleNav }: TopBarPr
         <Menu size={20} />
       </button>
 
-      <button className={styles.search} onClick={onOpenPalette}>
+      <button className={styles.search} onClick={onOpenPalette} aria-label="Search treaties, parties (Ctrl+K)">
         <Search className={styles.searchIcon} size={16} aria-hidden />
-        <span className={styles.searchText}>Search treaties, parties...</span>
-        <kbd className={styles.kbd}>{isMac ? '⌘' : 'Ctrl'} K</kbd>
+        <span className={styles.searchText} aria-hidden>Search treaties, parties...</span>
+        <kbd className={styles.kbd} aria-hidden>{isMac ? '⌘' : 'Ctrl'} K</kbd>
       </button>
 
       <div className={styles.actions}>

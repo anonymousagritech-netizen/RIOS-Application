@@ -38,7 +38,31 @@ const reserveSchema = z.object({
 export async function claimsModule(app: FastifyInstance): Promise<void> {
   app.get<{ Querystring: { status?: string; contractId?: string; limit?: string; cursor?: string } }>(
     '/api/claims',
-    { preHandler: requirePermission('claims:read') },
+    {
+      preHandler: requirePermission('claims:read'),
+      schema: {
+        summary: 'List claims',
+        tags: ['claims'],
+        querystring: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', description: 'Filter by claim status (OPEN, CLOSED, SETTLED, ...)' },
+            contractId: { type: 'string', format: 'uuid', description: 'Filter by treaty/contract UUID' },
+            limit: { type: 'string', description: 'Page size (default 25)' },
+            cursor: { type: 'string', description: 'Keyset pagination cursor' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              claims: { type: 'array', items: { type: 'object' } },
+              nextCursor: { type: 'string', nullable: true },
+            },
+          },
+        },
+      },
+    },
     async (req) => {
       const ctx = authContext(req);
       const { limit, cursor } = parsePaginationQuery(req.query as Record<string, unknown>);
@@ -150,7 +174,37 @@ export async function claimsModule(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post('/api/claims', { preHandler: requirePermission('claims:write') }, async (req, reply) => {
+  app.post('/api/claims', {
+    preHandler: requirePermission('claims:write'),
+    schema: {
+      summary: 'Register a new claim (FNOL)',
+      tags: ['claims'],
+      body: {
+        type: 'object',
+        required: ['contractId', 'currency'],
+        properties: {
+          contractId: { type: 'string', format: 'uuid', description: 'Treaty/contract UUID' },
+          description: { type: 'string', description: 'Loss description' },
+          lossDate: { type: 'string', format: 'date', description: 'Date of loss' },
+          currency: { type: 'string', minLength: 3, maxLength: 3, description: 'ISO 4217 currency code' },
+          grossLoss: { type: 'number', minimum: 0, description: 'Initial gross loss estimate (major units)' },
+          catEventId: { type: 'string', format: 'uuid', description: 'Catastrophe event UUID for aggregation' },
+          details: { type: 'object', description: 'Metadata-driven adaptive form data' },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            reference: { type: 'string' },
+            status: { type: 'string' },
+          },
+        },
+        400: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (req, reply) => {
     const ctx = authContext(req);
     const parsed = createClaimSchema.safeParse(req.body);
     if (!parsed.success) {
