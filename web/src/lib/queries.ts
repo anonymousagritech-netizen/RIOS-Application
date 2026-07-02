@@ -4,7 +4,7 @@ import type {
   DashboardSummary, CodeListsResponse, CurrenciesResponse, PartiesResponse,
   PartyDetail, TreatiesResponse, TreatyDetail, FinancialEventsResponse,
   StatementResponse, PostResponse, ClaimsResponse, ClaimDetail,
-  TransitionResponse, AssistantReply,
+  TransitionResponse, AssistantReply, SoaEntriesResponse,
 } from './types';
 import type { CodeValueDTO } from '@rios/shared';
 
@@ -224,6 +224,33 @@ export function usePreference<T>(key: string, defaultValue: T) {
     save: mutation.mutateAsync,
     isLoading: query.isLoading,
   };
+}
+
+/* ---------------- SOA Entries (P3-B) ---------------- */
+export function useSoaEntries(contractId: string | undefined) {
+  return useQuery({
+    queryKey: ['soa-entries', contractId],
+    queryFn: () => api<SoaEntriesResponse>(`/api/statements/${contractId}/entries`),
+    enabled: !!contractId,
+  });
+}
+
+export function useAddPremiumEntry(contractId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      api<{ id: string }>('/api/statements/entries/premium', { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['soa-entries', contractId] }),
+  });
+}
+
+export function useAddClaimEntry(contractId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      api<{ id: string }>('/api/statements/entries/claim', { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['soa-entries', contractId] }),
+  });
 }
 
 /* ---------------- Assistant ---------------- */
