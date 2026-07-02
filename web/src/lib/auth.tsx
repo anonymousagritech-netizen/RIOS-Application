@@ -16,7 +16,7 @@ interface AuthCtx {
   login: (email: string, password: string, tenantCode: string) => Promise<LoginOutcome>;
   completeMfa: (mfaToken: string, code: string) => Promise<void>;
   applySession: (token: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   hasPermission: (perm: string) => boolean;
 }
 
@@ -29,11 +29,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getToken() ? 'loading' : 'anon',
   );
 
-  const logout = useCallback(() => {
-    setToken(null);
-    setTok(null);
-    setUser(null);
-    setStatus('anon');
+  const logout = useCallback(async () => {
+    // Revoke the token server-side (records jti in token_revocation + clears cookie).
+    // Fire-and-forget: even if the request fails, clear the local session.
+    try {
+      await api('/api/auth/logout', { method: 'POST', body: {} });
+    } catch {
+      // Ignore network errors — local session is cleared regardless.
+    } finally {
+      setToken(null);
+      setTok(null);
+      setUser(null);
+      setStatus('anon');
+    }
   }, []);
 
   // Hydrate the session from /me on first load if a token exists.
