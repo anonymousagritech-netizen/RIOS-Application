@@ -107,6 +107,7 @@ export * from './accountCurrent.js';
 export * from './retroAllocation.js';
 export * from './aveMonitoring.js';
 export * from './consolidation.js';
+export * from './acord.js';
 export {
   projectZoneAggregates, accumulationSummary, rdsGrossLoss,
   type ZoneLimitMode, type ZoneVerdict, type ZoneLimitInput, type ZoneExposureInput,

@@ -51,6 +51,7 @@ import { portalsModule } from './modules/portals.js';
 import { designerModule } from './modules/designer.js';
 import { analyticsModule } from './modules/analytics.js';
 import { treasuryModule } from './modules/treasury.js';
+import { bureauModule } from './modules/bureau.js';
 import { riskCapitalModule } from './modules/riskCapital.js';
 import { searchModule } from './modules/search.js';
 import { retentionModule } from './modules/retention.js';
@@ -268,6 +269,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(designerModule);
   await app.register(analyticsModule);
   await app.register(treasuryModule);
+  await app.register(bureauModule);
   await app.register(riskCapitalModule);
   await app.register(searchModule);
   await app.register(retentionModule);
