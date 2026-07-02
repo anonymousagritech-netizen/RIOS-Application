@@ -129,14 +129,20 @@ audited overrides) · hash-chained audit · RBAC/MFA/OIDC · workflow engine · 
     at the source amount, idempotent via a DB unique constraint, booking ceded events on the outward
     contract with a full source→rule→ceded trace (migration 0057). Non-QS methods are a follow-on.
 
-**Tier 3 — hit at year-end / regulator visit**
-11. **Multi-GAAP parallel ledgers** and intercompany/consolidation.
-12. **Jurisdiction report packs as content** (Schedule F factors, QRT templates, IRDAI/Ind AS 117 for an
-    Indian client) — the assembler exists; certified content does not.
-13. **Reserving workflow**: triangles→IBNR booking with actuarial recommendation → management approval →
-    GL posting, and AvE monitoring (engines exist; the governed booking workflow does not).
-14. **Accumulation control at bind time**: "if we bind this, zone aggregate becomes X vs limit Y" hard/soft
-    blocks; RDS scenarios; clash analysis (capacity checks exist per line, not event-scenario blocking).
+**Tier 3 — hit at year-end / regulator visit — ✅ CLOSED in this audit wave**
+11. ~~Multi-GAAP parallel ledgers~~ **Delivered**: `gl_ledger` + basis-adjustment layer (the core+adjustment
+    parallel-ledger model), per-account trial balance and an intercompany-elimination consolidation *view*
+    (honestly not a legal-entity consolidation engine) — migration 0058. The existing single-ledger GL is
+    provably untouched.
+12. ~~Jurisdiction report packs as content~~ **Delivered**: NAIC Schedule F (with a configurable provision
+    calc), Solvency II S.02.01 + S.31.01 skeletons, and IRDAI returns, assembled from live data and clearly
+    labelled *template, not certified content*. Certified line codes / factor tables remain configuration.
+13. ~~Reserving workflow~~ **Delivered**: triangle → chain-ladder IBNR → maker/checker approval → balanced
+    GL booking → AvE monitoring (migration 0060), reusing the existing domain engines.
+14. ~~Accumulation control at bind time~~ **Delivered**: zone limits with HARD (409, rolled back) / SOFT
+    (warn + audit) blocking on the bind transition, an admin override, a what-if check endpoint and RDS
+    evaluation over bound exposure (migration 0061). Degrades to a no-op when no limits are configured.
+    Clash analysis remains a follow-on.
 
 **Tier 4 — platform/ecosystem maturity**
 15. ACORD EBOT/ECOT + placing messages; bureau connectivity.
