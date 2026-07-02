@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useStatusColors } from '../lib/queries';
@@ -25,11 +26,11 @@ interface TreatiesResponse { treaties: TreatyOption[]; }
 interface StatementListItem {
   id: string;
   reference: string;
-  contract_id: string;
+  contractId: string;
   currency: string;
-  balance_minor: number;
+  balanceMinor: number;
   status: string;
-  created_at?: string | null;
+  issuedAt?: string | null;
 }
 interface StatementsResponse { statements: StatementListItem[]; }
 
@@ -123,6 +124,7 @@ function useTransitionStatement(id: string | undefined) {
 const STATUSES = [...LIFECYCLE, 'DISPUTED'];
 
 export function StatementsPage() {
+  const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const toast = useToast();
   const canWrite = hasPermission('statement:write');
@@ -150,7 +152,7 @@ export function StatementsPage() {
     let inFlight = 0;
     let settled = 0;
     for (const s of rows) {
-      balance += s.balance_minor;
+      balance += s.balanceMinor;
       if (inFlightSet.has(s.status)) inFlight += 1;
       if (settledSet.has(s.status)) settled += 1;
     }
@@ -176,8 +178,8 @@ export function StatementsPage() {
   const columns: Column<StatementListItem>[] = useMemo(() => [
     { key: 'reference', header: 'Reference', sortValue: (s) => s.reference, render: (s) => <span className={shared.cellRef}>{s.reference}</span> },
     { key: 'currency', header: 'CCY', render: (s) => s.currency },
-    { key: 'balance', header: 'Balance', align: 'right', sortValue: (s) => s.balance_minor, render: (s) => <span className={shared.money}>{formatMoney(s.balance_minor, s.currency)}</span> },
-    { key: 'created', header: 'Created', sortValue: (s) => s.created_at ?? '', render: (s) => formatDate(s.created_at) },
+    { key: 'balance', header: 'Balance', align: 'right', sortValue: (s) => s.balanceMinor, render: (s) => <span className={shared.money}>{formatMoney(s.balanceMinor, s.currency)}</span> },
+    { key: 'issued', header: 'Issued', sortValue: (s) => s.issuedAt ?? '', render: (s) => formatDate(s.issuedAt) },
     { key: 'status', header: 'Status', align: 'right', sortValue: (s) => s.status, render: (s) => <StatusPill status={s.status} metaColors={statusColors} /> },
   ], [statusColors]);
 
@@ -237,7 +239,7 @@ export function StatementsPage() {
           rows={rows}
           loading={isLoading}
           rowKey={(s) => s.id}
-          onRowClick={(s) => setSelectedId(s.id)}
+          onRowClick={(s) => navigate(`/treaties/${s.contractId}?tab=statement`)}
           empty={<EmptyState title="No statements" message="Pick a contract and generate a statement from its un-statemented events." icon={<ReceiptText size={16} />} />}
         />
       </Card>
