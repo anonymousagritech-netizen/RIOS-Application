@@ -107,7 +107,7 @@ audited overrides) · hash-chained audit · RBAC/MFA/OIDC · workflow engine · 
    cannot approve own call), priority levels (NORMAL/URGENT/SIMULTANEOUS_SETTLEMENT) and the
    `GET /api/claims/cash-calls/queue` priority payment queue (migration 0053).
 
-**Tier 2 — hit at first quarter close**
+**Tier 2 — hit at first quarter close — ✅ CLOSED in this audit wave**
 6. ~~UPR/DAC earning patterns~~ **Delivered**: pure earning math for pro-rata, 8ths, 24ths and
    risk-attaching (quadratic S-curve) with integer-exact `earned + UPR = written`, plus the persisted
    valuation run `POST /api/accounting/upr/run` over every non-draft contract (migration 0054).
@@ -119,10 +119,15 @@ audited overrides) · hash-chained audit · RBAC/MFA/OIDC · workflow engine · 
 8. ~~SOA verification engine~~ **Delivered**: `POST /api/statements/:id/verify` recomputes ceding
    commission (flat/sliding-scale collared), overrider, brokerage and reinstatement premium from the
    typed terms and flags deviations beyond tolerance (migration 0055); unverifiable items fail loudly.
-9. **Account-current, dunning and disputed-items workflow**; ISO 20022/SWIFT payment file generation with
-   maker-checker release.
-10. **Retro cession engine**: rules that auto-allocate every inward premium/claim to the outward program
-    (the net-position *reporting* now exists; the *allocation engine* does not).
+9. ~~Account-current, dunning, disputes, ISO 20022~~ **Delivered**: `GET /api/finance/account-current/:partyId`
+   (open AR/AP, net per currency, aging, dunning levels), disputed items that pause dunning, an idempotent
+   dunning run, and payment runs with maker-checker release generating ISO 20022 pain.001 files with an
+   exact-decimal control sum (migration 0056). Release produces the bank file; cash booking stays on the
+   financial-event path.
+10. ~~Retro cession engine~~ **Delivered**: quota-share allocation rules (LOB/currency/period filters,
+    priorities) and `POST /api/retrocession/allocation/run` — largest-remainder integer allocation capped
+    at the source amount, idempotent via a DB unique constraint, booking ceded events on the outward
+    contract with a full source→rule→ceded trace (migration 0057). Non-QS methods are a follow-on.
 
 **Tier 3 — hit at year-end / regulator visit**
 11. **Multi-GAAP parallel ledgers** and intercompany/consolidation.

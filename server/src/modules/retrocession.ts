@@ -11,7 +11,10 @@
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { add, subtract, zero, money, type Money } from '@rios/domain';
+import {
+  add, subtract, zero, money, allocateRetrocession,
+  type Money, type RetroAllocationRule, type RetroEventKind,
+} from '@rios/domain';
 import { runAs } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
@@ -30,6 +33,61 @@ const createRetrocessionSchema = z.object({
   cedentPartyId: z.string().uuid().optional(),
   retrocessionairePartyId: z.string().uuid().optional(),
 });
+
+// A cession allocation rule: which retro contract takes what share of which
+// inward premium/claim events (Tier-2 gap #10). Business meaning of the LOB
+// filter comes from the line_of_business code list, not a hard-coded enum.
+const allocationRuleSchema = z.object({
+  retroContractId: z.string().uuid(),
+  name: z.string().min(1),
+  appliesTo: z.enum(['PREMIUM', 'CLAIM', 'BOTH']),
+  lob: z.string().min(1).optional(),
+  currency: z.string().length(3).optional(),
+  periodStart: z.string().optional(),
+  periodEnd: z.string().optional(),
+  method: z.literal('QUOTA_SHARE').default('QUOTA_SHARE'),
+  cessionPct: z.number().gt(0).max(100),
+  priority: z.number().int().min(0).default(100),
+});
+
+const allocationRunSchema = z.object({
+  from: z.string().optional(),
+  to: z.string().optional(),
+});
+
+interface AllocationRuleRow {
+  id: string;
+  retro_contract_id: string;
+  applies_to: string;
+  lob: string | null;
+  currency: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  cession_pct: number;
+  priority: number;
+}
+
+/**
+ * Map a persisted rule row onto the pure domain rule shape. LOB columns are
+ * citext (case-insensitive) in the DB, while the domain predicate compares
+ * exactly, so both sides are lower-cased at the comparison boundary.
+ */
+function toDomainRule(r: AllocationRuleRow): RetroAllocationRule {
+  return {
+    id: r.id,
+    retroContractId: r.retro_contract_id,
+    appliesTo: r.applies_to as RetroAllocationRule['appliesTo'],
+    filter: {
+      lineOfBusiness: r.lob === null ? null : r.lob.toLowerCase(),
+      currency: r.currency,
+      periodStart: r.period_start,
+      periodEnd: r.period_end,
+    },
+    method: 'QUOTA_SHARE',
+    cessionPct: Number(r.cession_pct),
+    priority: r.priority,
+  };
+}
 
 export async function retrocessionModule(app: FastifyInstance): Promise<void> {
   app.get(
@@ -225,4 +283,293 @@ export async function retrocessionModule(app: FastifyInstance): Promise<void> {
       return { id, reference: ref, status: 'DRAFT' };
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Cession allocation engine (Tier-2 gap #10): rules that automatically
+  // allocate every inward premium/claim financial event to the outward
+  // retrocession program. The math is @rios/domain allocateRetrocession; this
+  // module only persists. Ceded events reuse the source event's type/direction
+  // on the OUTWARDS retro contract, so the existing net-position, statement and
+  // GL-posting paths pick them up with no new vocabulary.
+  // ---------------------------------------------------------------------------
+
+  app.post(
+    '/api/retrocession/allocation-rules',
+    { preHandler: requirePermission('retro:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = allocationRuleSchema.safeParse(req.body);
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid allocation rule', details: parsed.error.flatten() };
+      }
+      const b = parsed.data;
+      if (b.periodStart && b.periodEnd && b.periodStart > b.periodEnd) {
+        reply.code(400);
+        return { error: 'periodStart must not be after periodEnd' };
+      }
+      return runAs(ctx, async (db) => {
+        // The target must be an outward retro contract - never an inward one.
+        const retro = await db.query<{ id: string }>(
+          `select id from contract
+            where id = $1 and not is_deleted
+              and (direction = 'OUTWARDS' or contract_kind = 'RETROCESSION')`,
+          [b.retroContractId],
+        );
+        if (!retro.rows[0]) {
+          reply.code(404);
+          return { error: 'Retrocession contract not found' };
+        }
+
+        const { rows } = await db.query<{ id: string }>(
+          `insert into retro_allocation_rule
+             (tenant_id, retro_contract_id, name, applies_to, lob, currency,
+              period_start, period_end, method, cession_pct, priority, created_by)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
+          [
+            ctx.tenantId, b.retroContractId, b.name, b.appliesTo, b.lob ?? null,
+            b.currency?.toUpperCase() ?? null, b.periodStart ?? null, b.periodEnd ?? null,
+            b.method, b.cessionPct, b.priority, ctx.userId,
+          ],
+        );
+        const id = rows[0]!.id;
+        await writeAudit(db, ctx, {
+          action: 'create',
+          entityType: 'retro_allocation_rule',
+          entityId: id,
+          after: {
+            name: b.name, retroContractId: b.retroContractId, appliesTo: b.appliesTo,
+            method: b.method, cessionPct: b.cessionPct, lob: b.lob ?? null,
+            currency: b.currency?.toUpperCase() ?? null, priority: b.priority,
+          },
+          actorLabel: req.auth?.displayName,
+        });
+        reply.code(201);
+        return { id, name: b.name, appliesTo: b.appliesTo, method: b.method, cessionPct: b.cessionPct, priority: b.priority, active: true };
+      });
+    },
+  );
+
+  app.get(
+    '/api/retrocession/allocation-rules',
+    { preHandler: requirePermission('retro:read') },
+    async (req) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query(
+          `select r.id, r.retro_contract_id as "retroContractId", rc.reference as "retroContractRef",
+                  rc.name as "retroContractName", r.name, r.applies_to as "appliesTo", r.lob, r.currency,
+                  to_char(r.period_start, 'YYYY-MM-DD') as "periodStart",
+                  to_char(r.period_end, 'YYYY-MM-DD') as "periodEnd",
+                  r.method, r.cession_pct as "cessionPct", r.priority, r.active,
+                  r.created_at as "createdAt"
+             from retro_allocation_rule r
+             join contract rc on rc.id = r.retro_contract_id
+            order by r.priority, r.created_at`,
+        );
+        return { rules: rows };
+      });
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    '/api/retrocession/allocation-rules/:id/deactivate',
+    { preHandler: requirePermission('retro:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{ id: string; name: string; active: boolean }>(
+          `update retro_allocation_rule set active = false where id = $1 returning id, name, active`,
+          [req.params.id],
+        );
+        if (!rows[0]) {
+          reply.code(404);
+          return { error: 'Allocation rule not found' };
+        }
+        await writeAudit(db, ctx, {
+          action: 'deactivate',
+          entityType: 'retro_allocation_rule',
+          entityId: rows[0].id,
+          before: { active: true },
+          after: { active: false },
+          actorLabel: req.auth?.displayName,
+        });
+        return { id: rows[0].id, name: rows[0].name, active: false };
+      });
+    },
+  );
+
+  // Run the allocation engine: allocate every inward premium/claim financial
+  // event in range that each active matching rule has not yet allocated. The
+  // whole run is one transaction (runAs); the UNIQUE (tenant_id, rule_id,
+  // source_event_id) + `on conflict do nothing` makes re-runs idempotent.
+  app.post(
+    '/api/retrocession/allocation/run',
+    { preHandler: requirePermission('retro:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = allocationRunSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid allocation run request', details: parsed.error.flatten() };
+      }
+      const { from, to } = parsed.data;
+      return runAs(ctx, async (db) => {
+        const ruleRows = await db.query<AllocationRuleRow>(
+          `select r.id, r.retro_contract_id, r.applies_to, r.lob, r.currency,
+                  to_char(r.period_start, 'YYYY-MM-DD') as period_start,
+                  to_char(r.period_end, 'YYYY-MM-DD') as period_end,
+                  r.cession_pct, r.priority
+             from retro_allocation_rule r
+             join contract rc on rc.id = r.retro_contract_id
+            where r.active and not rc.is_deleted
+            order by r.priority, r.created_at`,
+        );
+        if (ruleRows.rows.length === 0) {
+          return { allocated: 0, totalByCurrency: {}, skipped: 0 };
+        }
+        const rules = ruleRows.rows.map(toDomainRule);
+
+        // Candidate source events: premium/loss events on live INWARDS
+        // contracts. Ceded events live on OUTWARDS contracts, so the engine's
+        // own output can never be re-allocated.
+        const events = await db.query<{
+          id: string;
+          event_type: string;
+          direction: 'DR' | 'CR';
+          amount_minor: number;
+          currency: string;
+          booked_at: string;
+          line_of_business: string | null;
+        }>(
+          `select fe.id, fe.event_type, fe.direction, fe.amount_minor, fe.currency,
+                  to_char(fe.booked_at, 'YYYY-MM-DD') as booked_at, c.line_of_business
+             from financial_event fe
+             join contract c on c.id = fe.contract_id
+            where not c.is_deleted
+              and c.direction = 'INWARDS'
+              and c.contract_kind <> 'RETROCESSION'
+              and fe.event_type = any($1::citext[])
+              and ($2::date is null or fe.booked_at >= $2)
+              and ($3::date is null or fe.booked_at <= $3)
+            order by fe.booked_at, fe.created_at`,
+          [[...PREMIUM_EVENT_TYPES, ...LOSS_EVENT_TYPES], from ?? null, to ?? null],
+        );
+
+        let allocated = 0;
+        let skipped = 0;
+        const totals = new Map<string, Money>();
+
+        for (const ev of events.rows) {
+          const kind: RetroEventKind = PREMIUM_EVENT_TYPES.includes(ev.event_type.toUpperCase())
+            ? 'PREMIUM'
+            : 'CLAIM';
+          const result = allocateRetrocession(
+            {
+              kind,
+              amount: money(Number(ev.amount_minor), ev.currency),
+              lineOfBusiness: ev.line_of_business === null ? null : ev.line_of_business.toLowerCase(),
+              eventDate: ev.booked_at,
+            },
+            rules,
+          );
+
+          for (const line of result.allocations) {
+            const ins = await db.query<{ id: string }>(
+              `insert into retro_allocation
+                 (tenant_id, rule_id, source_event_id, retro_contract_id, amount_minor, currency)
+               values ($1,$2,$3,$4,$5,$6)
+               on conflict (tenant_id, rule_id, source_event_id) do nothing
+               returning id`,
+              [ctx.tenantId, line.ruleId, ev.id, line.retroContractId, line.amount.amount, ev.currency],
+            );
+            if (!ins.rows[0]) {
+              skipped += 1; // already allocated under this rule on a prior run
+              continue;
+            }
+
+            // Book the ceded event on the outward retro contract. Same event
+            // type and DR/CR as the source: premiums are owed by the tenant
+            // (as retrocedent) to the retrocessionaire exactly as the cedent
+            // owed them inwards, and ceded losses are recoveries the other way.
+            // Zero-minor-unit cessions record the allocation but book no event.
+            if (line.amount.amount > 0) {
+              const ceded = await db.query<{ id: string }>(
+                `insert into financial_event
+                   (tenant_id, contract_id, event_type, direction, amount_minor, currency, booked_at, narrative, created_by)
+                 values ($1,$2,$3,$4,$5,$6,$7::date,$8,$9) returning id`,
+                [
+                  ctx.tenantId, line.retroContractId, ev.event_type, ev.direction,
+                  line.amount.amount, ev.currency, ev.booked_at,
+                  `Retro cession ${line.cessionPct}% of ${ev.event_type} (allocation rule)`, ctx.userId,
+                ],
+              );
+              await db.query(`update retro_allocation set ceded_event_id = $1 where id = $2`, [
+                ceded.rows[0]!.id, ins.rows[0].id,
+              ]);
+              await writeAudit(db, ctx, {
+                action: 'create',
+                entityType: 'financial_event',
+                entityId: ceded.rows[0]!.id,
+                after: {
+                  type: ev.event_type, amountMinor: line.amount.amount, currency: ev.currency,
+                  retroContractId: line.retroContractId, sourceEventId: ev.id, allocationRuleId: line.ruleId,
+                },
+                actorLabel: req.auth?.displayName,
+              });
+              const prev = totals.get(ev.currency) ?? zero(ev.currency);
+              totals.set(ev.currency, add(prev, line.amount));
+            }
+            allocated += 1;
+          }
+        }
+
+        const totalByCurrency = Object.fromEntries(
+          [...totals.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([ccy, m]) => [ccy, m.amount]),
+        );
+        if (allocated > 0) {
+          await writeAudit(db, ctx, {
+            action: 'allocate',
+            entityType: 'retro_allocation_run',
+            after: { allocated, skipped, totalByCurrency, from: from ?? null, to: to ?? null },
+            actorLabel: req.auth?.displayName,
+          });
+        }
+        return { allocated, totalByCurrency, skipped };
+      });
+    },
+  );
+
+  // Allocation trace: source event → rule → ceded event. contractId matches
+  // either side (the inward source contract or the outward retro contract).
+  app.get<{ Querystring: { contractId?: string } }>(
+    '/api/retrocession/allocations',
+    { preHandler: requirePermission('retro:read') },
+    async (req) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query(
+          `select ra.id,
+                  ra.rule_id as "ruleId", r.name as "ruleName", r.cession_pct as "cessionPct",
+                  ra.source_event_id as "sourceEventId", sfe.event_type as "sourceEventType",
+                  sfe.amount_minor as "sourceAmountMinor",
+                  sfe.contract_id as "sourceContractId", sc.reference as "sourceContractRef",
+                  ra.retro_contract_id as "retroContractId", rc.reference as "retroContractRef",
+                  ra.ceded_event_id as "cededEventId",
+                  ra.amount_minor as "amountMinor", ra.currency,
+                  to_char(sfe.booked_at, 'YYYY-MM-DD') as "bookedAt",
+                  ra.created_at as "allocatedAt"
+             from retro_allocation ra
+             join retro_allocation_rule r on r.id = ra.rule_id
+             join financial_event sfe on sfe.id = ra.source_event_id
+             join contract sc on sc.id = sfe.contract_id
+             join contract rc on rc.id = ra.retro_contract_id
+            where ($1::uuid is null or sfe.contract_id = $1 or ra.retro_contract_id = $1)
+            order by ra.created_at desc, ra.id`,
+          [req.query.contractId ?? null],
+        );
+        return { allocations: rows };
+      });
+    },
+  );
 }
