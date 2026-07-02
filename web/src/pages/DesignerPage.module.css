@@ -38,3 +38,32 @@
 }
 .errorText { color: var(--c-red); }
 .warningText { color: var(--c-amber); }
+
+/* ---- Workflow composer ---- */
+.listHead { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+.composer { padding: var(--space-5); display: grid; gap: var(--space-5); }
+.composerGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.rowList { display: grid; gap: var(--space-2); }
+.stateRow {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2);
+}
+.stateName { font-family: var(--font-mono); font-weight: 600; min-width: 140px; }
+.checkInline { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); color: var(--text-muted); }
+.rowActions { display: inline-flex; gap: var(--space-1); margin-left: auto; }
+.addRow { display: flex; gap: var(--space-3); align-items: center; margin-top: var(--space-3); max-width: 480px; }
+.transitionRow {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2);
+}
+.tEvent { max-width: 160px; }
+.tPerm { max-width: 200px; }
+.arrow { color: var(--text-muted); }
+.issues {
+  display: grid; gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--c-red); border-radius: var(--radius-md); background: var(--surface);
+}
+.composerActions { display: flex; gap: var(--space-3); justify-content: flex-end; }

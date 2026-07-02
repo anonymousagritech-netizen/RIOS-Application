@@ -691,6 +691,21 @@ select :'tenant_id'::uuid, p.id from plan p
 where p.tenant_id = :'tenant_id'::uuid and p.code = 'demo-standard'
 on conflict (tenant_id) do nothing;
 
+-- Dashboard designer (0077): a shared/tenant-wide default dashboard composed of
+-- real KPI + chart tiles from the live /api/executive packs. Because it is the
+-- tenant default (user_id null, is_default true) every user sees it on load
+-- until they compose their own personal layout. Refs match live pack labels.
+insert into dashboard_layout (tenant_id, user_id, name, is_default, tiles)
+values (:'tenant_id'::uuid, null, 'Company overview', true, '[
+  {"persona":"CEO","kind":"kpi","ref":"Gross written premium","size":"sm"},
+  {"persona":"CEO","kind":"kpi","ref":"Combined ratio","size":"sm"},
+  {"persona":"CEO","kind":"kpi","ref":"Technical result","size":"sm"},
+  {"persona":"CEO","kind":"kpi","ref":"Open claims","size":"sm"},
+  {"persona":"CEO","kind":"chart","ref":"Treaties by status","size":"md"},
+  {"persona":"CFO","kind":"chart","ref":"Financial events by type","size":"md"}
+]'::jsonb)
+on conflict (tenant_id, name) where user_id is null do nothing;
+
 insert into cost_record (tenant_id, category, period, amount_minor, currency, capacity_provisioned, capacity_used, capacity_unit) values
   (:'tenant_id'::uuid,'compute','2026-06', 1850000,'USD', 32, 21, 'vCPU'),
   (:'tenant_id'::uuid,'storage','2026-06',  420000,'USD', 2000, 1340, 'GB'),
