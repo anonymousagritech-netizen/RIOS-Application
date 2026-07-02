@@ -28,12 +28,21 @@ export const PARTY_KYC_GROUPS: FieldGroup[] = [
     title: 'KYC & compliance',
     description: 'Regulatory and financial-standing detail, adapting to the party kind.',
     fields: [
-      // Entity identifiers — not applicable to a natural person.
-      { key: 'incorporationNo', label: 'Incorporation / registration no.', placeholder: 'e.g. HRB 12345', when: (ctx) => !isIndividual(ctx) },
-      { key: 'regulator', label: 'Regulator / supervisory authority', placeholder: 'e.g. PRA, BMA, BaFin', when: (ctx) => !isIndividual(ctx) },
-      { key: 'licenceNo', label: 'Licence / authorisation no.', placeholder: 'e.g. FRN 123456', when: (ctx) => !isIndividual(ctx) },
-      // Individual identifiers instead.
-      { key: 'nationalId', label: 'National ID / passport no.', placeholder: 'e.g. passport number', when: isIndividual },
+      // Entity identifiers — not applicable to a natural person. Required-by-kind:
+      // an organisation cannot be onboarded without a registration number.
+      {
+        key: 'incorporationNo', label: 'Incorporation / registration no.', placeholder: 'e.g. HRB 12345',
+        when: (ctx) => !isIndividual(ctx), required: true, maxLength: 40,
+        pattern: { re: /^[A-Za-z0-9][A-Za-z0-9 .\-/]*$/, message: 'Use letters, digits, spaces, dots, dashes or slashes only' },
+      },
+      { key: 'regulator', label: 'Regulator / supervisory authority', placeholder: 'e.g. PRA, BMA, BaFin', when: (ctx) => !isIndividual(ctx), maxLength: 80 },
+      {
+        key: 'licenceNo', label: 'Licence / authorisation no.', placeholder: 'e.g. FRN 123456',
+        when: (ctx) => !isIndividual(ctx), maxLength: 40,
+        pattern: { re: /^[A-Za-z0-9][A-Za-z0-9 .\-/]*$/, message: 'Use letters, digits, spaces, dots, dashes or slashes only' },
+      },
+      // Individual identifiers instead — a natural person must be identifiable.
+      { key: 'nationalId', label: 'National ID / passport no.', placeholder: 'e.g. passport number', when: isIndividual, required: true, maxLength: 40 },
       {
         key: 'pepExposure',
         label: 'PEP exposure',
@@ -73,9 +82,14 @@ export const PARTY_KYC_GROUPS: FieldGroup[] = [
     // Cross-field: this whole group only appears for high-risk domiciles.
     when: inHighRiskCountry,
     fields: [
-      { key: 'sanctionsScreened', label: 'Sanctions screening completed?', type: 'select', options: ['No', 'Yes'] },
+      { key: 'sanctionsScreened', label: 'Sanctions screening completed?', type: 'select', required: true, options: ['No', 'Yes'] },
       { key: 'warRiskZone', label: 'Operates in war-risk / conflict zone?', type: 'select', options: ['No', 'Yes'] },
-      { key: 'sanctionsNotes', label: 'Enhanced due diligence notes', type: 'textarea', fullWidth: true },
+      {
+        key: 'sanctionsNotes', label: 'Enhanced due diligence notes', type: 'textarea', fullWidth: true, maxLength: 2000,
+        // Cross-field: a high-risk domicile that has NOT been screened must record
+        // the enhanced due diligence rationale before the party can be onboarded.
+        validate: (v, ctx) => (ctx.sanctionsScreened !== 'Yes' && !v ? 'Enhanced due diligence notes are required until sanctions screening is completed' : undefined),
+      },
     ],
   },
 ];
