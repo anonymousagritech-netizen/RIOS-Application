@@ -434,9 +434,9 @@ function ScheduleDrawer({
 
           <div>
             <h3 className={styles.sectionHeading}><Mail size={14} aria-hidden /> Recipients</h3>
-            {data.recipients.length ? (
+            {data.recipients?.length ? (
               <div className={styles.chips}>
-                {data.recipients.map((r) => <span key={r} className={styles.chip}>{r}</span>)}
+                {(data.recipients ?? []).map((r) => <span key={r} className={styles.chip}>{r}</span>)}
               </div>
             ) : (
               <p className={styles.cellSub}>No recipients configured for this schedule.</p>

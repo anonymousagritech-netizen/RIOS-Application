@@ -88,7 +88,7 @@ export function WorkflowEnginePage() {
       <div className={styles.chartGrid}>
         <Card>
           <CardHeader title="Instances by state" subtitle="Where work sits in each workflow" />
-          <BarChart data={data.instancesByState.map((s) => ({ label: titleCase(s.key), value: s.n }))} />
+          <BarChart data={(data.instancesByState ?? []).map((s) => ({ label: titleCase(s.key), value: s.n }))} />
         </Card>
         <Card>
           <CardHeader title="Task SLA mix" subtitle="Health of the open queue" />

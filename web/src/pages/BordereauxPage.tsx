@@ -161,8 +161,8 @@ function BordereauDetailCard({ id, canWrite, onClear }: { id: string; canWrite: 
   if (isLoading) return <Card><PageLoader label="Loading bordereau…" /></Card>;
   if (!data) return <Card><EmptyState title="Bordereau not found" message="It may have been removed." /></Card>;
 
-  const errorCount = data.lines.filter((l) => !l.is_valid).length;
-  const validCount = data.lines.length - errorCount;
+  const errorCount = (data.lines ?? []).filter((l) => !l.is_valid).length;
+  const validCount = (data.lines ?? []).length - errorCount;
   const canProcess = data.status === 'VALIDATED';
 
   const columns: Column<BordereauLine>[] = [

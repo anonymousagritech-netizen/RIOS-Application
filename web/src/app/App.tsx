@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { lazyPage } from '../lib/lazyPage';
 import { PageLoader } from '../components/Feedback';
 import { AppShell } from './AppShell';
+import { ErrorBoundary } from './ErrorBoundary';
 // Kept eager: the login page is the first paint for anonymous users.
 import { LoginPage } from '../pages/LoginPage';
 
@@ -121,6 +122,7 @@ export function App() {
 
   return (
     <AppShell>
+      <ErrorBoundary key={location.pathname}>
       <Suspense fallback={<PageLoader label="Loading…" />}>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -220,6 +222,7 @@ export function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </AppShell>
   );
 }

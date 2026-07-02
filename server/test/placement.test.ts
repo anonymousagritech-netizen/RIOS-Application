@@ -86,6 +86,13 @@ describe('placement: oversubscribed slip signs down to the order', () => {
     expect(second.json().isOversubscribed).toBe(true);
     expect(second.json().totalWritten).toBeCloseTo(1.2, 6);
 
+    // Slip detail must expose the written market lines under `marketLines`
+    // (the client renders `slip.marketLines`; a `lines` alias would crash it).
+    const detail = await app.inject({ method: 'GET', url: `/api/placement/slips/${slipId}`, headers: auth });
+    expect(detail.statusCode).toBe(200);
+    expect(Array.isArray(detail.json().marketLines)).toBe(true);
+    expect(detail.json().marketLines).toHaveLength(2);
+
     // Sign down: signed lines must sum to the order (1.0) and shares stay proportional.
     const signed = await app.inject({
       method: 'POST', url: `/api/placement/slips/${slipId}/sign-down`, headers: auth,
