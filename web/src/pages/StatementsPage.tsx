@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
-import { useStatusColors, useTreaties } from '../lib/queries';
+import { useStatusColors, useTreaties, useSoaEntries, useAddPremiumEntry, useAddClaimEntry } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -10,15 +10,15 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
-import { FormField, FormGrid, Select, Input } from '../components/Form';
+import { FormField, FormGrid, Select, Input, Textarea } from '../components/Form';
 import { PageLoader } from '../components/Feedback';
 import { KpiCard } from '../components/KpiCard';
 import { Tabs, type TabDef } from '../components/Tabs';
 import {
   formatMoney, formatDate, formatDateTime, formatNumber, titleCase, minorUnitsFor,
 } from '../lib/format';
-import { ReceiptText, Scale, Hourglass, CheckCircle2, Download, ShieldCheck } from 'lucide-react';
-import type { TreatyListItem } from '../lib/types';
+import { ReceiptText, Scale, Hourglass, CheckCircle2, Download, ShieldCheck, Plus, FileText } from 'lucide-react';
+import type { TreatyListItem, PremiumEntry, ClaimEntry } from '../lib/types';
 import shared from './shared.module.css';
 import styles from './StatementsPage.module.css';
 
@@ -668,6 +668,16 @@ export function StatementsPage() {
         statusColors={statusColors}
         onClose={() => setSelectedId(null)}
       />
+
+      {/* SOA Entries panel — shown when a contract is selected */}
+      {contractId && (
+        <SoaEntriesPanel
+          statementId={selectedId}
+          contractId={contractId}
+          canWritePremium={hasPermission('treaty:write')}
+          canWriteClaim={hasPermission('claims:write')}
+        />
+      )}
     </>
   );
 }
@@ -1013,6 +1023,366 @@ function StatementDrawer({
             : 'Settling the statement records final settlement. This is a material accounting action.'
         }
       />
+    </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* SOA Entries Panel (P3-B)                                             */
+/* ------------------------------------------------------------------ */
+const COB_LABELS: Record<string, string> = {
+  MB: 'Marine (Bulk Cargo)', MLOP: 'Marine (Loss of Profit)', CPM: "Contractor's Plant & Machinery",
+  DOS: 'Deterioration of Stock', EEI: 'Electronic Equipment', EAR: 'Erection All Risk',
+  CAR: "Contractor's All Risk", BOILERS: 'Boilers & Pressure Vessels',
+  ALOP: 'Advanced Loss of Profit', MEGA: 'Mega Risk', INWARD: 'Inward Facultative', OTHER: 'Other',
+};
+
+function cobLabel(code: string | null): string {
+  if (!code) return 'Unclassified';
+  return COB_LABELS[code] ?? code;
+}
+
+function SoaEntriesPanel({ statementId, contractId, canWritePremium, canWriteClaim }: {
+  statementId: string | null;
+  contractId: string;
+  canWritePremium: boolean;
+  canWriteClaim: boolean;
+}) {
+  // Use statementId for the entries endpoint; fall back to contractId-based stub when no statement selected
+  const soaId = statementId;
+  const { data, isLoading } = useSoaEntries(soaId ?? undefined);
+  const toast = useToast();
+
+  const [showPremForm, setShowPremForm] = useState(false);
+  const [showClaimForm, setShowClaimForm] = useState(false);
+
+  const premiumEntries = data?.premiumEntries ?? [];
+  const claimEntries   = data?.claimEntries   ?? [];
+  const summary        = data?.summary;
+
+  // Group premium entries by class_of_business
+  const premByCoB = useMemo(() => {
+    const map = new Map<string, PremiumEntry[]>();
+    for (const e of premiumEntries) {
+      const key = e.classOfBusiness ?? 'OTHER';
+      const arr = map.get(key) ?? [];
+      arr.push(e);
+      map.set(key, arr);
+    }
+    return map;
+  }, [premiumEntries]);
+
+  const premCols: Column<PremiumEntry>[] = [
+    { key: 'policyNo',     header: 'Policy No',    render: (e) => <span className={shared.cellRef}>{e.policyNo ?? '-'}</span> },
+    { key: 'insuredName',  header: 'Insured',       render: (e) => e.insuredName ?? '-' },
+    { key: 'period',       header: 'Period',        render: (e) => e.periodFrom && e.periodTo ? `${e.periodFrom} / ${e.periodTo}` : '-' },
+    { key: 'gross',        header: 'Gross Prem',    align: 'right', render: (e) => <span className={shared.money}>{formatMoney(e.grossPremiumMinor, e.currency)}</span> },
+    { key: 'ri',           header: 'RI Prem',       align: 'right', render: (e) => <span className={shared.money}>{formatMoney(e.riPremiumMinor, e.currency)}</span> },
+    { key: 'commission',   header: 'Commission',    align: 'right', render: (e) => <span className={shared.money}>{formatMoney(e.commissionMinor, e.currency)}</span> },
+    { key: 'net',          header: 'Net Prem',      align: 'right', render: (e) => <span className={shared.money}>{formatMoney(e.netPremiumMinor, e.currency)}</span> },
+  ];
+
+  const claimCols: Column<ClaimEntry>[] = [
+    { key: 'policyNo',   header: 'Policy No',   render: (e) => <span className={shared.cellRef}>{e.policyNo ?? '-'}</span> },
+    { key: 'insured',    header: 'Insured',      render: (e) => e.insuredName ?? '-' },
+    { key: 'dol',        header: 'Date of Loss', render: (e) => formatDate(e.dateOfLoss) },
+    { key: 'cause',      header: 'Cause',        render: (e) => e.causeOfLoss ?? '-' },
+    { key: 'gross',      header: 'Gross Loss',   align: 'right', render: (e) => <span className={shared.money}>{formatMoney(e.grossLossMinor, e.currency)}</span> },
+    { key: 'ri',         header: 'RI Loss',      align: 'right', render: (e) => <span className={shared.money}>{formatMoney(e.riLossMinor, e.currency)}</span> },
+    { key: 'outstanding',header: 'Outstanding',  align: 'right', render: (e) => <span className={shared.money}>{formatMoney(e.outstandingMinor, e.currency)}</span> },
+    { key: 'paid',       header: 'Paid',         align: 'right', render: (e) => <span className={shared.money}>{formatMoney(e.paidMinor, e.currency)}</span> },
+  ];
+
+  if (!soaId) {
+    return (
+      <Card padded style={{ marginTop: 'var(--space-5)' }}>
+        <EmptyState title="No statement selected" message="Select a statement above to view its SOA entries." icon={<FileText size={16} />} />
+      </Card>
+    );
+  }
+
+  return (
+    <Card padded={false} style={{ marginTop: 'var(--space-5)' }}>
+      <div style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-base)', flex: 1 }}>SOA Entries</span>
+        {canWritePremium && (
+          <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setShowPremForm(true)}>
+            Add premium entry
+          </Button>
+        )}
+        {canWriteClaim && (
+          <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setShowClaimForm(true)}>
+            Add claim entry
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<Download size={14} />}
+          onClick={() => window.open(apiUrl(`/api/statements/${soaId}/pdf`), '_blank')}
+        >
+          Download PDF
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<FileText size={14} />}
+          onClick={() => toast.success('Generate & Issue is a planned capability (P3-C).')}
+        >
+          Generate &amp; Issue
+        </Button>
+      </div>
+
+      {/* Summary row */}
+      {summary && (
+        <div className={styles.summaryGrid} style={{ margin: '0 var(--space-4) var(--space-4)' }}>
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>Gross Premium</span>
+            <span className={`${styles.summaryValue} ${shared.money}`}>{formatMoney(summary.totalGrossPremiumMinor, 'USD')}</span>
+          </div>
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>RI Premium</span>
+            <span className={`${styles.summaryValue} ${shared.money}`}>{formatMoney(summary.totalRiPremiumMinor, 'USD')}</span>
+          </div>
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>Net Premium</span>
+            <span className={`${styles.summaryValue} ${shared.money}`}>{formatMoney(summary.totalNetPremiumMinor, 'USD')}</span>
+          </div>
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>Gross Loss</span>
+            <span className={`${styles.summaryValue} ${shared.money}`}>{formatMoney(summary.totalGrossLossMinor, 'USD')}</span>
+          </div>
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>RI Loss</span>
+            <span className={`${styles.summaryValue} ${shared.money}`}>{formatMoney(summary.totalRiLossMinor, 'USD')}</span>
+          </div>
+        </div>
+      )}
+
+      {/* CoB grid — premium entries grouped by class of business */}
+      {isLoading ? (
+        <PageLoader label="Loading entries…" />
+      ) : premByCoB.size === 0 && claimEntries.length === 0 ? (
+        <EmptyState
+          title="No SOA entries"
+          message="Add premium or claim entries to build this Statement of Account."
+          icon={<ReceiptText size={16} />}
+        />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', padding: '0 0 var(--space-4)' }}>
+          {/* Premium sections per CoB */}
+          {Array.from(premByCoB.entries()).map(([cob, entries]) => (
+            <section key={cob}>
+              <CardHeader
+                title={`Premium — ${cobLabel(cob)}`}
+                subtitle={`${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`}
+              />
+              <Table
+                columns={premCols}
+                rows={entries}
+                rowKey={(e) => e.id}
+                empty={<EmptyState title="No entries" />}
+              />
+            </section>
+          ))}
+
+          {/* Claim entries */}
+          {claimEntries.length > 0 && (
+            <section>
+              <CardHeader title="Claims" subtitle={`${claimEntries.length} ${claimEntries.length === 1 ? 'entry' : 'entries'}`} />
+              <Table
+                columns={claimCols}
+                rows={claimEntries}
+                rowKey={(e) => e.id}
+                empty={<EmptyState title="No claim entries" />}
+              />
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* Add Premium Entry modal */}
+      <AddPremiumEntryModal
+        open={showPremForm}
+        contractId={contractId}
+        onClose={() => setShowPremForm(false)}
+      />
+
+      {/* Add Claim Entry modal */}
+      <AddClaimEntryModal
+        open={showClaimForm}
+        contractId={contractId}
+        onClose={() => setShowClaimForm(false)}
+      />
+    </Card>
+  );
+}
+
+const COB_OPTIONS = [
+  { code: 'MB',      label: 'Marine (Bulk Cargo)' },
+  { code: 'MLOP',   label: 'Marine (Loss of Profit)' },
+  { code: 'CPM',    label: "Contractor's Plant & Machinery" },
+  { code: 'DOS',    label: 'Deterioration of Stock' },
+  { code: 'EEI',    label: 'Electronic Equipment' },
+  { code: 'EAR',    label: 'Erection All Risk' },
+  { code: 'CAR',    label: "Contractor's All Risk" },
+  { code: 'BOILERS',label: 'Boilers & Pressure Vessels' },
+  { code: 'ALOP',   label: 'Advanced Loss of Profit' },
+  { code: 'MEGA',   label: 'Mega Risk' },
+  { code: 'INWARD', label: 'Inward Facultative' },
+  { code: 'OTHER',  label: 'Other' },
+];
+
+function AddPremiumEntryModal({ open, contractId, onClose }: {
+  open: boolean; contractId: string; onClose: () => void;
+}) {
+  const toast = useToast();
+  const addEntry = useAddPremiumEntry(contractId);
+
+  const [form, setForm] = useState({
+    policyNo: '', insuredName: '', periodFrom: '', periodTo: '',
+    sumInsuredMinor: '', grossPremiumMinor: '', riPremiumMinor: '',
+    commissionMinor: '', netPremiumMinor: '', classOfBusiness: '', currency: 'USD', remarks: '',
+  });
+
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const submit = async () => {
+    try {
+      await addEntry.mutateAsync({
+        contractId,
+        policyNo:           form.policyNo || undefined,
+        insuredName:        form.insuredName || undefined,
+        periodFrom:         form.periodFrom || undefined,
+        periodTo:           form.periodTo || undefined,
+        sumInsuredMinor:    form.sumInsuredMinor ? Math.round(parseFloat(form.sumInsuredMinor) * 100) : 0,
+        grossPremiumMinor:  form.grossPremiumMinor ? Math.round(parseFloat(form.grossPremiumMinor) * 100) : 0,
+        riPremiumMinor:     form.riPremiumMinor ? Math.round(parseFloat(form.riPremiumMinor) * 100) : 0,
+        commissionMinor:    form.commissionMinor ? Math.round(parseFloat(form.commissionMinor) * 100) : 0,
+        netPremiumMinor:    form.netPremiumMinor ? Math.round(parseFloat(form.netPremiumMinor) * 100) : 0,
+        classOfBusiness:    form.classOfBusiness || undefined,
+        currency:           form.currency || 'USD',
+        remarks:            form.remarks || undefined,
+      });
+      toast.success('Premium entry added');
+      onClose();
+      setForm({ policyNo: '', insuredName: '', periodFrom: '', periodTo: '', sumInsuredMinor: '', grossPremiumMinor: '', riPremiumMinor: '', commissionMinor: '', netPremiumMinor: '', classOfBusiness: '', currency: 'USD', remarks: '' });
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not add entry');
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Add Premium Entry"
+      size="md"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={submit} loading={addEntry.isPending}>Add entry</Button>
+        </>
+      }
+    >
+      <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+          <FormField label="Policy No"><Input value={form.policyNo} onChange={set('policyNo')} /></FormField>
+          <FormField label="Insured Name"><Input value={form.insuredName} onChange={set('insuredName')} /></FormField>
+          <FormField label="Period From"><Input type="date" value={form.periodFrom} onChange={set('periodFrom')} /></FormField>
+          <FormField label="Period To"><Input type="date" value={form.periodTo} onChange={set('periodTo')} /></FormField>
+          <FormField label="Sum Insured (major units)"><Input type="number" value={form.sumInsuredMinor} onChange={set('sumInsuredMinor')} min={0} /></FormField>
+          <FormField label="Gross Premium (major units)"><Input type="number" value={form.grossPremiumMinor} onChange={set('grossPremiumMinor')} min={0} /></FormField>
+          <FormField label="RI Premium (major units)"><Input type="number" value={form.riPremiumMinor} onChange={set('riPremiumMinor')} min={0} /></FormField>
+          <FormField label="Commission (major units)"><Input type="number" value={form.commissionMinor} onChange={set('commissionMinor')} min={0} /></FormField>
+          <FormField label="Net Premium (major units)"><Input type="number" value={form.netPremiumMinor} onChange={set('netPremiumMinor')} min={0} /></FormField>
+          <FormField label="Class of Business">
+            <Select value={form.classOfBusiness} onChange={set('classOfBusiness')}>
+              <option value="">— select —</option>
+              {COB_OPTIONS.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Currency"><Input value={form.currency} onChange={set('currency')} maxLength={3} /></FormField>
+        </div>
+        <FormField label="Remarks"><Textarea value={form.remarks} onChange={set('remarks')} rows={2} /></FormField>
+      </div>
+    </Modal>
+  );
+}
+
+function AddClaimEntryModal({ open, contractId, onClose }: {
+  open: boolean; contractId: string; onClose: () => void;
+}) {
+  const toast = useToast();
+  const addEntry = useAddClaimEntry(contractId);
+
+  const [form, setForm] = useState({
+    policyNo: '', insuredName: '', dateOfLoss: '', causeOfLoss: '',
+    grossLossMinor: '', riLossMinor: '', outstandingMinor: '', paidMinor: '',
+    classOfBusiness: '', currency: 'USD', remarks: '',
+  });
+
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const submit = async () => {
+    try {
+      await addEntry.mutateAsync({
+        contractId,
+        policyNo:         form.policyNo || undefined,
+        insuredName:      form.insuredName || undefined,
+        dateOfLoss:       form.dateOfLoss || undefined,
+        causeOfLoss:      form.causeOfLoss || undefined,
+        grossLossMinor:   form.grossLossMinor ? Math.round(parseFloat(form.grossLossMinor) * 100) : 0,
+        riLossMinor:      form.riLossMinor ? Math.round(parseFloat(form.riLossMinor) * 100) : 0,
+        outstandingMinor: form.outstandingMinor ? Math.round(parseFloat(form.outstandingMinor) * 100) : 0,
+        paidMinor:        form.paidMinor ? Math.round(parseFloat(form.paidMinor) * 100) : 0,
+        classOfBusiness:  form.classOfBusiness || undefined,
+        currency:         form.currency || 'USD',
+        remarks:          form.remarks || undefined,
+      });
+      toast.success('Claim entry added');
+      onClose();
+      setForm({ policyNo: '', insuredName: '', dateOfLoss: '', causeOfLoss: '', grossLossMinor: '', riLossMinor: '', outstandingMinor: '', paidMinor: '', classOfBusiness: '', currency: 'USD', remarks: '' });
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not add claim entry');
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Add Claim Entry"
+      size="md"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={submit} loading={addEntry.isPending}>Add entry</Button>
+        </>
+      }
+    >
+      <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+          <FormField label="Policy No"><Input value={form.policyNo} onChange={set('policyNo')} /></FormField>
+          <FormField label="Insured Name"><Input value={form.insuredName} onChange={set('insuredName')} /></FormField>
+          <FormField label="Date of Loss"><Input type="date" value={form.dateOfLoss} onChange={set('dateOfLoss')} /></FormField>
+          <FormField label="Cause of Loss"><Input value={form.causeOfLoss} onChange={set('causeOfLoss')} /></FormField>
+          <FormField label="Gross Loss (major units)"><Input type="number" value={form.grossLossMinor} onChange={set('grossLossMinor')} min={0} /></FormField>
+          <FormField label="RI Loss (major units)"><Input type="number" value={form.riLossMinor} onChange={set('riLossMinor')} min={0} /></FormField>
+          <FormField label="Outstanding (major units)"><Input type="number" value={form.outstandingMinor} onChange={set('outstandingMinor')} min={0} /></FormField>
+          <FormField label="Paid (major units)"><Input type="number" value={form.paidMinor} onChange={set('paidMinor')} min={0} /></FormField>
+          <FormField label="Class of Business">
+            <Select value={form.classOfBusiness} onChange={set('classOfBusiness')}>
+              <option value="">— select —</option>
+              {COB_OPTIONS.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Currency"><Input value={form.currency} onChange={set('currency')} maxLength={3} /></FormField>
+        </div>
+        <FormField label="Remarks"><Textarea value={form.remarks} onChange={set('remarks')} rows={2} /></FormField>
+      </div>
     </Modal>
   );
 }

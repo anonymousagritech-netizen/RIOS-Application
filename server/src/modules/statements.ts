@@ -19,6 +19,7 @@ import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
 import { nextReference } from './parties.js';
+import { buildPdf } from '../lib/pdf.js';
 
 /**
  * Ordered statement lifecycle (§28.5). Each step may only advance to the next,
@@ -236,6 +237,327 @@ export async function statementsModule(app: FastifyInstance): Promise<void> {
           actorLabel: req.auth?.displayName,
         });
         return { id: statement.id, status: to };
+      });
+    },
+  );
+
+  /* ------------------------------------------------------------------ */
+  /* SOA Entry management (P3-B)                                         */
+  /* ------------------------------------------------------------------ */
+
+  const premiumEntrySchema = z.object({
+    contractId:          z.string().uuid(),
+    policyNo:            z.string().optional(),
+    insuredName:         z.string().optional(),
+    periodFrom:          z.string().optional(),
+    periodTo:            z.string().optional(),
+    sumInsuredMinor:     z.number().int().default(0),
+    grossPremiumMinor:   z.number().int().default(0),
+    riPremiumMinor:      z.number().int().default(0),
+    commissionMinor:     z.number().int().default(0),
+    netPremiumMinor:     z.number().int().default(0),
+    classOfBusiness:     z.string().optional(),
+    currency:            z.string().default('USD'),
+    remarks:             z.string().optional(),
+  });
+
+  const claimEntrySchema = z.object({
+    contractId:       z.string().uuid(),
+    claimId:          z.string().uuid().optional(),
+    policyNo:         z.string().optional(),
+    insuredName:      z.string().optional(),
+    dateOfLoss:       z.string().optional(),
+    causeOfLoss:      z.string().optional(),
+    grossLossMinor:   z.number().int().default(0),
+    riLossMinor:      z.number().int().default(0),
+    outstandingMinor: z.number().int().default(0),
+    paidMinor:        z.number().int().default(0),
+    classOfBusiness:  z.string().optional(),
+    currency:         z.string().default('USD'),
+    remarks:          z.string().optional(),
+  });
+
+  // POST /api/statements/entries/premium
+  app.post(
+    '/api/statements/entries/premium',
+    { preHandler: requirePermission('treaty:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = premiumEntrySchema.safeParse(req.body);
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid premium entry', details: parsed.error.flatten() };
+      }
+      const b = parsed.data;
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{ id: string }>(
+          `INSERT INTO premium_entry
+             (tenant_id, contract_id, policy_no, insured_name, period_from, period_to,
+              sum_insured_minor, gross_premium_minor, ri_premium_minor, commission_minor,
+              net_premium_minor, class_of_business, currency, remarks, source)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'manual')
+           RETURNING id`,
+          [
+            ctx.tenantId, b.contractId, b.policyNo ?? null, b.insuredName ?? null,
+            b.periodFrom ?? null, b.periodTo ?? null,
+            b.sumInsuredMinor, b.grossPremiumMinor, b.riPremiumMinor,
+            b.commissionMinor, b.netPremiumMinor,
+            b.classOfBusiness ?? null, b.currency, b.remarks ?? null,
+          ],
+        );
+        const id = rows[0]!.id;
+        await writeAudit(db, ctx, {
+          action: 'create',
+          entityType: 'premium_entry',
+          entityId: id,
+          after: { contractId: b.contractId, policyNo: b.policyNo, grossPremiumMinor: b.grossPremiumMinor },
+          actorLabel: req.auth?.displayName,
+        });
+        reply.code(201);
+        return { id };
+      });
+    },
+  );
+
+  // POST /api/statements/entries/claim
+  app.post(
+    '/api/statements/entries/claim',
+    { preHandler: requirePermission('claims:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = claimEntrySchema.safeParse(req.body);
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid claim entry', details: parsed.error.flatten() };
+      }
+      const b = parsed.data;
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query<{ id: string }>(
+          `INSERT INTO claim_entry
+             (tenant_id, contract_id, claim_id, policy_no, insured_name, date_of_loss,
+              cause_of_loss, gross_loss_minor, ri_loss_minor, outstanding_minor, paid_minor,
+              class_of_business, currency, remarks, source)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'manual')
+           RETURNING id`,
+          [
+            ctx.tenantId, b.contractId, b.claimId ?? null, b.policyNo ?? null,
+            b.insuredName ?? null, b.dateOfLoss ?? null, b.causeOfLoss ?? null,
+            b.grossLossMinor, b.riLossMinor, b.outstandingMinor, b.paidMinor,
+            b.classOfBusiness ?? null, b.currency, b.remarks ?? null,
+          ],
+        );
+        const id = rows[0]!.id;
+        await writeAudit(db, ctx, {
+          action: 'create',
+          entityType: 'claim_entry',
+          entityId: id,
+          after: { contractId: b.contractId, policyNo: b.policyNo, grossLossMinor: b.grossLossMinor },
+          actorLabel: req.auth?.displayName,
+        });
+        reply.code(201);
+        return { id };
+      });
+    },
+  );
+
+  // GET /api/statements/:id/entries  — returns premium + claim entries for the contract
+  // behind this statement, grouped summary.
+  app.get<{ Params: { id: string } }>(
+    '/api/statements/:id/entries',
+    { preHandler: requirePermission('treaty:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        // Resolve the contract_id from the statement
+        const soa = await db.query<{ contract_id: string }>(
+          `SELECT contract_id FROM statement_of_account WHERE id = $1`,
+          [req.params.id],
+        );
+        if (!soa.rows[0]) {
+          reply.code(404);
+          return { error: 'Statement not found' };
+        }
+        const contractId = soa.rows[0].contract_id;
+
+        const premRows = await db.query<{
+          id: string; policy_no: string | null; insured_name: string | null;
+          period_from: string | null; period_to: string | null;
+          sum_insured_minor: number; gross_premium_minor: number; ri_premium_minor: number;
+          commission_minor: number; net_premium_minor: number; class_of_business: string | null;
+          currency: string; remarks: string | null; created_at: string;
+        }>(
+          `SELECT id, policy_no, insured_name,
+                  to_char(period_from, 'YYYY-MM-DD') AS period_from,
+                  to_char(period_to,   'YYYY-MM-DD') AS period_to,
+                  sum_insured_minor, gross_premium_minor, ri_premium_minor,
+                  commission_minor, net_premium_minor, class_of_business,
+                  currency, remarks, created_at
+             FROM premium_entry
+            WHERE contract_id = $1
+            ORDER BY created_at, id`,
+          [contractId],
+        );
+
+        const claimRows = await db.query<{
+          id: string; policy_no: string | null; insured_name: string | null;
+          date_of_loss: string | null; cause_of_loss: string | null;
+          gross_loss_minor: number; ri_loss_minor: number; outstanding_minor: number;
+          paid_minor: number; class_of_business: string | null;
+          currency: string; remarks: string | null; created_at: string;
+        }>(
+          `SELECT id, policy_no, insured_name,
+                  to_char(date_of_loss, 'YYYY-MM-DD') AS date_of_loss,
+                  cause_of_loss, gross_loss_minor, ri_loss_minor,
+                  outstanding_minor, paid_minor, class_of_business,
+                  currency, remarks, created_at
+             FROM claim_entry
+            WHERE contract_id = $1
+            ORDER BY created_at, id`,
+          [contractId],
+        );
+
+        const premiumEntries = premRows.rows.map((r) => ({
+          id: r.id,
+          policyNo: r.policy_no,
+          insuredName: r.insured_name,
+          periodFrom: r.period_from,
+          periodTo: r.period_to,
+          sumInsuredMinor: Number(r.sum_insured_minor),
+          grossPremiumMinor: Number(r.gross_premium_minor),
+          riPremiumMinor: Number(r.ri_premium_minor),
+          commissionMinor: Number(r.commission_minor),
+          netPremiumMinor: Number(r.net_premium_minor),
+          classOfBusiness: r.class_of_business,
+          currency: r.currency,
+          remarks: r.remarks,
+          createdAt: String(r.created_at),
+        }));
+
+        const claimEntries = claimRows.rows.map((r) => ({
+          id: r.id,
+          policyNo: r.policy_no,
+          insuredName: r.insured_name,
+          dateOfLoss: r.date_of_loss,
+          causeOfLoss: r.cause_of_loss,
+          grossLossMinor: Number(r.gross_loss_minor),
+          riLossMinor: Number(r.ri_loss_minor),
+          outstandingMinor: Number(r.outstanding_minor),
+          paidMinor: Number(r.paid_minor),
+          classOfBusiness: r.class_of_business,
+          currency: r.currency,
+          remarks: r.remarks,
+          createdAt: String(r.created_at),
+        }));
+
+        const summary = {
+          totalGrossPremiumMinor: premiumEntries.reduce((s, e) => s + e.grossPremiumMinor, 0),
+          totalRiPremiumMinor:    premiumEntries.reduce((s, e) => s + e.riPremiumMinor, 0),
+          totalNetPremiumMinor:   premiumEntries.reduce((s, e) => s + e.netPremiumMinor, 0),
+          totalGrossLossMinor:    claimEntries.reduce((s, e) => s + e.grossLossMinor, 0),
+          totalRiLossMinor:       claimEntries.reduce((s, e) => s + e.riLossMinor, 0),
+        };
+
+        return { contractId, premiumEntries, claimEntries, summary };
+      });
+    },
+  );
+
+  // GET /api/statements/:id/pdf — generate a two-section PDF (premium + claims)
+  app.get<{ Params: { id: string } }>(
+    '/api/statements/:id/pdf',
+    { preHandler: requirePermission('treaty:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        // Resolve statement + contract for subtitle
+        const soa = await db.query<{ contract_id: string; reference: string }>(
+          `SELECT soa.contract_id, c.reference AS reference
+             FROM statement_of_account soa
+             JOIN contract c ON c.id = soa.contract_id
+            WHERE soa.id = $1`,
+          [req.params.id],
+        );
+        if (!soa.rows[0]) {
+          reply.code(404);
+          return { error: 'Statement not found' };
+        }
+        const { contract_id: contractId, reference: contractRef } = soa.rows[0];
+
+        const premRows = await db.query<{
+          policy_no: string | null; insured_name: string | null;
+          period_from: string | null; period_to: string | null;
+          sum_insured_minor: number; gross_premium_minor: number; ri_premium_minor: number;
+          commission_minor: number; net_premium_minor: number; class_of_business: string | null;
+        }>(
+          `SELECT policy_no, insured_name,
+                  to_char(period_from, 'YYYY-MM-DD') AS period_from,
+                  to_char(period_to,   'YYYY-MM-DD') AS period_to,
+                  sum_insured_minor, gross_premium_minor, ri_premium_minor,
+                  commission_minor, net_premium_minor, class_of_business
+             FROM premium_entry WHERE contract_id = $1 ORDER BY created_at, id`,
+          [contractId],
+        );
+
+        const claimRows = await db.query<{
+          policy_no: string | null; insured_name: string | null;
+          date_of_loss: string | null; cause_of_loss: string | null;
+          gross_loss_minor: number; ri_loss_minor: number;
+          outstanding_minor: number; paid_minor: number; class_of_business: string | null;
+        }>(
+          `SELECT policy_no, insured_name,
+                  to_char(date_of_loss, 'YYYY-MM-DD') AS date_of_loss,
+                  cause_of_loss, gross_loss_minor, ri_loss_minor,
+                  outstanding_minor, paid_minor, class_of_business
+             FROM claim_entry WHERE contract_id = $1 ORDER BY created_at, id`,
+          [contractId],
+        );
+
+        const subtitle = contractRef ?? contractId;
+
+        const premHeaders = ['Policy No', 'Insured', 'Period', 'Sum Insured', 'Gross Prem', 'RI Prem', 'Commission', 'Net Prem', 'CoB'];
+        const premPdfRows = premRows.rows.map((r) => ({
+          'Policy No':   r.policy_no ?? '-',
+          'Insured':     r.insured_name ?? '-',
+          'Period':      r.period_from && r.period_to ? `${r.period_from} / ${r.period_to}` : '-',
+          'Sum Insured': String(r.sum_insured_minor),
+          'Gross Prem':  String(r.gross_premium_minor),
+          'RI Prem':     String(r.ri_premium_minor),
+          'Commission':  String(r.commission_minor),
+          'Net Prem':    String(r.net_premium_minor),
+          'CoB':         r.class_of_business ?? '-',
+        }));
+
+        const claimHeaders = ['Policy No', 'Insured', 'Date of Loss', 'Cause', 'Gross Loss', 'RI Loss', 'Outstanding', 'Paid', 'CoB'];
+        const claimPdfRows = claimRows.rows.map((r) => ({
+          'Policy No':   r.policy_no ?? '-',
+          'Insured':     r.insured_name ?? '-',
+          'Date of Loss': r.date_of_loss ?? '-',
+          'Cause':       r.cause_of_loss ?? '-',
+          'Gross Loss':  String(r.gross_loss_minor),
+          'RI Loss':     String(r.ri_loss_minor),
+          'Outstanding': String(r.outstanding_minor),
+          'Paid':        String(r.paid_minor),
+          'CoB':         r.class_of_business ?? '-',
+        }));
+
+        const premBuf = buildPdf({
+          title: 'Statement of Account — Premium',
+          subtitle,
+          headers: premHeaders,
+          rows: premPdfRows,
+        });
+        const clmBuf = buildPdf({
+          title: 'Statement of Account — Claims',
+          subtitle,
+          headers: claimHeaders,
+          rows: claimPdfRows,
+        });
+
+        const combined = Buffer.concat([premBuf, clmBuf]);
+        const safeRef = (contractRef ?? contractId).replace(/[^a-zA-Z0-9-]/g, '-');
+        void reply.header('Content-Type', 'application/pdf');
+        void reply.header('Content-Disposition', `attachment; filename="soa-${safeRef}.pdf"`);
+        return reply.send(combined);
       });
     },
   );

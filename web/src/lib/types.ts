@@ -255,4 +255,49 @@ export interface TreasuryHolding {
   fdMaturity?: string | null;
   accruedInterestMinor?: number;
   status: string;
+// SOA Entry types (P3-B)
+export interface PremiumEntry {
+  id: string;
+  policyNo: string | null;
+  insuredName: string | null;
+  periodFrom: string | null;
+  periodTo: string | null;
+  sumInsuredMinor: number;
+  grossPremiumMinor: number;
+  riPremiumMinor: number;
+  commissionMinor: number;
+  netPremiumMinor: number;
+  classOfBusiness: string | null;
+  currency: string;
+  remarks: string | null;
+  createdAt: string;
+}
+
+export interface ClaimEntry {
+  id: string;
+  policyNo: string | null;
+  insuredName: string | null;
+  dateOfLoss: string | null;
+  causeOfLoss: string | null;
+  grossLossMinor: number;
+  riLossMinor: number;
+  outstandingMinor: number;
+  paidMinor: number;
+  classOfBusiness: string | null;
+  currency: string;
+  remarks: string | null;
+  createdAt: string;
+}
+
+export interface SoaEntriesResponse {
+  contractId: string;
+  premiumEntries: PremiumEntry[];
+  claimEntries: ClaimEntry[];
+  summary: {
+    totalGrossPremiumMinor: number;
+    totalRiPremiumMinor: number;
+    totalNetPremiumMinor: number;
+    totalGrossLossMinor: number;
+    totalRiLossMinor: number;
+  };
 }

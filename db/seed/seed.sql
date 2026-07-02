@@ -795,6 +795,45 @@ values (:'tenant_id'::uuid,'automation','treaty.bind.autocheck',1,'published', j
     jsonb_build_object('type','publish','target','event:treaty.checked'))))
 on conflict (tenant_id, kind, key, version) do nothing;
 
+-- ---------------------------------------------------------------------------
+-- SOA Entries seed (P3-B): demo premium & claim entries for TRTY-2026-00001
+-- ---------------------------------------------------------------------------
+insert into premium_entry (id, tenant_id, contract_id, policy_no, insured_name, period_from, period_to, sum_insured_minor, gross_premium_minor, ri_premium_minor, commission_minor, net_premium_minor, class_of_business, currency, source)
+select gen_random_uuid(), t.id, c.id,
+  v.policy_no, v.insured_name, v.pfrom::date, v.pto::date,
+  v.si, v.gp, v.ri, v.comm, v.net, v.cob, 'USD', 'demo'
+from tenant t
+join contract c on c.reference = 'TRTY-2026-00001' and c.tenant_id = t.id
+cross join (values
+  ('POL-001', 'Bhutan Power Corp',      '2026-01-01', '2026-12-31', 500000000, 1250000, 625000, 125000, 500000, 'EEI'),
+  ('POL-002', 'Thimphu Construction',   '2026-01-01', '2026-12-31', 300000000,  750000, 375000,  75000, 300000, 'CAR'),
+  ('POL-003', 'Druk Air Cargo',         '2026-01-01', '2026-12-31', 200000000,  800000, 400000,  80000, 320000, 'MB'),
+  ('POL-004', 'Royal Bhutan Police',    '2026-02-01', '2027-01-31', 150000000,  450000, 225000,  45000, 180000, 'CPM'),
+  ('POL-005', 'Paro Airport Authority', '2026-03-01', '2027-02-28', 400000000,  900000, 450000,  90000, 360000, 'EAR'),
+  ('POL-006', 'Tashi Namgay Cement',    '2026-01-01', '2026-12-31', 250000000,  600000, 300000,  60000, 240000, 'CAR'),
+  ('POL-007', 'Wangchuk Cold Storage',  '2026-04-01', '2027-03-31', 100000000,  300000, 150000,  30000, 120000, 'DOS'),
+  ('POL-008', 'Gelephu IT Park',        '2026-01-01', '2026-12-31', 180000000,  540000, 270000,  54000, 216000, 'EEI'),
+  ('POL-009', 'Bhutan Boilers Ltd',     '2026-01-01', '2026-12-31',  80000000,  200000, 100000,  20000,  80000, 'BOILERS'),
+  ('POL-010', 'Punakha Hydro Project',  '2026-05-01', '2027-04-30', 600000000, 1500000, 750000, 150000, 600000, 'ALOP')
+) as v(policy_no, insured_name, pfrom, pto, si, gp, ri, comm, net, cob)
+where t.code = 'demo'
+on conflict do nothing;
+
+insert into claim_entry (id, tenant_id, contract_id, policy_no, insured_name, date_of_loss, cause_of_loss, gross_loss_minor, ri_loss_minor, outstanding_minor, paid_minor, class_of_business, currency, source)
+select gen_random_uuid(), t.id, c.id,
+  v.policy_no, v.insured_name, v.dol::date, v.cause,
+  v.gl, v.rl, v.out, v.paid, v.cob, 'USD', 'demo'
+from tenant t
+join contract c on c.reference = 'TRTY-2026-00001' and c.tenant_id = t.id
+cross join (values
+  ('POL-001', 'Bhutan Power Corp',      '2026-03-15', 'Equipment breakdown',     250000, 125000, 125000,      0, 'EEI'),
+  ('POL-003', 'Druk Air Cargo',         '2026-05-20', 'Cargo damage in transit', 320000, 160000,      0, 160000, 'MB'),
+  ('POL-005', 'Paro Airport Authority', '2026-04-10', 'Storm damage to hangar',  450000, 225000, 225000,      0, 'EAR'),
+  ('POL-009', 'Bhutan Boilers Ltd',     '2026-06-01', 'Boiler explosion',        180000,  90000,  90000,      0, 'BOILERS')
+) as v(policy_no, insured_name, dol, cause, gl, rl, out, paid, cob)
+where t.code = 'demo'
+on conflict do nothing;
+
 commit;
 
 -- ---------------------------------------------------------------------------
