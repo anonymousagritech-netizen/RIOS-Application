@@ -17,18 +17,19 @@ import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/Modal';
 import { DocumentsPanel } from '../components/DocumentsPanel';
 import { ApprovalPanel } from '../components/ApprovalPanel';
-import { DefinitionList, ErrorState, PageLoader } from '../components/Feedback';
+import { DefinitionList, SectionLabel, ErrorState, PageLoader } from '../components/Feedback';
 import { legalTransitions } from '../lib/status';
 import { formatMoney, formatDate, formatPercent, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
 import type { FinancialEventDTO } from '@rios/shared';
+import type { TreatyDetail } from '../lib/types';
 import { ClipboardList, DollarSign, Coins, Layers, Users, CalendarDays } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './TreatyDetailPage.module.css';
 
 const TABS = [
   { id: 'structure', label: 'Structure' },
-  { id: 'terms', label: 'Terms' },
+  { id: 'key-terms', label: 'Key terms' },
   { id: 'approval', label: 'Approval' },
   { id: 'financials', label: 'Financial events' },
   { id: 'statement', label: 'Statement' },
@@ -48,9 +49,9 @@ export function TreatyDetailPage() {
   const transition = useTransitionTreaty(id!);
 
   // Arriving from another surface (e.g. the Statements list) may request an
-  // initial tab via ?tab=; fall back to Structure for unknown/missing values.
+  // initial tab via ?tab=; fall back to Key terms for unknown/missing values.
   const requestedTab = searchParams.get('tab');
-  const [tab, setTab] = useState(TABS.some((t) => t.id === requestedTab) ? requestedTab! : 'structure');
+  const [tab, setTab] = useState(TABS.some((t) => t.id === requestedTab) ? requestedTab! : 'key-terms');
   const [confirmTo, setConfirmTo] = useState<string | null>(null);
 
   if (isLoading) return <PageLoader label="Loading treaty…" />;
@@ -103,6 +104,14 @@ export function TreatyDetailPage() {
                   : treaty.cedentName}
               </>
             ) : null}
+            {treaty.brokerName ? (
+              <>
+                <span className={styles.dot}>via</span>
+                {treaty.brokerPartyId
+                  ? <Link className={styles.cedentLink} to={`/parties/${treaty.brokerPartyId}`}>{treaty.brokerName}</Link>
+                  : treaty.brokerName}
+              </>
+            ) : null}
           </span>
         }
         actions={
@@ -134,7 +143,7 @@ export function TreatyDetailPage() {
         <div className={styles.tabBar}><Tabs tabs={TABS} active={tab} onChange={setTab} /></div>
         <div className={styles.tabBody}>
           {tab === 'structure' && <StructureTab treaty={treaty} currency={currency} />}
-          {tab === 'terms' && <TermsTab terms={treaty.terms} />}
+          {tab === 'key-terms' && <KeyTermsTab treaty={treaty} />}
           {tab === 'approval' && <ApprovalPanel entityType="treaty" entityId={id!} status={treaty.status} statusColors={statusColors} />}
           {tab === 'financials' && <FinancialsTab id={id!} currency={currency} />}
           {tab === 'statement' && <StatementTab id={id!} canPost={hasPermission('accounting:post')} />}
@@ -163,7 +172,7 @@ export function TreatyDetailPage() {
   );
 }
 
-function StructureTab({ treaty, currency }: { treaty: ReturnType<typeof useTreaty>['data'] & {}; currency: string }) {
+function StructureTab({ treaty, currency }: { treaty: TreatyDetail; currency: string }) {
   const layers = treaty?.layers ?? [];
   const participations = treaty?.participations ?? [];
 
@@ -213,37 +222,132 @@ function StructureTab({ treaty, currency }: { treaty: ReturnType<typeof useTreat
   );
 }
 
-function TermsTab({ terms }: { terms?: Record<string, unknown> }) {
-  // Flatten the adaptive class-detail bag into its own labelled rows rather than
-  // showing a raw JSON blob; everything else renders as a normal term.
-  const entries: [string, unknown][] = [];
-  for (const [k, v] of Object.entries(terms ?? {})) {
-    if (k === 'classDetails' && v && typeof v === 'object' && !Array.isArray(v)) {
-      for (const [ck, cv] of Object.entries(v as Record<string, unknown>)) entries.push([ck, cv]);
-    } else {
-      entries.push([k, v]);
-    }
-  }
-  if (!entries.length) {
-    return <EmptyState title="No terms recorded" message="Commercial terms for this treaty have not been captured." icon={<ClipboardList size={16} />} />;
-  }
-  return (
-    <DefinitionList
-      items={entries.map(([k, v]) => ({
-        term: titleCase(k),
-        value: renderTermValue(k, v),
-      }))}
-    />
-  );
+/** Format a major-unit number with currency label for display. Terms store money in major units. */
+function fmtMajor(v: unknown, currency: string): string {
+  if (v == null || typeof v !== 'number') return '-';
+  return new Intl.NumberFormat(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(v) + ' ' + currency;
 }
 
-function renderTermValue(key: string, value: unknown): string {
-  if (value == null) return '-';
-  if (typeof value === 'object') return JSON.stringify(value);
-  if (typeof value === 'number' && /premium|amount|deposit|limit/i.test(key)) {
-    return value.toLocaleString();
+function fmtPct(v: unknown): string {
+  if (v == null || typeof v !== 'number') return '-';
+  return `${v}%`;
+}
+
+/**
+ * Key terms tab: structured view of the treaty's commercial and structural terms.
+ * Shows contract-level fields (basis, direction, period, LOB) combined with the
+ * commercial terms from the term_set JSON. Money figures are in major units.
+ */
+function KeyTermsTab({ treaty }: { treaty: TreatyDetail }) {
+  const terms = treaty.terms ?? {};
+  const isProportional = treaty.basis === 'PROPORTIONAL';
+  const currency = treaty.currency;
+
+  const contractItems = [
+    { term: 'Basis', value: titleCase(treaty.basis) || '-' },
+    (treaty.proportionalType || treaty.npType)
+      ? { term: 'Structure type', value: titleCase(treaty.proportionalType ?? treaty.npType ?? '') }
+      : null,
+    { term: 'Direction', value: titleCase(treaty.direction) || '-' },
+    { term: 'Line of business', value: titleCase(treaty.lineOfBusiness) || '-' },
+    { term: 'Currency', value: currency },
+    { term: 'Inception', value: formatDate(treaty.periodStart) },
+    { term: 'Expiry', value: formatDate(treaty.periodEnd) },
+    terms.periodBasis != null
+      ? { term: 'Period basis', value: titleCase(String(terms.periodBasis)) }
+      : null,
+    terms.territory != null
+      ? { term: 'Territory', value: String(terms.territory) }
+      : null,
+    terms.underwritingYear != null
+      ? { term: 'Underwriting year', value: String(terms.underwritingYear) }
+      : null,
+  ].filter((x): x is { term: string; value: string } => x != null);
+
+  const structuralItems: { term: string; value: string }[] = [
+    // Proportional terms
+    ...(isProportional ? [
+      terms.cessionPct != null ? { term: 'Cession %', value: fmtPct(terms.cessionPct) } : null,
+      terms.retentionLines != null ? { term: 'Retention (lines)', value: String(terms.retentionLines) } : null,
+      terms.maxCession != null ? { term: 'Max cession (lines)', value: String(terms.maxCession) } : null,
+    ] : [
+      // Non-proportional terms
+      terms.attachment != null ? { term: 'Attachment', value: fmtMajor(terms.attachment, currency) } : null,
+      terms.limit != null ? { term: 'Limit', value: fmtMajor(terms.limit, currency) } : null,
+      terms.aggregateDeductible != null ? { term: 'Aggregate deductible', value: fmtMajor(terms.aggregateDeductible, currency) } : null,
+      terms.reinstatements != null ? { term: 'Reinstatements', value: String(terms.reinstatements) } : null,
+      terms.rateOnLine != null ? { term: 'Rate on line %', value: fmtPct(terms.rateOnLine) } : null,
+      terms.hoursClause != null ? { term: 'Hours clause', value: `${terms.hoursClause} hrs` } : null,
+      terms.eventLimit != null ? { term: 'Event limit', value: fmtMajor(terms.eventLimit, currency) } : null,
+    ]),
+  ].filter((x): x is { term: string; value: string } => x != null);
+
+  const commissionItems = [
+    ...(isProportional ? [
+      terms.cedingCommissionPct != null ? { term: 'Ceding commission %', value: fmtPct(terms.cedingCommissionPct) } : null,
+      terms.profitCommissionPct != null ? { term: 'Profit commission %', value: fmtPct(terms.profitCommissionPct) } : null,
+      terms.overridePct != null ? { term: 'Overrider %', value: fmtPct(terms.overridePct) } : null,
+      terms.commissionMinPct != null ? { term: 'Commission min %', value: fmtPct(terms.commissionMinPct) } : null,
+      terms.commissionMaxPct != null ? { term: 'Commission max %', value: fmtPct(terms.commissionMaxPct) } : null,
+    ] : []),
+    terms.brokeragePct != null ? { term: 'Brokerage %', value: fmtPct(terms.brokeragePct) } : null,
+    terms.writtenSharePct != null ? { term: 'Our written share %', value: fmtPct(terms.writtenSharePct) } : null,
+    terms.orderPct != null ? { term: 'Order %', value: fmtPct(terms.orderPct) } : null,
+  ].filter((x): x is { term: string; value: string } => x != null);
+
+  const premiumItems = [
+    terms.estimatedPremiumIncome != null ? { term: 'Est. premium income (EPI)', value: fmtMajor(terms.estimatedPremiumIncome, currency) } : null,
+    terms.minimumAndDepositPremium != null ? { term: 'Min. & deposit premium (MDP)', value: fmtMajor(terms.minimumAndDepositPremium, currency) } : null,
+    terms.depositPremium != null ? { term: 'Deposit premium', value: fmtMajor(terms.depositPremium, currency) } : null,
+  ].filter((x): x is { term: string; value: string } => x != null);
+
+  const accountingItems = [
+    terms.statementFrequency != null ? { term: 'Statement frequency', value: titleCase(String(terms.statementFrequency)) } : null,
+    terms.accountingBasis != null ? { term: 'Accounting basis', value: titleCase(String(terms.accountingBasis)) } : null,
+    terms.settlementCurrency != null ? { term: 'Settlement currency', value: String(terms.settlementCurrency) } : null,
+    terms.cashCallThreshold != null ? { term: 'Cash call threshold', value: fmtMajor(terms.cashCallThreshold, currency) } : null,
+  ].filter((x): x is { term: string; value: string } => x != null);
+
+  const hasAny = contractItems.length > 0 || structuralItems.length > 0 || commissionItems.length > 0 || premiumItems.length > 0 || accountingItems.length > 0;
+
+  if (!hasAny) {
+    return <EmptyState title="No terms recorded" message="Commercial terms for this treaty have not been captured." icon={<ClipboardList size={16} />} />;
   }
-  return String(value);
+
+  return (
+    <div className={styles.stack}>
+      {contractItems.length > 0 && (
+        <section>
+          <SectionLabel>Contract</SectionLabel>
+          <DefinitionList items={contractItems} />
+        </section>
+      )}
+      {structuralItems.length > 0 && (
+        <section>
+          <SectionLabel>{isProportional ? 'Proportional structure' : 'Excess-of-loss structure'}</SectionLabel>
+          <DefinitionList items={structuralItems} />
+        </section>
+      )}
+      {commissionItems.length > 0 && (
+        <section>
+          <SectionLabel>Commission &amp; brokerage</SectionLabel>
+          <DefinitionList items={commissionItems} />
+        </section>
+      )}
+      {premiumItems.length > 0 && (
+        <section>
+          <SectionLabel>Premium</SectionLabel>
+          <DefinitionList items={premiumItems} />
+        </section>
+      )}
+      {accountingItems.length > 0 && (
+        <section>
+          <SectionLabel>Accounting</SectionLabel>
+          <DefinitionList items={accountingItems} />
+        </section>
+      )}
+    </div>
+  );
 }
 
 function FinancialsTab({ id, currency }: { id: string; currency: string }) {
