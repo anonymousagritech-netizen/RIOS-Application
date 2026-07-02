@@ -6,7 +6,7 @@
  * EP curve and a PML profile - rates are explicit assumptions, never invented).
  */
 
-import { Columns3, DollarSign, Grid2x2, Hash, Sigma, Target, TrendingUp } from 'lucide-react';
+import { Columns3, DollarSign, Download, Grid2x2, Hash, Sigma, Target, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
@@ -37,7 +37,7 @@ interface GridResult {
 }
 
 export function AnalyticsPage() {
-  const [tab, setTab] = useState('pivot');
+  const [tab, setTab] = useState('portfolio');
   return (
     <>
       <PageHeader
@@ -48,11 +48,23 @@ export function AnalyticsPage() {
       />
       <Card>
         <Tabs
-          tabs={[{ id: 'pivot', label: 'Data warehouse' }, { id: 'reports', label: 'Reports' }, { id: 'dashboards', label: 'Dashboards' }, { id: 'cat', label: 'Catastrophe' }, { id: 'forecast', label: 'Forecast' }]}
+          tabs={[
+            { id: 'portfolio', label: 'Portfolio' },
+            { id: 'triangle', label: 'Loss triangle' },
+            { id: 'exports', label: 'Exports' },
+            { id: 'pivot', label: 'Data warehouse' },
+            { id: 'reports', label: 'Reports' },
+            { id: 'dashboards', label: 'Dashboards' },
+            { id: 'cat', label: 'Catastrophe' },
+            { id: 'forecast', label: 'Forecast' },
+          ]}
           active={tab}
           onChange={setTab}
         />
         <div className={styles.tabBody}>
+          {tab === 'portfolio' && <PortfolioOverview />}
+          {tab === 'triangle' && <LossTriangle />}
+          {tab === 'exports' && <ExportPacks />}
           {tab === 'pivot' && <PivotBuilder />}
           {tab === 'reports' && <ReportsConsole />}
           {tab === 'dashboards' && <DashboardsConsole />}
@@ -61,6 +73,397 @@ export function AnalyticsPage() {
         </div>
       </Card>
     </>
+  );
+}
+
+/* ========================== Portfolio Overview ============================ */
+
+interface GwpByLobItem { lob: string; totalGwpMinor: number }
+interface PremiumClaimsItem { quarter: string; premiumMinor: number; claimsMinor: number }
+interface ClaimsRatioItem { month: string; premiumMinor: number; incurredMinor: number; ratio: number | null }
+
+/** Horizontal SVG bar chart — no external libraries, pure SVG coordinates. */
+function HBarChart({ items, maxVal }: { items: { label: string; value: number }[]; maxVal: number }) {
+  const W = 560;
+  const LEFT = 130;
+  const BAR_H = 22;
+  const GAP = 8;
+  const rowH = BAR_H + GAP;
+  const H = Math.max(60, items.length * rowH + 20);
+
+  return (
+    <div className={styles.chartWrap}>
+      <svg viewBox={`0 0 ${W} ${H}`} className={styles.svgChart} style={{ height: H }}>
+        {items.map((item, i) => {
+          const y = i * rowH + BAR_H;
+          const bw = maxVal > 0 ? ((item.value / maxVal) * (W - LEFT - 60)) : 0;
+          return (
+            <g key={item.label}>
+              <text x={LEFT - 8} y={y - 4} textAnchor="end" className={styles.chartLabel}>{item.label}</text>
+              <rect x={LEFT} y={y - BAR_H + 2} width={bw} height={BAR_H - 2} rx={3} fill="var(--primary)" opacity={0.85} />
+              <text x={LEFT + bw + 6} y={y - 4} className={styles.chartValue} fontSize={10}>
+                {formatMoney(item.value)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+/** Simple SVG line chart for ratio trend. Y-axis is a 0–1 scale clamped to maxRatio. */
+function LineChart({ items }: { items: { label: string; ratio: number | null }[] }) {
+  const W = 560;
+  const H = 160;
+  const PAD = { top: 16, right: 16, bottom: 32, left: 44 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+
+  const validRatios = items.map((i) => i.ratio).filter((r): r is number => r !== null);
+  const maxR = validRatios.length > 0 ? Math.max(...validRatios, 1) : 1;
+
+  const xOf = (idx: number) => PAD.left + (items.length < 2 ? innerW / 2 : (idx / (items.length - 1)) * innerW);
+  const yOf = (r: number) => PAD.top + innerH - (r / maxR) * innerH;
+
+  const points = items
+    .map((it, i) => (it.ratio !== null ? `${xOf(i)},${yOf(it.ratio)}` : null))
+    .filter(Boolean)
+    .join(' ');
+
+  // Y-axis grid lines at 0%, 50%, 100%
+  const yTicks = [0, 0.5, 1].map((t) => Math.min(t * maxR, maxR));
+
+  return (
+    <div className={styles.chartWrap}>
+      <svg viewBox={`0 0 ${W} ${H}`} className={styles.svgChart} style={{ height: H }}>
+        {/* grid */}
+        {yTicks.map((t) => (
+          <g key={t}>
+            <line x1={PAD.left} y1={yOf(t)} x2={W - PAD.right} y2={yOf(t)} className={styles.chartGrid} strokeWidth={1} />
+            <text x={PAD.left - 6} y={yOf(t) + 4} textAnchor="end" className={styles.chartLabel} fontSize={10}>
+              {Math.round(t * 100)}%
+            </text>
+          </g>
+        ))}
+        {/* X labels */}
+        {items.map((it, i) => (
+          <text key={it.label} x={xOf(i)} y={H - PAD.bottom + 14} textAnchor="middle" className={styles.chartLabel} fontSize={9}>
+            {it.label.slice(5)}
+          </text>
+        ))}
+        {/* line */}
+        {points && <polyline points={points} fill="none" stroke="var(--primary)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
+        {/* dots */}
+        {items.map((it, i) =>
+          it.ratio !== null ? (
+            <circle key={i} cx={xOf(i)} cy={yOf(it.ratio)} r={3.5} fill="var(--primary)" />
+          ) : null,
+        )}
+        {/* axes */}
+        <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={H - PAD.bottom} className={styles.chartAxis} strokeWidth={1} />
+        <line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom} className={styles.chartAxis} strokeWidth={1} />
+      </svg>
+    </div>
+  );
+}
+
+/** Grouped SVG bar chart — premium (blue) and claims (rose) per quarter. */
+function GroupedBarChart({ items }: { items: PremiumClaimsItem[] }) {
+  const W = 560;
+  const H = 200;
+  const PAD = { top: 16, right: 16, bottom: 36, left: 60 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+
+  const maxVal = Math.max(...items.flatMap((i) => [i.premiumMinor, i.claimsMinor]), 1);
+  const slotW = items.length > 0 ? innerW / items.length : innerW;
+  const barW = Math.max(4, slotW * 0.36);
+  const yOf = (v: number) => PAD.top + innerH - (v / maxVal) * innerH;
+
+  const yTicks = [0, 0.5, 1].map((t) => t * maxVal);
+
+  return (
+    <div className={styles.chartWrap}>
+      <svg viewBox={`0 0 ${W} ${H}`} className={styles.svgChart} style={{ height: H }}>
+        {/* grid */}
+        {yTicks.map((t) => (
+          <g key={t}>
+            <line x1={PAD.left} y1={yOf(t)} x2={W - PAD.right} y2={yOf(t)} className={styles.chartGrid} strokeWidth={1} />
+            <text x={PAD.left - 6} y={yOf(t) + 4} textAnchor="end" className={styles.chartLabel} fontSize={10}>
+              {formatMoney(t)}
+            </text>
+          </g>
+        ))}
+        {/* bars */}
+        {items.map((item, i) => {
+          const cx = PAD.left + i * slotW + slotW / 2;
+          const pH = (item.premiumMinor / maxVal) * innerH;
+          const cH = (item.claimsMinor / maxVal) * innerH;
+          return (
+            <g key={item.quarter}>
+              <rect x={cx - barW - 1} y={PAD.top + innerH - pH} width={barW} height={pH} rx={2} fill="var(--primary)" opacity={0.85} />
+              <rect x={cx + 1} y={PAD.top + innerH - cH} width={barW} height={cH} rx={2} fill="var(--accent-rose)" opacity={0.85} />
+              <text x={cx} y={H - PAD.bottom + 14} textAnchor="middle" className={styles.chartLabel} fontSize={9}>
+                {item.quarter}
+              </text>
+            </g>
+          );
+        })}
+        {/* axes */}
+        <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={H - PAD.bottom} className={styles.chartAxis} strokeWidth={1} />
+        <line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom} className={styles.chartAxis} strokeWidth={1} />
+      </svg>
+      <div className={styles.chartLegend}>
+        <span><span className={styles.chartLegendDot} style={{ background: 'var(--primary)' }} />Gross written premium</span>
+        <span><span className={styles.chartLegendDot} style={{ background: 'var(--accent-rose)' }} />Claims paid</span>
+      </div>
+    </div>
+  );
+}
+
+function PortfolioOverview() {
+  const gwpByLob = useQuery({ queryKey: ['analytics-gwp-by-lob'], queryFn: () => api<{ items: GwpByLobItem[] }>('/api/analytics/gwp-by-lob') });
+  const premClaims = useQuery({ queryKey: ['analytics-premium-claims'], queryFn: () => api<{ items: PremiumClaimsItem[] }>('/api/analytics/premium-claims') });
+  const ratioTrend = useQuery({ queryKey: ['analytics-claims-ratio-trend'], queryFn: () => api<{ items: ClaimsRatioItem[] }>('/api/analytics/claims-ratio-trend') });
+
+  if (gwpByLob.isLoading || premClaims.isLoading || ratioTrend.isLoading) {
+    return <PageLoader label="Loading portfolio data…" />;
+  }
+
+  const lobItems = gwpByLob.data?.items ?? [];
+  const lobMax = Math.max(...lobItems.map((i) => i.totalGwpMinor), 1);
+
+  const ratioItems = (ratioTrend.data?.items ?? []).map((i) => ({ label: i.month, ratio: i.ratio }));
+  const pcItems = premClaims.data?.items ?? [];
+
+  return (
+    <div className={styles.stack5}>
+      <Card>
+        <CardHeader title="GWP by Line of Business" subtitle="Gross written premium from DEPOSIT_PREMIUM financial events, grouped by contract LOB." />
+        <div className={styles.cardBody}>
+          {lobItems.length === 0 ? (
+            <EmptyState title="No premium data" message="No DEPOSIT_PREMIUM events found." />
+          ) : (
+            <HBarChart items={lobItems.map((i) => ({ label: i.lob, value: i.totalGwpMinor }))} maxVal={lobMax} />
+          )}
+        </div>
+      </Card>
+
+      <div className={styles.chartRow}>
+        <Card>
+          <CardHeader title="Claims ratio trend" subtitle="Monthly claims paid / deposit premium — last 12 months." />
+          <div className={styles.cardBody}>
+            {ratioItems.length === 0 ? (
+              <EmptyState title="No data" message="No financial events in the last 12 months." />
+            ) : (
+              <LineChart items={ratioItems} />
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Premium vs Claims" subtitle="GWP and claims paid per quarter — last 8 quarters." />
+          <div className={styles.cardBody}>
+            {pcItems.length === 0 ? (
+              <EmptyState title="No data" message="No financial events in the last 2 years." />
+            ) : (
+              <GroupedBarChart items={pcItems} />
+            )}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ========================== Loss Triangle ================================= */
+
+interface LossTriangleData {
+  accidentYears: number[];
+  devYears: number[];
+  cells: Record<number, Record<number, number>>;
+}
+
+function LossTriangle() {
+  const data = useQuery({ queryKey: ['analytics-loss-triangle'], queryFn: () => api<LossTriangleData>('/api/analytics/loss-triangle') });
+
+  if (data.isLoading) return <PageLoader label="Loading loss triangle…" />;
+
+  const { accidentYears = [], devYears = [], cells = {} } = data.data ?? {};
+
+  if (accidentYears.length === 0) {
+    return (
+      <EmptyState
+        title="No loss development data"
+        message="No claims with a known loss_date found. Once claims are recorded with loss dates the triangle will populate."
+      />
+    );
+  }
+
+  // Compute max for heat-map scaling.
+  const allVals = accidentYears.flatMap((ay) => devYears.map((dy) => cells[ay]?.[dy] ?? 0));
+  const maxVal = Math.max(...allVals, 1);
+
+  // Interpolate between surface-2 and primary at full opacity for heatmap.
+  const heatBg = (v: number): string => {
+    const intensity = v / maxVal; // 0 (low) → 1 (high)
+    // Opacity from 0.08 (low) to 0.72 (high) over primary colour.
+    const alpha = 0.08 + intensity * 0.64;
+    return `color-mix(in srgb, var(--primary) ${Math.round(alpha * 100)}%, var(--surface))`;
+  };
+
+  return (
+    <div className={styles.stack5}>
+      <p className={shared.cellSub}>
+        Gross incurred loss (minor units → major display) by accident year (rows) and development year
+        (columns). Darker cells indicate higher incurred amounts. Only claims with a recorded loss date are
+        included.
+      </p>
+      <div className={styles.triangleWrap}>
+        <table className={styles.triangleTable}>
+          <thead>
+            <tr>
+              <th>Accident year</th>
+              {devYears.map((dy) => (
+                <th key={dy}>Dev yr {dy}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {accidentYears.map((ay) => (
+              <tr key={ay}>
+                <th className={styles.triangleRowHead}>{ay}</th>
+                {devYears.map((dy) => {
+                  const v = cells[ay]?.[dy];
+                  return (
+                    <td
+                      key={dy}
+                      className={styles.triangleCell}
+                      style={v !== undefined ? { background: heatBg(v) } : {}}
+                    >
+                      {v !== undefined ? formatMoney(v) : <span className={styles.triangleEmpty}>–</span>}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ========================== Export Packs ================================== */
+
+const EXPORT_TEMPLATES = [
+  {
+    key: 'premium-register',
+    name: 'Premium Register',
+    desc: 'All DEPOSIT_PREMIUM financial events with contract reference, LOB, currency, and amount.',
+    source: 'financial_events',
+    columns: ['id', 'contract_id', 'event_type', 'direction', 'amount_minor', 'currency', 'booked_at'],
+    filters: [{ field: 'event_type', op: '=', value: 'DEPOSIT_PREMIUM' }],
+  },
+  {
+    key: 'claims-run-off',
+    name: 'Claims Run-Off',
+    desc: 'Open and closed claims with gross loss, outstanding, and paid amounts.',
+    source: 'claims',
+    columns: ['id', 'reference', 'contract_id', 'currency', 'gross_loss_minor', 'outstanding_minor', 'paid_minor', 'status', 'loss_date', 'notified_date'],
+    filters: [],
+  },
+  {
+    key: 'contracts-in-force',
+    name: 'Contracts in Force',
+    desc: 'All active reinsurance contracts with period, LOB, kind, and currency.',
+    source: 'contracts',
+    columns: ['id', 'reference', 'name', 'contract_kind', 'line_of_business', 'currency', 'status', 'period_start', 'period_end'],
+    filters: [{ field: 'status', op: '=', value: 'BOUND' }],
+  },
+  {
+    key: 'party-register',
+    name: 'Party Register',
+    desc: 'All counterparties (cedents, reinsurers, brokers) on the platform.',
+    source: 'parties',
+    columns: ['id', 'reference', 'legal_name', 'short_name', 'kind', 'country', 'status'],
+    filters: [],
+  },
+] as const;
+
+type ExportTemplate = (typeof EXPORT_TEMPLATES)[number];
+
+function ExportPacks() {
+  const toast = useToast();
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const generate = async (tpl: ExportTemplate) => {
+    setBusy(tpl.key);
+    try {
+      const result = await api<{ rows: Record<string, unknown>[]; rowCount: number }>(
+        '/api/reports/run',
+        { body: { source: tpl.source, columns: [...tpl.columns], filters: [...tpl.filters] } },
+      );
+
+      // Convert to CSV and trigger browser download.
+      if (result.rows.length === 0) {
+        toast.success(`${tpl.name}: no rows to export.`);
+        return;
+      }
+      const headers = Object.keys(result.rows[0]!);
+      const quote = (v: unknown) => {
+        const s = v === null || v === undefined ? '' : String(v);
+        return `"${s.replace(/"/g, '""')}"`;
+      };
+      const csv = [
+        headers.map(quote).join(','),
+        ...result.rows.map((row) => headers.map((h) => quote(row[h])).join(',')),
+      ].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${tpl.key}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${tpl.name} — ${result.rowCount} rows`);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : `Failed to generate ${tpl.name}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className={styles.stack5}>
+      <p className={shared.cellSub}>
+        Generate and download standard report packs as CSV. Data is fetched live from the governed
+        reporting layer — no arbitrary SQL reaches the database.
+      </p>
+      <div className={styles.exportGrid}>
+        {EXPORT_TEMPLATES.map((tpl) => (
+          <div key={tpl.key} className={styles.exportRow}>
+            <div className={styles.exportInfo}>
+              <span className={styles.exportTitle}>{tpl.name}</span>
+              <span className={styles.exportDesc}>{tpl.desc}</span>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => generate(tpl)}
+              loading={busy === tpl.key}
+              disabled={busy !== null && busy !== tpl.key}
+            >
+              <Download size={14} style={{ marginRight: 4 }} />
+              Download CSV
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
