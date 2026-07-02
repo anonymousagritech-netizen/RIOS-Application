@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS user_preference (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid        NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  user_id     uuid        NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
   tenant_id   uuid        NOT NULL REFERENCES tenant(id)  ON DELETE CASCADE,
   pref_key    text        NOT NULL,   -- e.g. 'filters:treaties', 'filters:claims'
   pref_value  jsonb       NOT NULL DEFAULT '{}',
