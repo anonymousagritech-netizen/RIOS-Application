@@ -176,12 +176,18 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
   const [lineOfBusiness, setLineOfBusiness] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [uwYear, setUwYear] = useState(String(new Date().getFullYear()));
+  const [slipReference, setSlipReference] = useState('');
+  const [expiringRef, setExpiringRef] = useState('');
   // Parties
   const [cedentPartyId, setCedentPartyId] = useState('');
   const [brokerPartyId, setBrokerPartyId] = useState('');
+  // Participation & market
+  const [writtenSharePct, setWrittenSharePct] = useState('');
+  const [orderPct, setOrderPct] = useState('');
   // Period & territory
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
+  const [periodBasis, setPeriodBasis] = useState('LOSSES_OCCURRING');
   const [territory, setTerritory] = useState('');
   // Structure
   const [basis, setBasis] = useState('PROPORTIONAL');
@@ -207,6 +213,17 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
   const [epi, setEpi] = useState('');
   const [mdp, setMdp] = useState('');
   const [deposit, setDeposit] = useState('');
+  // Cat event definition (Cat XL)
+  const [hoursClause, setHoursClause] = useState('');
+  const [eventLimit, setEventLimit] = useState('');
+  // Sliding-scale commission band (proportional)
+  const [commissionMinPct, setCommissionMinPct] = useState('');
+  const [commissionMaxPct, setCommissionMaxPct] = useState('');
+  // Accounting & claims elections
+  const [statementFrequency, setStatementFrequency] = useState('QUARTERLY');
+  const [accountingBasis, setAccountingBasis] = useState('UNDERWRITING_YEAR');
+  const [settlementCurrency, setSettlementCurrency] = useState('');
+  const [cashCallThreshold, setCashCallThreshold] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const lobOptions = codeLists?.lists?.line_of_business ?? [];
@@ -219,12 +236,16 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
   const reset = () => {
     setName(''); setContractKind('TREATY'); setDirection('INWARDS'); setLineOfBusiness('');
     setCurrency('USD'); setUwYear(String(new Date().getFullYear())); setCedentPartyId(''); setBrokerPartyId('');
-    setPeriodStart(''); setPeriodEnd(''); setTerritory('');
+    setSlipReference(''); setExpiringRef(''); setWrittenSharePct(''); setOrderPct('');
+    setPeriodStart(''); setPeriodEnd(''); setPeriodBasis('LOSSES_OCCURRING'); setTerritory('');
     setBasis('PROPORTIONAL'); setProportionalType('QUOTA_SHARE'); setNpType('PER_RISK_XL');
     setCessionPct(''); setMaxCession(''); setRetentionLines('');
     setAttachment(''); setLimit(''); setLayers('1'); setAggDeductible(''); setReinstatements(''); setRateOnLine('');
     setCedingCommissionPct(''); setProfitCommissionPct(''); setOverridePct(''); setBrokeragePct('');
-    setEpi(''); setMdp(''); setDeposit(''); setError(null);
+    setEpi(''); setMdp(''); setDeposit('');
+    setHoursClause(''); setEventLimit(''); setCommissionMinPct(''); setCommissionMaxPct('');
+    setStatementFrequency('QUARTERLY'); setAccountingBasis('UNDERWRITING_YEAR');
+    setSettlementCurrency(''); setCashCallThreshold(''); setError(null);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -234,6 +255,19 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
     const terms: Record<string, unknown> = { currency };
     if (num(uwYear) !== undefined) terms.underwritingYear = num(uwYear);
     if (territory.trim()) terms.territory = territory.trim();
+    // Slip identification & renewal linkage (MRC-style).
+    if (slipReference.trim()) terms.slipReference = slipReference.trim();
+    if (expiringRef.trim()) terms.expiringContractRef = expiringRef.trim();
+    // Participation & market.
+    if (num(writtenSharePct) !== undefined) terms.writtenSharePct = num(writtenSharePct);
+    if (num(orderPct) !== undefined) terms.orderPct = num(orderPct);
+    // Period basis election (losses occurring vs risks attaching).
+    terms.periodBasis = periodBasis;
+    // Accounting & claims elections.
+    terms.statementFrequency = statementFrequency;
+    terms.accountingBasis = accountingBasis;
+    if (settlementCurrency.trim()) terms.settlementCurrency = settlementCurrency.trim().toUpperCase();
+    if (num(cashCallThreshold) !== undefined) terms.cashCallThreshold = num(cashCallThreshold);
     if (isProportional) {
       if (num(cessionPct) !== undefined) terms.cessionPct = num(cessionPct);
       if (isSurplus) {
@@ -243,6 +277,9 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
       if (num(cedingCommissionPct) !== undefined) terms.cedingCommissionPct = num(cedingCommissionPct);
       if (num(profitCommissionPct) !== undefined) terms.profitCommissionPct = num(profitCommissionPct);
       if (num(overridePct) !== undefined) terms.overridePct = num(overridePct);
+      // Sliding-scale band: min/max commission collaring the provisional rate.
+      if (num(commissionMinPct) !== undefined) terms.commissionMinPct = num(commissionMinPct);
+      if (num(commissionMaxPct) !== undefined) terms.commissionMaxPct = num(commissionMaxPct);
     } else {
       if (num(attachment) !== undefined) terms.attachment = num(attachment);
       if (num(limit) !== undefined) terms.limit = num(limit);
@@ -250,6 +287,9 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
       if (isAggregate && num(aggDeductible) !== undefined) terms.aggregateDeductible = num(aggDeductible);
       if (reinstatements.trim()) terms.reinstatements = reinstatements.trim();
       if (num(rateOnLine) !== undefined) terms.rateOnLine = num(rateOnLine);
+      // Cat event definition: hours clause window + per-event limit.
+      if (num(hoursClause) !== undefined) terms.hoursClause = num(hoursClause);
+      if (num(eventLimit) !== undefined) terms.eventLimit = num(eventLimit);
     }
     if (num(brokeragePct) !== undefined) terms.brokeragePct = num(brokeragePct);
     if (num(epi) !== undefined) terms.estimatedPremiumIncome = num(epi);
@@ -333,6 +373,8 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
             </Select>
           </FormField>
           <TextField label="Underwriting year" type="number" value={uwYear} onChange={setUwYear} placeholder="2026" />
+          <TextField label="Slip / market reference (UMR)" value={slipReference} onChange={setSlipReference} placeholder="e.g. B0999RIOS2600123" />
+          <TextField label="Renewal of (expiring reference)" value={expiringRef} onChange={setExpiringRef} placeholder="e.g. TRTY-2025-00012" />
         </FormSection>
 
         <FormSection title="Parties">
@@ -348,11 +390,20 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
               {parties.map((p) => <option key={p.id} value={p.id}>{partyName(p)}</option>)}
             </Select>
           </FormField>
+          <TextField label="Our written share %" type="number" value={writtenSharePct} onChange={setWrittenSharePct} placeholder="e.g. 25" hint="Our line on the slip; 100 if sole reinsurer" />
+          <TextField label="Order %" type="number" value={orderPct} onChange={setOrderPct} placeholder="e.g. 100" hint="Share of the risk being placed" />
         </FormSection>
 
         <FormSection title="Period & territory">
           <TextField label="Inception date" type="date" value={periodStart} onChange={setPeriodStart} />
           <TextField label="Expiry date" type="date" value={periodEnd} onChange={setPeriodEnd} />
+          <FormField label="Period basis" required>
+            <Select value={periodBasis} onChange={(e) => setPeriodBasis(e.target.value)}>
+              <option value="LOSSES_OCCURRING">Losses occurring during</option>
+              <option value="RISKS_ATTACHING">Risks attaching during</option>
+              <option value="CLAIMS_MADE">Claims made</option>
+            </Select>
+          </FormField>
           <div style={{ gridColumn: '1 / -1' }}>
             <TextField label="Territory / geographic scope" value={territory} onChange={setTerritory} placeholder="e.g. Worldwide excl. USA & Canada" />
           </div>
@@ -395,6 +446,8 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
               {isAggregate && <TextField label="Aggregate deductible (major units)" type="number" value={aggDeductible} onChange={setAggDeductible} placeholder="e.g. 2000000" />}
               <TextField label="Reinstatements" value={reinstatements} onChange={setReinstatements} placeholder="e.g. 1 at 100%, 1 at 50%" />
               <TextField label="Rate on line %" type="number" value={rateOnLine} onChange={setRateOnLine} placeholder="e.g. 12.5" />
+              <TextField label="Hours clause (hours)" type="number" value={hoursClause} onChange={setHoursClause} placeholder="e.g. 72" hint="Event definition window for occurrences" />
+              <TextField label="Event limit (major units)" type="number" value={eventLimit} onChange={setEventLimit} placeholder="e.g. 10000000" hint="Maximum recovery per event, if any" />
             </>
           )}
         </FormSection>
@@ -404,6 +457,8 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
             <TextField label="Ceding commission %" type="number" value={cedingCommissionPct} onChange={setCedingCommissionPct} placeholder="e.g. 27.5" />
             <TextField label="Profit commission %" type="number" value={profitCommissionPct} onChange={setProfitCommissionPct} placeholder="e.g. 20" />
             <TextField label="Overrider %" type="number" value={overridePct} onChange={setOverridePct} placeholder="e.g. 5" />
+            <TextField label="Sliding scale min %" type="number" value={commissionMinPct} onChange={setCommissionMinPct} placeholder="e.g. 20" hint="Commission floor at high loss ratio" />
+            <TextField label="Sliding scale max %" type="number" value={commissionMaxPct} onChange={setCommissionMaxPct} placeholder="e.g. 35" hint="Commission cap at low loss ratio" />
           </>}
           <TextField label="Brokerage %" type="number" value={brokeragePct} onChange={setBrokeragePct} placeholder="e.g. 10" />
         </FormSection>
@@ -414,6 +469,25 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
           <div style={{ gridColumn: '1 / -1' }}>
             <TextField label="Deposit premium (booked on binding)" type="number" value={deposit} onChange={setDeposit} placeholder="e.g. 1500000" hint={`Major units of ${currency}. Booked when the treaty is bound.`} />
           </div>
+        </FormSection>
+
+        <FormSection title="Accounting & claims">
+          <FormField label="Statement frequency">
+            <Select value={statementFrequency} onChange={(e) => setStatementFrequency(e.target.value)}>
+              <option value="QUARTERLY">Quarterly</option>
+              <option value="HALF_YEARLY">Half-yearly</option>
+              <option value="ANNUAL">Annual</option>
+            </Select>
+          </FormField>
+          <FormField label="Accounting basis">
+            <Select value={accountingBasis} onChange={(e) => setAccountingBasis(e.target.value)}>
+              <option value="UNDERWRITING_YEAR">Underwriting year</option>
+              <option value="ACCOUNTING_YEAR">Accounting year</option>
+              <option value="CLEAN_CUT">Clean cut</option>
+            </Select>
+          </FormField>
+          <TextField label="Settlement currency" value={settlementCurrency} onChange={setSettlementCurrency} placeholder={`Defaults to ${currency}`} hint="If settled in a different currency" />
+          <TextField label="Cash call threshold (major units)" type="number" value={cashCallThreshold} onChange={setCashCallThreshold} placeholder="e.g. 500000" hint="Losses above this may be called for immediate settlement" />
         </FormSection>
 
         {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}

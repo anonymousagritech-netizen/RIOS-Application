@@ -2,6 +2,8 @@ import { Plus, ShieldAlert, FolderOpen, Coins, Wallet, CircleDollarSign } from '
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClaims, useCreateClaim, useTreaties, useCurrencies, useStatusColors } from '../lib/queries';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -118,12 +120,20 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
   const [lossDate, setLossDate] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [grossLoss, setGrossLoss] = useState('');
+  const [catEventId, setCatEventId] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Catastrophe events for occurrence coding (event-level aggregation).
+  const { data: catEvents } = useQuery({
+    queryKey: ['cat-events'],
+    queryFn: () => api<{ events: { id: string; eventCode: string; name: string; peril: string | null }[] }>('/api/claims/cat-events'),
+    enabled: open,
+  });
 
   const treatyList = treaties?.treaties ?? [];
   const currencies = ccy?.currencies ?? [];
 
-  const reset = () => { setContractId(''); setDescription(''); setLossDate(''); setCurrency('USD'); setGrossLoss(''); setError(null); };
+  const reset = () => { setContractId(''); setDescription(''); setLossDate(''); setCurrency('USD'); setGrossLoss(''); setCatEventId(''); setError(null); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +148,7 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
         lossDate: lossDate || undefined,
         currency,
         grossLoss: gross,
+        catEventId: catEventId || undefined,
       });
       toast.success(`Claim ${res.reference} registered`);
       reset();
@@ -186,6 +197,14 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
 
         <FormSection title="Loss details">
           <TextField label="Date of loss" type="date" value={lossDate} onChange={setLossDate} hint="When the loss occurred (the notified date is set to today)." />
+          <FormField label="Catastrophe event">
+            <Select value={catEventId} onChange={(e) => setCatEventId(e.target.value)}>
+              <option value="">Not event-related / attritional</option>
+              {(catEvents?.events ?? []).map((ev) => (
+                <option key={ev.id} value={ev.id}>{ev.eventCode} — {ev.name}{ev.peril ? ` (${ev.peril})` : ''}</option>
+              ))}
+            </Select>
+          </FormField>
         </FormSection>
 
         <FormSection title="Financials" description="The initial gross reserve opens the case reserve on registration.">
