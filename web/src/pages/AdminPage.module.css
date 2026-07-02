@@ -50,6 +50,35 @@
   border-radius: var(--radius-md);
 }
 
+/* Tab content wrapper: inner padding + stacked sections */
+.tabContent {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5);
+}
+
+/* Audit log */
+.auditTime {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.auditHash {
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+}
+
+.auditAiChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--text-xs);
+  color: var(--accent-violet);
+  margin-left: var(--space-1);
+}
+
 @media (max-width: 720px) {
   .listGrid { grid-template-columns: 1fr; }
 }
