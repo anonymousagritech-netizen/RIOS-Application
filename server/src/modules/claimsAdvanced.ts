@@ -18,6 +18,7 @@ import { writeAudit } from '../audit.js';
 
 const cashCallSchema = z.object({
   amount: z.number(),
+  priority: z.enum(['NORMAL', 'URGENT', 'SIMULTANEOUS_SETTLEMENT']).default('NORMAL'),
 });
 
 const reinstatementSchema = z.object({
@@ -74,9 +75,9 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
         const amount = fromMajor(b.amount, ccy);
 
         const { rows } = await db.query<{ id: string; status: string }>(
-          `insert into cash_call (tenant_id, claim_id, contract_id, amount_minor, currency, status, created_by)
-           values ($1,$2,$3,$4,$5,'requested',$6) returning id, status`,
-          [ctx.tenantId, claim.id, claim.contract_id, amount.amount, ccy, ctx.userId],
+          `insert into cash_call (tenant_id, claim_id, contract_id, amount_minor, currency, status, priority, created_by)
+           values ($1,$2,$3,$4,$5,'requested',$6,$7) returning id, status`,
+          [ctx.tenantId, claim.id, claim.contract_id, amount.amount, ccy, b.priority, ctx.userId],
         );
         const cashCallId = rows[0]!.id;
 
@@ -91,7 +92,7 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
           action: 'create',
           entityType: 'cash_call',
           entityId: cashCallId,
-          after: { claimId: claim.id, amountMinor: amount.amount, status: 'requested' },
+          after: { claimId: claim.id, amountMinor: amount.amount, status: 'requested', priority: b.priority },
           actorLabel: req.auth?.displayName,
         });
 
@@ -102,11 +103,48 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
           amountMinor: amount.amount,
           currency: ccy,
           status: 'requested',
+          priority: b.priority,
         };
       });
     },
   );
 
+  // Approve a cash call (maker/checker: the approver must not be the requester).
+  app.post<{ Params: { id: string; callId: string } }>(
+    '/api/claims/:id/cash-call/:callId/approve',
+    { preHandler: requirePermission('claims:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const cur = await db.query<{ id: string; status: string; created_by: string | null }>(
+          `select id, status, created_by from cash_call where id = $1 and claim_id = $2`,
+          [req.params.callId, req.params.id],
+        );
+        if (!cur.rows[0]) { reply.code(404); return { error: 'Cash call not found' }; }
+        if (cur.rows[0].status !== 'requested') {
+          reply.code(409);
+          return { error: `Cash call is ${cur.rows[0].status}; only a requested call can be approved` };
+        }
+        if (cur.rows[0].created_by && cur.rows[0].created_by === ctx.userId) {
+          reply.code(403);
+          return { error: 'Segregation of duties: the requester cannot approve their own cash call' };
+        }
+        const updated = await db.query<{ id: string; status: string }>(
+          `update cash_call set status = 'approved', approved_by = $3, approved_at = now()
+            where id = $1 and claim_id = $2 returning id, status`,
+          [req.params.callId, req.params.id, ctx.userId],
+        );
+        await writeAudit(db, ctx, {
+          action: 'approve', entityType: 'cash_call', entityId: req.params.callId,
+          before: { status: 'requested' }, after: { status: 'approved' },
+          actorLabel: req.auth?.displayName,
+        });
+        return updated.rows[0];
+      });
+    },
+  );
+
+  // Release payment: only an APPROVED call can be paid.
   app.post<{ Params: { id: string; callId: string } }>(
     '/api/claims/:id/cash-call/:callId/pay',
     { preHandler: requirePermission('claims:write') },
@@ -114,12 +152,18 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
       const ctx = authContext(req);
       return runAs(ctx, async (db) => {
         const updated = await db.query<{ id: string; status: string }>(
-          `update cash_call set status = 'paid' where id = $1 and claim_id = $2 returning id, status`,
+          `update cash_call set status = 'paid', paid_at = now()
+            where id = $1 and claim_id = $2 and status = 'approved' returning id, status`,
           [req.params.callId, req.params.id],
         );
         if (!updated.rows[0]) {
-          reply.code(404);
-          return { error: 'Cash call not found' };
+          const exists = await db.query<{ status: string }>(
+            `select status from cash_call where id = $1 and claim_id = $2`,
+            [req.params.callId, req.params.id],
+          );
+          if (!exists.rows[0]) { reply.code(404); return { error: 'Cash call not found' }; }
+          reply.code(409);
+          return { error: `Cash call is ${exists.rows[0].status}; it must be approved before payment` };
         }
         await writeAudit(db, ctx, {
           action: 'update',
@@ -132,6 +176,30 @@ export async function claimsAdvancedModule(app: FastifyInstance): Promise<void> 
       });
     },
   );
+
+  // Priority payment queue: open calls, simultaneous settlements first, then by age.
+  app.get('/api/claims/cash-calls/queue', { preHandler: requirePermission('claims:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query(
+        `select cc.id, cc.claim_id as "claimId", cl.reference as "claimReference",
+                cc.contract_id as "contractId", cc.amount_minor as "amountMinor", cc.currency,
+                cc.status, cc.priority,
+                to_char(cc.requested_date, 'YYYY-MM-DD') as "requestedDate",
+                cc.approved_at as "approvedAt"
+           from cash_call cc
+           join claim cl on cl.id = cc.claim_id
+          where cc.status in ('requested','approved')
+          order by case cc.priority
+                     when 'SIMULTANEOUS_SETTLEMENT' then 0
+                     when 'URGENT' then 1
+                     else 2
+                   end,
+                   cc.requested_date, cc.created_at`,
+      );
+      return { queue: rows.map((r) => ({ ...r, amountMinor: Number(r.amountMinor) })) };
+    });
+  });
 
   // --- Reinstatement premium (§7.7 step 5) ---
   app.post<{ Params: { id: string } }>(
