@@ -1,0 +1,79 @@
+.panel { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.spacer { flex: 1; }
+.sub { font-size: var(--text-xs); color: var(--text-muted); }
+.ref { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); }
+
+.limitNote {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.limitReached { color: var(--danger); }
+
+/* Drag-and-drop attach zone */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+.dropzone:hover { border-color: var(--primary); }
+.dropzoneOver { border-color: var(--primary); background: var(--primary-soft); }
+.dropzoneDisabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.dropzoneDisabled:hover { border-color: var(--border-strong); }
+.dzIcon { color: var(--text-muted); }
+.dzText { font-weight: var(--weight-medium); color: var(--text); font-size: var(--text-sm); }
+.dzHint { font-size: var(--text-xs); color: var(--text-muted); max-width: 46ch; }
+.hiddenInput { display: none; }
+
+.rowActions {
+  display: inline-flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.preview {
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.form { display: flex; flex-direction: column; gap: var(--space-4); }
+.error { color: var(--danger); font-size: var(--text-sm); }
+
+/* Honestly-labelled "not yet wired" strip for backend gaps. */
+.stub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
