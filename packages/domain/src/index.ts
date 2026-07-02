@@ -93,3 +93,4 @@ export * from './facultative.js';
 export * from './escalation.js';
 export * from './nlSearch.js';
 export * from './insight.js';
+export * from './premiumAdjustment.js';
