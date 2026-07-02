@@ -5,9 +5,11 @@
 
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
+import cookie from '@fastify/cookie';
 import { z } from 'zod';
 import { login, completeMfaLogin, AuthError, requirePermission, authContext, authenticate } from './auth.js';
-import { runAs } from './db.js';
+import { runAs, appPool } from './db.js';
+import { config } from './config.js';
 import { observabilityPlugin } from './observability.js';
 import { referenceModule } from './modules/reference.js';
 import { partiesModule } from './modules/parties.js';
@@ -116,6 +118,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(cors, { origin: true, credentials: true });
+  // Cookie plugin: parses Cookie header into req.cookies and provides reply.setCookie/clearCookie.
+  await app.register(cookie, { secret: config.jwtSecret });
   // Called directly (not via register) so its metrics hooks are NOT encapsulated
   // and apply to every route registered afterwards.
   await observabilityPlugin(app);
@@ -146,9 +150,22 @@ export async function buildApp(): Promise<FastifyInstance> {
       return { error: 'Too many failed login attempts. Try again later.' };
     }
     try {
-      // Returns either { token, user } or, when MFA is enabled, { mfaRequired, mfaToken }.
+      // Returns either { token, jti, user } or, when MFA is enabled, { mfaRequired, mfaToken }.
       const result = await login(parsed.data.email, parsed.data.password, parsed.data.tenantCode);
       loginFailures.delete(key);
+      if ('token' in result) {
+        // Set the token as an httpOnly SameSite=Strict cookie so the browser
+        // sends it automatically without JS being able to read it (XSS defence).
+        reply.setCookie('rios_token', result.token, {
+          httpOnly: true,
+          sameSite: 'strict',
+          secure: config.env === 'production',
+          path: '/',
+          maxAge: 60 * 60, // 1 hour
+        });
+        // Also return the token in the body for API clients / backwards compat.
+        return { token: result.token, user: result.user, expiresIn: 3600 };
+      }
       return result;
     } catch (err) {
       const fresh = !entry || now - entry.windowStart >= LOGIN_WINDOW_MS;
@@ -167,7 +184,16 @@ export async function buildApp(): Promise<FastifyInstance> {
       return { error: 'mfaToken and code are required' };
     }
     try {
-      return await completeMfaLogin(mfaToken, String(code));
+      const result = await completeMfaLogin(mfaToken, String(code));
+      // Set the httpOnly cookie for the completed MFA session.
+      reply.setCookie('rios_token', result.token, {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: config.env === 'production',
+        path: '/',
+        maxAge: 60 * 60, // 1 hour
+      });
+      return { token: result.token, user: result.user, expiresIn: 3600 };
     } catch (err) {
       const e = err as AuthError;
       reply.code(e.status ?? 401);
@@ -178,6 +204,19 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.get('/api/auth/me', { preHandler: requirePermission() }, async (req) => {
     const user = await authenticate(req);
     return { user };
+  });
+
+  // Logout: record the token's jti in the revocation list and clear the cookie.
+  app.post('/api/auth/logout', { preHandler: requirePermission() }, async (req, reply) => {
+    const ctx = authContext(req);
+    if (ctx.jti) {
+      await appPool.query(
+        'INSERT INTO token_revocation (jti, user_id, tenant_id, reason) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
+        [ctx.jti, ctx.userId, ctx.tenantId, 'logout'],
+      );
+    }
+    reply.clearCookie('rios_token', { path: '/' });
+    return { success: true };
   });
 
   // --- Dashboard summary (executive KPIs, §13.5 / §30) ---

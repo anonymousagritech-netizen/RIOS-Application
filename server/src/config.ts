@@ -40,7 +40,7 @@ export const config = {
   databaseAppUrl:
     process.env.DATABASE_APP_URL ?? process.env.DATABASE_URL ?? 'postgres://rios_app:rios_app@localhost:5432/rios',
   jwtSecret: required('JWT_SECRET', 'dev-only-change-me-please-32-characters-min'),
-  jwtExpiresIn: '12h',
+  jwtExpiresIn: '1h',
   ai: {
     apiKey: process.env.ANTHROPIC_API_KEY,
     model: process.env.RIOS_AI_MODEL ?? 'claude-opus-4-8',
