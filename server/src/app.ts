@@ -24,6 +24,10 @@ import { exposureModule } from './modules/exposure.js';
 import { statementsModule } from './modules/statements.js';
 import { soaVerificationModule } from './modules/soaVerification.js';
 import { accountCurrentModule } from './modules/accountCurrent.js';
+import { multiGaapModule } from './modules/multiGaap.js';
+import { reservingWorkflowModule } from './modules/reservingWorkflow.js';
+import { accumulationModule } from './modules/accumulation.js';
+import { jurisdictionPacksModule } from './modules/jurisdictionPacks.js';
 import { financeModule } from './modules/finance.js';
 import { financialStatementsModule } from './modules/financialStatements.js';
 import { regulatoryModule } from './modules/regulatory.js';
@@ -230,13 +234,17 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(pricingModule);
   await app.register(bordereauxModule);
   await app.register(exposureModule);
+  await app.register(accumulationModule);
   // Accounting, regulatory & automation modules
   await app.register(statementsModule);
   await app.register(soaVerificationModule);
   await app.register(accountCurrentModule);
+  await app.register(multiGaapModule);
+  await app.register(reservingWorkflowModule);
   await app.register(financeModule);
   await app.register(financialStatementsModule);
   await app.register(regulatoryModule);
+  await app.register(jurisdictionPacksModule);
   await app.register(automationModule);
   // Content, reporting, relationship & integration modules
   await app.register(documentsModule);

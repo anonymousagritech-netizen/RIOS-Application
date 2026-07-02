@@ -109,13 +109,19 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   rolls own funds forward against a projected SCR year by year (solvency ratio, surplus, SCR- and
   appetite-breach flags, first breach year) and `stressOrsa` re-projects under a shock scenario. What remains
   designed-for is the **full sub-module granularity** (every standard-formula sub-risk and the official
-  correlation matrices) and the **QRT report packs** (assembled via the report-pack engine). (§18.2)
+  correlation matrices); QRT **skeletons** (S.02.01, S.31.01) now ship as clearly-labelled templates - not
+  certified content - via the report-pack engine (see statutory/market returns below). (§18.2)
 - **Statutory/market returns** - a governed **report-pack assembler is now delivered**
   (`@rios/domain/reportPack`): template-driven sections and line items with computed sum/diff totals,
-  completeness checks and control-total tie-outs, resolved iteratively regardless of declaration order. The
-  specific return taxonomies and factors (US Schedule F, Lloyd's returns, QRTs, tax/levy regimes) are
-  supplied as templates (configuration), not hard-coded, and their certified factor sets remain
-  jurisdiction-specific configuration. (§18.3)
+  completeness checks and control-total tie-outs, resolved iteratively regardless of declaration order.
+  **Jurisdiction pack content is now delivered as templates** (`server/src/content/jurisdictionPacks.ts`,
+  served/assembled by the `jurisdictionPacks` module): NAIC Schedule F with the security-driven provision
+  for reinsurance (pure engine `@rios/domain/scheduleF`, **illustrative default factors, configurable**),
+  Solvency II QRT skeletons (S.02.01 balance sheet with the GL equity tie, S.31.01 share of reinsurers) and
+  the IRDAI inward/outward reinsurance summary - each bound to live tenant data and every pack labelled
+  **template, not certified content**. The certified line taxonomies, official factor tables and filing
+  validations (and other regimes: Lloyd's returns, tax/levy regimes) remain jurisdiction-specific
+  configuration - these packs are not filings. (§18.3)
 - **Data lineage to regulatory output** - the technical→financial chain is reconcilable and lineage-tracked
   (`source_event_id`); regulatory read models are designed-for. (§18.4)
 

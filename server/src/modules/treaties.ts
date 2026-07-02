@@ -14,6 +14,7 @@ import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
 import { nextReference } from './parties.js';
+import { checkContractAccumulation } from './accumulation.js';
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
   DRAFT: ['QUOTED', 'PLACING', 'CANCELLED'],
@@ -190,7 +191,7 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
   });
 
   // State transition with validation (§28.3). Binding also books the deposit premium.
-  app.post<{ Params: { id: string }; Body: { to: string } }>(
+  app.post<{ Params: { id: string }; Body: { to: string; overrideAccumulation?: boolean } }>(
     '/api/treaties/:id/transition',
     { preHandler: requirePermission('treaty:bind') },
     async (req, reply) => {
@@ -209,7 +210,55 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
         }
 
         const events: unknown[] = [];
+        let accumulationWarnings: unknown[] | undefined;
         if (to === 'BOUND') {
+          // Accumulation control at bind (industry-gap-analysis Tier-3 item 14):
+          // project "aggregate becomes X vs limit Y" for every limited zone this
+          // contract touches, before anything is written. A no-op (checked=false)
+          // when the tenant has no active zone limits. HARD breach → 409 with the
+          // zones and numbers (nothing has been mutated, so nothing commits);
+          // SOFT breach → bind with warnings; an admin with `admin:manage` may
+          // pass { overrideAccumulation: true } to downgrade a HARD breach to a
+          // warning - audited as an 'accumulation override'.
+          const acc = await checkContractAccumulation(db, contract);
+          if (acc.checked && acc.verdict !== 'PASS') {
+            const breachDetail = (zs: typeof acc.zones) =>
+              zs.map((z) => ({
+                zone: z.zone, peril: z.peril, currency: z.currency, mode: z.mode,
+                currentMinor: z.currentMinor, additionMinor: z.additionMinor,
+                projectedMinor: z.projectedMinor, limitMinor: z.limitMinor, headroomMinor: z.headroomMinor,
+                message: `Zone ${z.zone}${z.peril ? ` (${z.peril})` : ''}: aggregate becomes ${z.projectedMinor} vs limit ${z.limitMinor} ${z.currency} (${z.mode})`,
+              }));
+            if (acc.verdict === 'BLOCK') {
+              const overrideRequested = req.body?.overrideAccumulation === true;
+              const isAdmin = req.auth?.permissions.includes('admin:manage') === true;
+              if (!(overrideRequested && isAdmin)) {
+                reply.code(409);
+                return {
+                  error: 'Accumulation limit breached - binding blocked',
+                  verdict: 'BLOCK',
+                  exposureSource: acc.exposureSource,
+                  zones: breachDetail([...acc.blocked, ...acc.warnings]),
+                };
+              }
+              await writeAudit(db, ctx, {
+                action: 'accumulation_override',
+                entityType: 'contract',
+                entityId: contract.id,
+                after: { note: 'accumulation override', exposureSource: acc.exposureSource, zones: breachDetail(acc.blocked) },
+                actorLabel: req.auth?.displayName,
+              });
+            } else {
+              await writeAudit(db, ctx, {
+                action: 'accumulation_warning',
+                entityType: 'contract',
+                entityId: contract.id,
+                after: { note: 'bound despite soft accumulation breach', exposureSource: acc.exposureSource, zones: breachDetail(acc.warnings) },
+                actorLabel: req.auth?.displayName,
+              });
+            }
+            accumulationWarnings = breachDetail([...acc.blocked, ...acc.warnings]);
+          }
           events.push(...(await bookDepositPremium(db, ctx, contract, req.auth?.displayName)));
         }
 
@@ -222,7 +271,12 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
           after: { status: to },
           actorLabel: req.auth?.displayName,
         });
-        return { id: contract.id, status: to, financialEvents: events };
+        return {
+          id: contract.id,
+          status: to,
+          financialEvents: events,
+          ...(accumulationWarnings && accumulationWarnings.length > 0 ? { warnings: accumulationWarnings } : {}),
+        };
       });
     },
   );
