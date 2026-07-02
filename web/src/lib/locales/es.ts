@@ -1,6 +1,6 @@
-import type { Locale } from '../i18n';
+import type { i18nStrings } from '../i18n';
 
-export const es: Locale = {
+export const es: i18nStrings = {
   'treaty': 'Tratado',
   'cession': 'Cesión',
   'cedent': 'Cedente',

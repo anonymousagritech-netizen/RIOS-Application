@@ -125,7 +125,31 @@ const createPartySchema = z.object({
 export async function partiesModule(app: FastifyInstance): Promise<void> {
   app.get<{ Querystring: { q?: string; role?: string; limit?: string; cursor?: string } }>(
     '/api/parties',
-    { preHandler: requirePermission('party:read') },
+    {
+      preHandler: requirePermission('party:read'),
+      schema: {
+        summary: 'List parties',
+        tags: ['parties'],
+        querystring: {
+          type: 'object',
+          properties: {
+            q: { type: 'string', description: 'Search by legal or short name' },
+            role: { type: 'string', description: 'Filter by role code (e.g. CEDENT, BROKER)' },
+            limit: { type: 'string', description: 'Page size (default 25)' },
+            cursor: { type: 'string', description: 'Pagination cursor from previous response' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              parties: { type: 'array', items: { type: 'object' } },
+              nextCursor: { type: 'string', nullable: true },
+            },
+          },
+        },
+      },
+    },
     async (req) => {
       const ctx = authContext(req);
       // OFFSET pagination: parties are ordered by legal_name (text), which makes
@@ -225,7 +249,37 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post('/api/parties', { preHandler: requirePermission('party:write') }, async (req, reply) => {
+  app.post('/api/parties', {
+    preHandler: requirePermission('party:write'),
+    schema: {
+      summary: 'Create a party',
+      tags: ['parties'],
+      body: {
+        type: 'object',
+        required: ['legalName'],
+        properties: {
+          legalName: { type: 'string', minLength: 1, description: 'Full legal name' },
+          shortName: { type: 'string', description: 'Abbreviated display name' },
+          kind: { type: 'string', enum: ['organisation', 'individual', 'syndicate', 'pool', 'captive'], default: 'organisation' },
+          country: { type: 'string', description: 'ISO 3166-1 alpha-2 country code' },
+          roles: { type: 'array', items: { type: 'string' }, default: [] },
+          identifiers: { type: 'object', description: 'Regulatory / market identifiers (LEI, NAIC, etc.)' },
+          details: { type: 'object', description: 'Metadata-driven adaptive form data' },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            reference: { type: 'string' },
+            screeningResult: { type: 'string', enum: ['CLEAR', 'POTENTIAL_MATCH', 'BLOCKED'] },
+          },
+        },
+        400: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (req, reply) => {
     const ctx = authContext(req);
     const parsed = createPartySchema.safeParse(req.body);
     if (!parsed.success) {

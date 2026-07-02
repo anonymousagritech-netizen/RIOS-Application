@@ -111,7 +111,33 @@ const createContractSchema = z.object({
 export async function treatiesModule(app: FastifyInstance): Promise<void> {
   app.get<{ Querystring: { status?: string; kind?: string; cedentId?: string; brokerId?: string; limit?: string; cursor?: string } }>(
     '/api/treaties',
-    { preHandler: requirePermission('treaty:read') },
+    {
+      preHandler: requirePermission('treaty:read'),
+      schema: {
+        summary: 'List treaties / contracts',
+        tags: ['treaties'],
+        querystring: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', description: 'Filter by contract status (DRAFT, BOUND, ACTIVE, ...)' },
+            kind: { type: 'string', description: 'Filter by contract kind (TREATY, FACULTATIVE, RETROCESSION)' },
+            cedentId: { type: 'string', format: 'uuid', description: 'Filter by cedent party UUID' },
+            brokerId: { type: 'string', format: 'uuid', description: 'Filter by broker party UUID' },
+            limit: { type: 'string', description: 'Page size (default 25)' },
+            cursor: { type: 'string', description: 'Keyset pagination cursor' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              treaties: { type: 'array', items: { type: 'object' } },
+              nextCursor: { type: 'string', nullable: true },
+            },
+          },
+        },
+      },
+    },
     async (req) => {
       const ctx = authContext(req);
       const { limit, cursor } = parsePaginationQuery(req.query as Record<string, unknown>);
@@ -220,7 +246,43 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post('/api/treaties', { preHandler: requirePermission('treaty:write') }, async (req, reply) => {
+  app.post('/api/treaties', {
+    preHandler: requirePermission('treaty:write'),
+    schema: {
+      summary: 'Create a treaty / contract',
+      tags: ['treaties'],
+      body: {
+        type: 'object',
+        required: ['name', 'basis', 'currency'],
+        properties: {
+          name: { type: 'string', minLength: 1 },
+          contractKind: { type: 'string', enum: ['TREATY', 'FACULTATIVE', 'RETROCESSION'], default: 'TREATY' },
+          basis: { type: 'string', enum: ['PROPORTIONAL', 'NON_PROPORTIONAL'] },
+          proportionalType: { type: 'string', enum: ['QUOTA_SHARE', 'SURPLUS'] },
+          npType: { type: 'string', enum: ['PER_RISK_XL', 'CAT_XL', 'AGG_XL', 'STOP_LOSS'] },
+          lineOfBusiness: { type: 'string' },
+          direction: { type: 'string', enum: ['INWARDS', 'OUTWARDS'], default: 'INWARDS' },
+          currency: { type: 'string', minLength: 3, maxLength: 3, description: 'ISO 4217 currency code' },
+          cedentPartyId: { type: 'string', format: 'uuid' },
+          brokerPartyId: { type: 'string', format: 'uuid' },
+          periodStart: { type: 'string', format: 'date' },
+          periodEnd: { type: 'string', format: 'date' },
+          terms: { type: 'object', description: 'Commercial terms (see termsSchema)' },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            reference: { type: 'string' },
+            status: { type: 'string' },
+          },
+        },
+        400: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (req, reply) => {
     const ctx = authContext(req);
     const parsed = createContractSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -266,7 +328,40 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
   // State transition with validation (§28.3). Binding also books the deposit premium.
   app.post<{ Params: { id: string }; Body: { to: string; overrideAccumulation?: boolean } }>(
     '/api/treaties/:id/transition',
-    { preHandler: requirePermission('treaty:bind') },
+    {
+      preHandler: requirePermission('treaty:bind'),
+      schema: {
+        summary: 'Transition treaty status',
+        tags: ['treaties'],
+        description: 'Advance a treaty through its lifecycle (DRAFT → QUOTED → PLACING → BOUND → ACTIVE …). Binding also books the deposit premium financial event.',
+        params: {
+          type: 'object',
+          properties: { id: { type: 'string', format: 'uuid' } },
+          required: ['id'],
+        },
+        body: {
+          type: 'object',
+          required: ['to'],
+          properties: {
+            to: { type: 'string', description: 'Target status (e.g. BOUND, ACTIVE, CANCELLED)' },
+            overrideAccumulation: { type: 'boolean', description: 'Admin-only: override a hard accumulation breach' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              status: { type: 'string' },
+              financialEvents: { type: 'array', items: { type: 'object' } },
+              warnings: { type: 'array', items: { type: 'object' } },
+            },
+          },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+          409: { type: 'object', properties: { error: { type: 'string' }, verdict: { type: 'string' } } },
+        },
+      },
+    },
     async (req, reply) => {
       const ctx = authContext(req);
       const to = req.body?.to;

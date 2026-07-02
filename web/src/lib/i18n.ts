@@ -30,15 +30,17 @@ const en = {
 
 type I18nKey = keyof typeof en;
 type Locale = Record<I18nKey, string>;
-let _locale: Locale = en;
+type I18nStrings = Record<I18nKey, string>;
+let _locale: I18nStrings = en;
 
 export function t(key: I18nKey): string {
   return _locale[key] ?? key;
 }
 
-export function setLocale(locale: Locale): void {
+export function setLocale(locale: I18nStrings): void {
   _locale = locale;
 }
 
 export type { Locale };
 export { en as enStrings };
+export type { I18nStrings as i18nStrings };

@@ -1,0 +1,34 @@
+name: Accessibility CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+
+jobs:
+  a11y:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+      - name: Build web
+        run: npm run build --workspace web
+        env:
+          VITE_API_URL: http://localhost:4000
+      - name: Start preview server
+        run: npx vite preview --port 4173 &
+        working-directory: web
+      - name: Wait for preview server
+        run: npx wait-on http://localhost:4173 --timeout 30000
+      - name: Run axe accessibility audit
+        run: npx playwright test --config=web/playwright.config.ts
+        env:
+          VITE_PREVIEW_URL: http://localhost:4173
+          CI: true

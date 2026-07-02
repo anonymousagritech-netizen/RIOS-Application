@@ -8,6 +8,8 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import cookie from '@fastify/cookie';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { z } from 'zod';
 import { login, completeMfaLogin, AuthError, requirePermission, authContext, authenticate } from './auth.js';
 import { appPool } from './db.js';
@@ -154,11 +156,60 @@ export async function buildApp(): Promise<FastifyInstance> {
     }),
   });
   await app.register(cookie, { secret: config.jwtSecret });
+
+  // OpenAPI / Swagger — disabled in production via DISABLE_SWAGGER=true.
+  if (!process.env.DISABLE_SWAGGER) {
+    await app.register(swagger, {
+      openapi: {
+        info: {
+          title: 'RIOS API',
+          description: 'Reinsurance Intelligent Operating System — REST API',
+          version: '2.0.0',
+        },
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: 'http',
+              scheme: 'bearer',
+              bearerFormat: 'JWT',
+            },
+          },
+        },
+        security: [{ bearerAuth: [] }],
+      },
+    });
+
+    await app.register(swaggerUi, {
+      routePrefix: '/api/docs',
+      uiConfig: {
+        docExpansion: 'list',
+        deepLinking: false,
+      },
+      staticCSP: true,
+    });
+  }
+
   // Called directly (not via register) so its metrics hooks are NOT encapsulated
   // and apply to every route registered afterwards.
   await observabilityPlugin(app);
 
-  app.get('/health', async () => ({ status: 'ok', service: 'rios-server', time: new Date().toISOString() }));
+  app.get('/health', {
+    schema: {
+      summary: 'Health check',
+      tags: ['system'],
+      response: { 200: { type: 'object', properties: { status: { type: 'string' }, service: { type: 'string' }, time: { type: 'string' } } } },
+    },
+  }, async () => ({ status: 'ok', service: 'rios-server', time: new Date().toISOString() }));
+
+  // Serve the generated OpenAPI 3.0 spec as JSON.
+  app.get('/api/openapi.json', {
+    schema: { hide: true },
+  }, async (_req, reply) => {
+    if (process.env.DISABLE_SWAGGER) {
+      return reply.code(404).send({ error: 'Not available' });
+    }
+    return reply.send(app.swagger());
+  });
 
   // --- Auth ---
   // Login rate limiting (defect D-4): a fixed 15-minute window per IP+email.
@@ -173,7 +224,36 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Stricter per-route rate limit for login: 10 attempts per 15 minutes per IP.
   // This supplements the existing in-memory failure counter (which tracks bad
   // passwords), ensuring even well-formed requests are throttled at the HTTP layer.
-  app.post('/api/auth/login', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (req, reply) => {
+  app.post('/api/auth/login', {
+    config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
+    schema: {
+      summary: 'Authenticate user',
+      tags: ['auth'],
+      security: [],
+      body: {
+        type: 'object',
+        required: ['email', 'password'],
+        properties: {
+          email: { type: 'string', format: 'email', description: 'User email address' },
+          password: { type: 'string', minLength: 1, description: 'User password' },
+          tenantCode: { type: 'string', description: 'Tenant identifier (optional)' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            token: { type: 'string', description: 'JWT access token' },
+            user: { type: 'object' },
+            expiresIn: { type: 'number' },
+          },
+        },
+        400: { type: 'object', properties: { error: { type: 'string' } } },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        429: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (req, reply) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
       reply.code(400);
@@ -208,7 +288,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       const fresh = !entry || now - entry.windowStart >= LOGIN_WINDOW_MS;
       loginFailures.set(key, fresh ? { count: 1, windowStart: now } : { count: entry.count + 1, windowStart: entry.windowStart });
       const e = err as AuthError;
-      reply.code(e.status ?? 401);
+      reply.code((e.status ?? 401) as 401);
       return { error: e.message };
     }
   });

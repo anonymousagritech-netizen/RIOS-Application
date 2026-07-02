@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, qs, ApiError } from '../lib/api';
+import { api, apiUrl, qs, ApiError } from '../lib/api';
 import { useStatusColors, useTreaties, useSoaEntries, useAddPremiumEntry, useAddClaimEntry } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
