@@ -22,6 +22,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { Drawer } from '../components/Drawer';
+import { AiActionPanel } from '../components/AiActionPanel';
 import { FormField, FormSection, Input, Select, TextField, Textarea } from '../components/Form';
 import { titleCase } from '../lib/format';
 import styles from './UnderwritingPage.module.css';
@@ -178,6 +179,18 @@ export function UnderwritingPage() {
         <KpiCard label="Bound" value={String(k?.bound ?? 0)} hint="Won this book" icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" loading={kpis.isLoading} />
         <KpiCard label="Hit ratio" value={`${k?.hitRatioPct ?? 0}%`} hint="Bound of decided" icon={<Percent size={20} />} accent="var(--accent-orange)" loading={kpis.isLoading} />
       </div>
+
+      <AiActionPanel
+        title="AI underwriting recommendation"
+        buttonLabel="AI insight"
+        insightDomain="underwriting"
+        context={{
+          openSubmissions: k?.open ?? 0,
+          pipelineEpi: k ? compact(k.pipelineEpiMinor) : 'n/a',
+          avgRiskScore: k?.avgRiskScore ?? 0,
+          hitRatio: `${k?.hitRatioPct ?? 0}%`,
+        }}
+      />
 
       <Card padded={false}>
         <CardHeader title="Submissions" subtitle="Every risk moving through underwriting" />

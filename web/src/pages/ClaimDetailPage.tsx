@@ -15,6 +15,7 @@ import { Modal } from '../components/Modal';
 import { FormField, Input, Select, Textarea } from '../components/Form';
 import { Table, type Column, EmptyState } from '../components/Table';
 import { DocumentsPanel } from '../components/DocumentsPanel';
+import { ApprovalPanel } from '../components/ApprovalPanel';
 import { DefinitionList, ErrorState, PageLoader, SectionLabel } from '../components/Feedback';
 import { formatMoney, formatDate, formatDateTime, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
@@ -143,6 +144,10 @@ export function ClaimDetailPage() {
             empty={<EmptyState title="No recoveries" message="No recoveries have been booked against this claim." icon={<Undo2 size={16} />} />}
           />
         </Card>
+      </div>
+
+      <div style={{ marginTop: 'var(--space-5)' }}>
+        <ApprovalPanel entityType="claim" entityId={id!} />
       </div>
 
       <div style={{ marginTop: 'var(--space-5)' }}>

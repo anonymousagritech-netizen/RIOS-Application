@@ -16,6 +16,7 @@ import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/Modal';
 import { DocumentsPanel } from '../components/DocumentsPanel';
+import { ApprovalPanel } from '../components/ApprovalPanel';
 import { DefinitionList, ErrorState, PageLoader } from '../components/Feedback';
 import { legalTransitions } from '../lib/status';
 import { formatMoney, formatDate, formatPercent, titleCase } from '../lib/format';
@@ -28,6 +29,7 @@ import styles from './TreatyDetailPage.module.css';
 const TABS = [
   { id: 'structure', label: 'Structure' },
   { id: 'terms', label: 'Terms' },
+  { id: 'approval', label: 'Approval' },
   { id: 'financials', label: 'Financial events' },
   { id: 'statement', label: 'Statement' },
   { id: 'claims', label: 'Claims' },
@@ -133,6 +135,7 @@ export function TreatyDetailPage() {
         <div className={styles.tabBody}>
           {tab === 'structure' && <StructureTab treaty={treaty} currency={currency} />}
           {tab === 'terms' && <TermsTab terms={treaty.terms} />}
+          {tab === 'approval' && <ApprovalPanel entityType="treaty" entityId={id!} status={treaty.status} statusColors={statusColors} />}
           {tab === 'financials' && <FinancialsTab id={id!} currency={currency} />}
           {tab === 'statement' && <StatementTab id={id!} canPost={hasPermission('accounting:post')} />}
           {tab === 'claims' && <ClaimsTab id={id!} />}

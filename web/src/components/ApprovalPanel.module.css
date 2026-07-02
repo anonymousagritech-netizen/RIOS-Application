@@ -1,0 +1,56 @@
+.stack { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+.contextItem { display: flex; flex-direction: column; gap: 2px; }
+.contextLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.contextValue {
+  font-size: var(--text-sm);
+  color: var(--text);
+  font-weight: var(--weight-medium);
+}
+
+/* Honest governance note: explains the maker-checker / authority model. */
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.noteIcon { flex-shrink: 0; margin-top: 1px; color: var(--text-muted); }
+
+.callList { display: flex; flex-direction: column; }
+.callRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+.callRow:last-child { border-bottom: none; }
+.callMain { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.callRef { font-size: var(--text-xs); color: var(--text-muted); }
+.amount { font-variant-numeric: tabular-nums; font-weight: var(--weight-medium); color: var(--text); }
+.actions { display: flex; gap: var(--space-2); align-items: center; }
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.spacer { flex: 1; }
