@@ -21,6 +21,7 @@ import { runAs, type Db } from '../db.js';
 import { authContext, authenticate, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
 import { llmAnswer, isLlmEnabled } from '../ai/llm.js';
+import { resolveScreen } from '../nav/screens.js';
 
 type Ctx = { tenantId: string; userId: string };
 interface Intent {
@@ -43,50 +44,11 @@ const amountFrom = (m: string) => {
 
 // ---------------------------------------------------------------------------
 // Navigation targets (non-mutating "go to / open / show me the X")
+//
+// The full screen registry (every route + label + aliases) and the resolution
+// logic live in ../nav/screens.ts so the assistant can open ANY screen in RIOS
+// by name, synonym or close/fuzzy match, and never drifts from the sidebar.
 // ---------------------------------------------------------------------------
-const NAV: { re: RegExp; route: string; label: string }[] = [
-  { re: /dashboard|home|overview/i, route: '/dashboard', label: 'Dashboard' },
-  { re: /treat/i, route: '/treaties', label: 'Treaties' },
-  { re: /facultative|fac\b/i, route: '/facultative', label: 'Facultative' },
-  { re: /retro/i, route: '/retrocession', label: 'Retrocession' },
-  { re: /placement|slip/i, route: '/placement', label: 'Placement' },
-  { re: /pricing|rating/i, route: '/pricing', label: 'Pricing' },
-  { re: /partie|broker|cedent/i, route: '/parties', label: 'Parties' },
-  { re: /\bcrm\b|pipeline|opportunit/i, route: '/crm', label: 'CRM' },
-  { re: /document|template/i, route: '/documents', label: 'Documents' },
-  { re: /claim/i, route: '/claims', label: 'Claims' },
-  { re: /bordereau/i, route: '/bordereaux', label: 'Bordereaux' },
-  { re: /exposure|accumulation|aggregate/i, route: '/exposure', label: 'Exposure' },
-  { re: /recover|salvage|subrogation|cash call/i, route: '/recoveries', label: 'Recoveries' },
-  { re: /accounting/i, route: '/accounting', label: 'Accounting' },
-  { re: /statement/i, route: '/statements', label: 'Statements' },
-  { re: /finance|ledger|trial balance|invoice/i, route: '/finance', label: 'Finance' },
-  { re: /adjustment|profit commission|portfolio|endors|commut/i, route: '/adjustments', label: 'Treaty Adjustments' },
-  { re: /report/i, route: '/reports', label: 'Reports' },
-  { re: /regulator|ifrs|solvency|return|schedule f|qrt/i, route: '/regulatory', label: 'Regulatory' },
-  { re: /workflow|approval|notification/i, route: '/workflow', label: 'Workflow' },
-  { re: /attendance|punch|geofence|timesheet/i, route: '/attendance', label: 'Attendance' },
-  { re: /people|employee|\bhr\b|hrms|leave/i, route: '/hr', label: 'People' },
-  { re: /payroll|payslip/i, route: '/payroll', label: 'Payroll' },
-  { re: /performance|appraisal|review/i, route: '/performance', label: 'Performance' },
-  { re: /procurement|purchase|vendor|\bpo\b/i, route: '/procurement', label: 'Procurement' },
-  { re: /asset|license|entitlement/i, route: '/assets', label: 'Assets' },
-  { re: /treasury|investment|cash management/i, route: '/treasury', label: 'Treasury' },
-  { re: /analytic|pivot|cube|aal|pml/i, route: '/analytics', label: 'Analytics' },
-  { re: /risk|capital|scr|\bvar\b|solvency ratio/i, route: '/risk-capital', label: 'Risk & Capital' },
-  { re: /intelligence|insight|prediction|ocr/i, route: '/intelligence', label: 'Intelligence' },
-  { re: /product|catalog|parametric|ilw/i, route: '/products', label: 'Products' },
-  { re: /scheduler|cron job/i, route: '/scheduler', label: 'Scheduler' },
-  { re: /designer|no.?code|form builder/i, route: '/designer', label: 'Designer' },
-  { re: /marketplace|app store|install app/i, route: '/marketplace', label: 'Marketplace' },
-  { re: /messaging|email|sms|notification queue/i, route: '/messaging', label: 'Messaging' },
-  { re: /portal|broker portal|cedent portal/i, route: '/portal', label: 'Portal' },
-  { re: /security|mfa|sso|webauthn|passkey/i, route: '/security', label: 'Security' },
-  { re: /operation|observability|audit|sla|health|metric/i, route: '/operations', label: 'Operations' },
-  { re: /integration|webhook|export|import/i, route: '/integration', label: 'Integration' },
-  { re: /admin|config|code list/i, route: '/admin', label: 'Admin' },
-];
-
 function navAction(route: string, label: string): AssistantAction {
   return prepared({ kind: 'navigate', description: `Open ${label}`, requiresConfirmation: false, destructive: false, preview: { route } });
 }
@@ -366,12 +328,18 @@ const INTENTS: Intent[] = [
   },
 
   // ---- Navigation -------------------------------------------------------
+  // Resolves an explicit "open / go to / take me to X" against the full screen
+  // registry: exact label/alias → case-insensitive contains → fuzzy match, so
+  // typos and extra words ("open the underwriting workbench please") still land.
   {
-    test: /^(go to|open|show me|take me to|navigate to)\b/i,
-    handler: async (_db, _ctx, message) => {
-      const target = NAV.find((n) => n.re.test(message));
-      if (!target) return answer("I couldn't find that screen. Try 'open claims' or 'go to finance'.");
-      return { reply: `Opening ${target.label}.`, actions: [navAction(target.route, target.label)] };
+    test: /^(?:please\s+)?(go to|goto|open|show me|show|take me to|navigate to|nav to|bring up|pull up|launch|jump to|switch to|display|view|visit)\b/i,
+    handler: async (_db, _ctx, message, perms) => {
+      const { screen, suggestions } = resolveScreen(message, perms);
+      if (screen) return { reply: `Opening ${screen.label}.`, actions: [navAction(screen.path, screen.label)] };
+      const hints = suggestions.map((s) => s.label).join(', ');
+      return answer(
+        `I couldn't find a screen matching that.${hints ? ` Did you mean one of: ${hints}?` : ''} You can open any RIOS screen by name, e.g. "open claims" or "go to finance".`,
+      );
     },
   },
 
@@ -602,9 +570,13 @@ const INTENTS: Intent[] = [
   // not only when the message starts with "go to / open".
   {
     test: /.*/,
-    handler: async (_db, _ctx, message) => {
-      const target = NAV.find((n) => n.re.test(message));
-      if (target) return { reply: `Opening ${target.label}.`, actions: [navAction(target.route, target.label)] };
+    handler: async (_db, _ctx, message, perms) => {
+      // Only navigate on a *confident* (exact/contains) module mention so a
+      // free-form question isn't hijacked; fuzzy guesses are left to "open X".
+      const { screen, confidence } = resolveScreen(message, perms);
+      if (screen && (confidence === 'exact' || confidence === 'contains')) {
+        return { reply: `Opening ${screen.label}.`, actions: [navAction(screen.path, screen.label)] };
+      }
       return answer(
         'I can open any module (try "treaties", "claims", "attendance", "risk capital"), count records, summarise premium, pipeline, exposure, payroll and the financial position, list open claims and pending approvals, and prepare new treaties, parties, claims, cash calls, vendors, opportunities, payroll runs and regulatory returns - each confirmed before anything changes. What would you like?',
       );
