@@ -108,12 +108,17 @@ audited overrides) · hash-chained audit · RBAC/MFA/OIDC · workflow engine · 
    `GET /api/claims/cash-calls/queue` priority payment queue (migration 0053).
 
 **Tier 2 — hit at first quarter close**
-6. **UPR/DAC earning patterns** (pro-rata, 8ths, 24ths, risk-attaching profiles) and the accrual jobs
-   wired into period close.
-7. **EPI vs booked tracking with automatic M&D adjustment on GNPI** (fields now captured; the adjustment
-   engine run is not wired).
-8. **SOA verification engine**: recompute expected commission/sliding-scale/reinstatements from terms and
-   flag cedent-statement deviations beyond tolerance (the acceptance test in the master spec).
+6. ~~UPR/DAC earning patterns~~ **Delivered**: pure earning math for pro-rata, 8ths, 24ths and
+   risk-attaching (quadratic S-curve) with integer-exact `earned + UPR = written`, plus the persisted
+   valuation run `POST /api/accounting/upr/run` over every non-draft contract (migration 0054).
+   Follow-on: invoke the run automatically from period close.
+7. ~~EPI vs booked with M&D adjustment~~ **Delivered**: `GET /api/treaties/:id/premium-tracking`
+   (EPI/minimum/deposit/booked per currency + projection) and `POST /api/treaties/:id/premium-adjustment`
+   booking `max(minimum, rate × GNPI) − booked` as an audited ADJUSTMENT_PREMIUM event; idempotent on
+   re-run, return-premium aware.
+8. ~~SOA verification engine~~ **Delivered**: `POST /api/statements/:id/verify` recomputes ceding
+   commission (flat/sliding-scale collared), overrider, brokerage and reinstatement premium from the
+   typed terms and flags deviations beyond tolerance (migration 0055); unverifiable items fail loudly.
 9. **Account-current, dunning and disputed-items workflow**; ISO 20022/SWIFT payment file generation with
    maker-checker release.
 10. **Retro cession engine**: rules that auto-allocate every inward premium/claim to the outward program

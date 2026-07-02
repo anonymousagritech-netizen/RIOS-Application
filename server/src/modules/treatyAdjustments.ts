@@ -9,7 +9,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { profitCommission, portfolioTransfer, fromMajor } from '@rios/domain';
+import { profitCommission, portfolioTransfer, mdPremiumAdjustment, fromMajor, money } from '@rios/domain';
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
@@ -44,6 +44,19 @@ const commuteSchema = z.object({
   reason: z.string().optional(),
 });
 
+const premiumAdjustmentSchema = z.object({
+  /** Actual GNPI for the adjustment, in major units of the contract currency. */
+  actualGnpi: z.number().nonnegative(),
+  effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+/**
+ * The premium-event vocabulary the platform's GWP queries already use
+ * (assistant/intelligence/retrocession all sum this set). Booked premium is the
+ * signed net of these events: DR positive / CR negative (cedent perspective).
+ */
+const PREMIUM_EVENT_TYPES = ['DEPOSIT_PREMIUM', 'INSTALMENT_PREMIUM', 'ADJUSTMENT_PREMIUM', 'MINIMUM_PREMIUM'];
+
 interface ContractRow {
   id: string;
   currency: string;
@@ -56,6 +69,63 @@ async function loadContract(db: Db, id: string): Promise<ContractRow | null> {
     [id],
   );
   return rows[0] ?? null;
+}
+
+async function loadLatestTerms(db: Db, contractId: string): Promise<Record<string, unknown>> {
+  const { rows } = await db.query<{ terms: Record<string, unknown> }>(
+    `select terms from term_set where contract_id = $1 order by version desc limit 1`,
+    [contractId],
+  );
+  return rows[0]?.terms ?? {};
+}
+
+/**
+ * Resolve the M&D premium terms from the treaty's term set (treaties.ts
+ * termsSchema keys). Typed keys: estimatedPremiumIncome (EPI), depositPremium,
+ * minimumAndDepositPremium, rateOnLine. `premiumRatePct` (adjustable rate on
+ * GNPI) and `minimumPremium` (a minimum distinct from the deposit) are not in
+ * the typed schema; they ride on the schema's `.passthrough()` and take
+ * precedence when present, falling back to rateOnLine / minimumAndDepositPremium.
+ * All figures are major units, as terms are stored.
+ */
+function resolvePremiumTerms(terms: Record<string, unknown>): {
+  epi?: number;
+  minimumPremium?: number;
+  depositPremium?: number;
+  premiumRatePct?: number;
+} {
+  const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+  const epi = num(terms.estimatedPremiumIncome);
+  const mAndD = num(terms.minimumAndDepositPremium);
+  const depositPct = num(terms.depositPct);
+  return {
+    epi,
+    minimumPremium: num(terms.minimumPremium) ?? mAndD,
+    // Mirrors treaties.ts bookDepositPremium: explicit deposit, else M&D, else EPI x depositPct.
+    depositPremium:
+      num(terms.depositPremium) ??
+      mAndD ??
+      (epi !== undefined && depositPct !== undefined ? (epi * depositPct) / 100 : undefined),
+    premiumRatePct: num(terms.premiumRatePct) ?? num(terms.rateOnLine),
+  };
+}
+
+/** Signed premium booked to date (DR - CR over the premium event types), per currency. */
+async function bookedPremiumByCurrency(
+  db: Db,
+  contractId: string,
+): Promise<Array<{ currency: string; bookedMinor: number; eventCount: number }>> {
+  const { rows } = await db.query<{ currency: string; bookedMinor: number; eventCount: number }>(
+    `select currency,
+            sum(case when direction = 'DR' then amount_minor else -amount_minor end)::bigint as "bookedMinor",
+            count(*)::int as "eventCount"
+       from financial_event
+      where contract_id = $1 and event_type = any($2::citext[])
+      group by currency
+      order by currency`,
+    [contractId, PREMIUM_EVENT_TYPES],
+  );
+  return rows;
 }
 
 export async function treatyAdjustmentsModule(app: FastifyInstance): Promise<void> {
@@ -412,6 +482,168 @@ export async function treatyAdjustmentsModule(app: FastifyInstance): Promise<voi
         });
 
         return { status: 'COMMUTED', settlementAmountMinor: settlement.amount, endorsementNo };
+      });
+    },
+  );
+
+  // --- EPI vs booked premium tracking (gap-analysis Tier-2 #7) ---
+  // EPI, minimum/deposit and rate from the term set; booked premium from the
+  // signed premium financial events; optional ?gnpi= projects the final premium.
+  app.get<{ Params: { id: string }; Querystring: { gnpi?: string } }>(
+    '/api/treaties/:id/premium-tracking',
+    { preHandler: requirePermission('treaty:read') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const contract = await loadContract(db, req.params.id);
+        if (!contract) {
+          reply.code(404);
+          return { error: 'Treaty not found' };
+        }
+        const ccy = contract.currency;
+        const terms = resolvePremiumTerms(await loadLatestTerms(db, contract.id));
+        const booked = await bookedPremiumByCurrency(db, contract.id);
+        const bookedContractCcy = booked.find((b) => b.currency === ccy)?.bookedMinor ?? 0;
+
+        // Optional projection: what would the adjustment be at this actual GNPI?
+        let projection: Record<string, unknown> | null = null;
+        const gnpi = req.query.gnpi !== undefined ? Number(req.query.gnpi) : undefined;
+        if (gnpi !== undefined && Number.isFinite(gnpi) && gnpi >= 0
+            && terms.premiumRatePct !== undefined && terms.minimumPremium !== undefined) {
+          const result = mdPremiumAdjustment({
+            actualGnpi: fromMajor(gnpi, ccy),
+            premiumRatePct: terms.premiumRatePct,
+            minimumPremium: fromMajor(terms.minimumPremium, ccy),
+            bookedPremium: money(bookedContractCcy, ccy),
+          });
+          projection = {
+            actualGnpiMinor: fromMajor(gnpi, ccy).amount,
+            indicatedPremiumMinor: result.indicatedPremium.amount,
+            finalPremiumMinor: result.finalPremium.amount,
+            projectedAdjustmentMinor: result.adjustmentPremium.amount,
+            minimumApplied: result.minimumApplied,
+          };
+        }
+
+        return {
+          contractId: contract.id,
+          status: contract.status,
+          currency: ccy,
+          epiMinor: terms.epi !== undefined ? fromMajor(terms.epi, ccy).amount : null,
+          minimumPremiumMinor: terms.minimumPremium !== undefined ? fromMajor(terms.minimumPremium, ccy).amount : null,
+          depositPremiumMinor: terms.depositPremium !== undefined ? fromMajor(terms.depositPremium, ccy).amount : null,
+          premiumRatePct: terms.premiumRatePct ?? null,
+          bookedPremiumMinor: bookedContractCcy,
+          bookedPremiumByCurrency: booked,
+          projection,
+        };
+      });
+    },
+  );
+
+  // --- M&D adjustment on actual GNPI: final = max(minimum, rate x GNPI);
+  // book final - already-booked as an ADJUSTMENT_PREMIUM financial event so it
+  // flows to statements/GL. Computing against booked-including-prior-adjustments
+  // makes a repeat run with the same GNPI book nothing (idempotent). ---
+  app.post<{ Params: { id: string } }>(
+    '/api/treaties/:id/premium-adjustment',
+    { preHandler: requirePermission('treaty:write') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = premiumAdjustmentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid premium-adjustment request', details: parsed.error.flatten() };
+      }
+      const b = parsed.data;
+      return runAs(ctx, async (db) => {
+        const contract = await loadContract(db, req.params.id);
+        if (!contract) {
+          reply.code(404);
+          return { error: 'Treaty not found' };
+        }
+        if (contract.status !== 'BOUND') {
+          reply.code(409);
+          return { error: `Premium adjustment requires a BOUND contract; status is ${contract.status}` };
+        }
+        const terms = resolvePremiumTerms(await loadLatestTerms(db, contract.id));
+        const missing: string[] = [];
+        if (terms.premiumRatePct === undefined) missing.push('premiumRatePct (or rateOnLine)');
+        if (terms.minimumPremium === undefined) missing.push('minimumPremium (or minimumAndDepositPremium)');
+        if (missing.length > 0) {
+          reply.code(400);
+          return { error: `Treaty terms are missing required keys for M&D adjustment: ${missing.join(', ')}` };
+        }
+
+        const ccy = contract.currency;
+        const booked = await bookedPremiumByCurrency(db, contract.id);
+        const bookedMinor = booked.find((r) => r.currency === ccy)?.bookedMinor ?? 0;
+
+        const result = mdPremiumAdjustment({
+          actualGnpi: fromMajor(b.actualGnpi, ccy),
+          premiumRatePct: terms.premiumRatePct!,
+          minimumPremium: fromMajor(terms.minimumPremium!, ccy),
+          bookedPremium: money(bookedMinor, ccy),
+        });
+        const adjustment = result.adjustmentPremium.amount;
+
+        // Positive = additional premium due from the cedent (DR, like the other
+        // premium events); negative = return premium to the cedent (CR).
+        let eventId: string | null = null;
+        if (adjustment !== 0) {
+          const direction = adjustment > 0 ? 'DR' : 'CR';
+          const { rows } = await db.query<{ id: string }>(
+            `insert into financial_event
+               (tenant_id, contract_id, event_type, direction, amount_minor, currency, booked_at, narrative, created_by)
+             values ($1,$2,'ADJUSTMENT_PREMIUM',$3,$4,$5,coalesce($6::date, current_date),$7,$8) returning id`,
+            [
+              ctx.tenantId,
+              contract.id,
+              direction,
+              Math.abs(adjustment),
+              ccy,
+              b.effectiveDate ?? null,
+              `M&D premium adjustment on actual GNPI ${b.actualGnpi} ${ccy}`,
+              ctx.userId,
+            ],
+          );
+          eventId = rows[0]!.id;
+
+          await writeAudit(db, ctx, {
+            action: 'create',
+            entityType: 'financial_event',
+            entityId: eventId,
+            after: {
+              type: 'ADJUSTMENT_PREMIUM',
+              contractId: contract.id,
+              direction,
+              amountMinor: Math.abs(adjustment),
+              currency: ccy,
+              actualGnpiMinor: fromMajor(b.actualGnpi, ccy).amount,
+              minimumPremiumMinor: result.minimumPremium.amount,
+              indicatedPremiumMinor: result.indicatedPremium.amount,
+              finalPremiumMinor: result.finalPremium.amount,
+              bookedBeforeMinor: bookedMinor,
+            },
+            actorLabel: req.auth?.displayName,
+          });
+        }
+
+        return {
+          contractId: contract.id,
+          currency: ccy,
+          actualGnpiMinor: fromMajor(b.actualGnpi, ccy).amount,
+          premiumRatePct: terms.premiumRatePct,
+          minimumPremiumMinor: result.minimumPremium.amount,
+          indicatedPremiumMinor: result.indicatedPremium.amount,
+          finalPremiumMinor: result.finalPremium.amount,
+          bookedBeforeMinor: bookedMinor,
+          adjustmentMinor: adjustment,
+          minimumApplied: result.minimumApplied,
+          booked: eventId !== null,
+          eventId,
+          direction: adjustment === 0 ? null : adjustment > 0 ? 'DR' : 'CR',
+        };
       });
     },
   );
