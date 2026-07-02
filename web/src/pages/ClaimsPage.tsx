@@ -1,9 +1,12 @@
 import { Plus, ShieldAlert, FolderOpen, Coins, Wallet, CircleDollarSign } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useClaims, useCreateClaim, useTreaties, useCurrencies, useStatusColors } from '../lib/queries';
+import { useClaims, useCreateClaim, useTreaties, useCurrencies, useStatusColors, useCodeLists } from '../lib/queries';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { DynamicForm, collectVisibleValues, type FormContext } from '../lib/formEngine';
+import { LOB_CLASS_GROUPS } from '../lib/lobSchema';
+import { CLAIM_FNOL_GROUPS } from '../lib/claimSchema';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -114,6 +117,7 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
   const create = useCreateClaim();
   const { data: treaties } = useTreaties({});
   const { data: ccy } = useCurrencies();
+  const { data: codeLists } = useCodeLists();
 
   const [contractId, setContractId] = useState('');
   const [description, setDescription] = useState('');
@@ -121,6 +125,8 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
   const [currency, setCurrency] = useState('USD');
   const [grossLoss, setGrossLoss] = useState('');
   const [catEventId, setCatEventId] = useState('');
+  // Adaptive FNOL + class-of-business detail values, keyed by field key.
+  const [details, setDetails] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   // Catastrophe events for occurrence coding (event-level aggregation).
@@ -132,8 +138,21 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
 
   const treatyList = treaties?.treaties ?? [];
   const currencies = ccy?.currencies ?? [];
+  const lobOptions = codeLists?.lists?.line_of_business ?? [];
 
-  const reset = () => { setContractId(''); setDescription(''); setLossDate(''); setCurrency('USD'); setGrossLoss(''); setCatEventId(''); setError(null); };
+  // The context the adaptive claim form reshapes against. The LOB is derived from
+  // the selected treaty's line of business (code + label so the engine's keyword
+  // predicates match either), and the FNOL detail values are spread in so
+  // cross-field `when` predicates (catastrophe name, litigation follow-ups) fire.
+  const formCtx = useMemo<FormContext>(() => {
+    const treaty = treatyList.find((t) => t.id === contractId);
+    const code = treaty?.lineOfBusiness ?? '';
+    const label = lobOptions.find((o) => o.code === code)?.label ?? '';
+    return { lob: `${code} ${label}`, ...details };
+  }, [contractId, treatyList, lobOptions, details]);
+  const claimGroups = useMemo(() => [...LOB_CLASS_GROUPS, ...CLAIM_FNOL_GROUPS], []);
+
+  const reset = () => { setContractId(''); setDescription(''); setLossDate(''); setCurrency('USD'); setGrossLoss(''); setCatEventId(''); setDetails({}); setError(null); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,6 +160,9 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
     const gross = Number(grossLoss);
     if (!contractId) { setError('Select a treaty.'); return; }
     if (Number.isNaN(gross) || gross <= 0) { setError('Enter a gross loss amount.'); return; }
+    // Adaptive detail: the engine returns only the fields currently visible for
+    // this treaty's class + the answered FNOL branches, so nothing stale persists.
+    const collected = collectVisibleValues(claimGroups, formCtx, details);
     try {
       const res = await create.mutateAsync({
         contractId,
@@ -149,6 +171,7 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
         currency,
         grossLoss: gross,
         catEventId: catEventId || undefined,
+        details: Object.keys(collected).length ? collected : undefined,
       });
       toast.success(`Claim ${res.reference} registered`);
       reset();
@@ -206,6 +229,13 @@ function RegisterClaimModal({ open, onClose }: { open: boolean; onClose: () => v
             </Select>
           </FormField>
         </FormSection>
+
+        <DynamicForm
+          groups={claimGroups}
+          ctx={formCtx}
+          values={details}
+          onChange={(key, value) => setDetails((d) => ({ ...d, [key]: value }))}
+        />
 
         <FormSection title="Financials" description="The initial gross reserve opens the case reserve on registration.">
           <FormField label="Currency" required>
