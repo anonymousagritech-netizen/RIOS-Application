@@ -98,6 +98,7 @@ export const SCREENS: Screen[] = [
   { path: '/cat-model', label: 'Cat Model / ELT', aliases: ['cat model', 'catastrophe model', 'elt', 'event loss table', 'aal', 'pml', 'oep', 'rms', 'air', 'verisk', 'exceedance'], permission: 'exposure:read' },
   { path: '/regulatory', label: 'Regulatory', aliases: ['regulatory', 'regulation', 'ifrs', 'solvency', 'schedule f', 'qrt', 'regulator'], permission: 'regulatory:read' },
   { path: '/compliance', label: 'Compliance', aliases: ['compliance', 'controls', 'compliant', 'kyc', 'aml'], permission: 'regulatory:read' },
+  { path: '/sanctions', label: 'Sanctions Screening', aliases: ['sanctions', 'sanction screening', 'denylist', 'watchlist', 'ofac', 'ofsi', 'screen parties', 'sdn'], permission: 'party:read' },
   { path: '/returns', label: 'Returns', aliases: ['returns', 'regulatory returns', 'filings', 'disclosures'], permission: 'regulatory:read' },
 
   // ---- HRMS ------------------------------------------------------------
