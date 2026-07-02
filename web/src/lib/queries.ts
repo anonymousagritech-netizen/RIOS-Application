@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs } from './api';
 import type {
   DashboardSummary, CodeListsResponse, CurrenciesResponse, PartiesResponse,
-  PartyDetail, TreatiesResponse, TreatyDetail, FinancialEventsResponse,
+  PartyDetail, PartyContactsResponse, PartyClaimsResponse,
+  TreatiesResponse, TreatyDetail, FinancialEventsResponse,
   StatementResponse, PostResponse, ClaimsResponse, ClaimDetail,
   TransitionResponse, AssistantReply,
 } from './types';
@@ -78,6 +79,43 @@ export function useCreateParty() {
       identifiers?: Record<string, string>; details?: Record<string, unknown>;
     }) => api<{ id: string; reference: string }>('/api/parties', { body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['parties'] }),
+  });
+}
+
+export function useUpdateParty(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { legalName?: string; shortName?: string | null; country?: string | null; status?: string }) =>
+      api(`/api/parties/${id}`, { method: 'PUT', body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['party', id] });
+      qc.invalidateQueries({ queryKey: ['parties'] });
+    },
+  });
+}
+
+export function usePartyContacts(id: string | undefined) {
+  return useQuery({
+    queryKey: ['party-contacts', id],
+    queryFn: () => api<PartyContactsResponse>(`/api/parties/${id}/contacts`),
+    enabled: !!id,
+  });
+}
+
+export function useAddPartyContact(partyId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { kind: string; value: string; label?: string; isPrimary?: boolean }) =>
+      api<{ id: string }>(`/api/parties/${partyId}/contacts`, { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['party-contacts', partyId] }),
+  });
+}
+
+export function usePartyClaims(id: string | undefined) {
+  return useQuery({
+    queryKey: ['party-claims', id],
+    queryFn: () => api<PartyClaimsResponse>(`/api/parties/${id}/claims`),
+    enabled: !!id,
   });
 }
 
