@@ -362,4 +362,106 @@ export async function platformModule(app: FastifyInstance): Promise<void> {
     const ctx = authContext(req);
     return runAs(ctx, async (db) => resolveEntitlement(db, key));
   });
+
+  // =========================================================================
+  // Dashboard designer (0077): no-code personal / shared dashboards composed of
+  // KPI + chart tiles chosen from the LIVE /api/executive packs. Tiles are
+  // opaque references (persona, kind, ref, size) resolved against live data on
+  // the client, so no metric value is persisted or faked here. Personal layouts
+  // belong to the caller; a shared (tenant-wide) layout needs platform:write.
+  // =========================================================================
+  const tileSchema = z.object({
+    persona: z.string().min(1),
+    kind: z.enum(['kpi', 'chart']),
+    ref: z.string().min(1),
+    size: z.enum(['sm', 'md', 'lg']).default('md'),
+  });
+  const layoutSchema = z.object({
+    name: z.string().min(1).max(120),
+    tiles: z.array(tileSchema).max(60),
+    isDefault: z.boolean().default(false),
+    shared: z.boolean().default(false),
+  });
+  const canShare = (req: { auth?: { permissions: string[] } }) =>
+    !!req.auth && (req.auth.permissions.includes('platform:write') || req.auth.permissions.includes('admin:manage'));
+
+  // List the caller's own layouts plus any tenant-wide shared ones.
+  app.get('/api/dashboards/layouts', { preHandler: requirePermission() }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query(
+        `select id, name, tiles, is_default as "isDefault",
+                user_id is null as shared, coalesce(user_id = $1, false) as owned, created_at as "createdAt"
+           from dashboard_layout
+          where user_id = $1 or user_id is null
+          order by is_default desc, user_id is null, created_at`,
+        [ctx.userId],
+      );
+      return { layouts: rows };
+    });
+  });
+
+  // Save (upsert by owner scope + name) a composed layout. Shared needs platform:write.
+  app.post('/api/dashboards/layouts', { preHandler: requirePermission() }, async (req, reply) => {
+    const ctx = authContext(req);
+    const parsed = layoutSchema.safeParse(req.body);
+    if (!parsed.success) { reply.code(400); return { error: 'Invalid layout', details: parsed.error.flatten() }; }
+    const l = parsed.data;
+    if (l.shared && !canShare(req)) { reply.code(403); return { error: 'Missing permission: platform:write' }; }
+    const owner = l.shared ? null : ctx.userId;
+    const tilesJson = JSON.stringify(l.tiles);
+    return runAs(ctx, async (db) => {
+      // Exactly one default per owner scope: clear siblings before setting.
+      if (l.isDefault) {
+        await db.query(
+          `update dashboard_layout set is_default = false
+            where tenant_id = $1 and user_id is not distinct from $2`,
+          [ctx.tenantId, owner],
+        );
+      }
+      const { rows } = await db.query<{ id: string }>(
+        owner === null
+          ? `insert into dashboard_layout (tenant_id, user_id, name, tiles, is_default)
+             values ($1, null, $2, $3::jsonb, $4)
+             on conflict (tenant_id, name) where user_id is null
+             do update set tiles = excluded.tiles, is_default = excluded.is_default
+             returning id`
+          : `insert into dashboard_layout (tenant_id, user_id, name, tiles, is_default)
+             values ($1, $2, $3, $4::jsonb, $5)
+             on conflict (tenant_id, user_id, name) where user_id is not null
+             do update set tiles = excluded.tiles, is_default = excluded.is_default
+             returning id`,
+        owner === null
+          ? [ctx.tenantId, l.name, tilesJson, l.isDefault]
+          : [ctx.tenantId, owner, l.name, tilesJson, l.isDefault],
+      );
+      await writeAudit(db, ctx, {
+        action: 'upsert', entityType: 'dashboard_layout', entityId: rows[0]!.id,
+        after: { name: l.name, shared: l.shared, tiles: l.tiles.length, isDefault: l.isDefault },
+        actorLabel: req.auth?.displayName,
+      });
+      reply.code(201);
+      return { id: rows[0]!.id };
+    });
+  });
+
+  // Delete a layout: own personal ones freely; shared ones need platform:write.
+  app.delete<{ Params: { id: string } }>('/api/dashboards/layouts/:id', { preHandler: requirePermission() }, async (req, reply) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ user_id: string | null }>(
+        `select user_id from dashboard_layout where id = $1`, [req.params.id],
+      );
+      if (!rows[0]) { reply.code(404); return { error: 'Layout not found' }; }
+      if (rows[0].user_id === null && !canShare(req)) { reply.code(403); return { error: 'Missing permission: platform:write' }; }
+      if (rows[0].user_id !== null && rows[0].user_id !== ctx.userId) { reply.code(403); return { error: 'Not your layout' }; }
+      await db.query(`delete from dashboard_layout where id = $1`, [req.params.id]);
+      await writeAudit(db, ctx, {
+        action: 'delete', entityType: 'dashboard_layout', entityId: req.params.id,
+        actorLabel: req.auth?.displayName,
+      });
+      reply.code(200);
+      return { ok: true };
+    });
+  });
 }

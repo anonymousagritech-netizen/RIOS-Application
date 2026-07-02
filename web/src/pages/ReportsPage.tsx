@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { BarChart3, FileBarChart, FileText, AlertTriangle, Receipt, FileSpreadsheet, Building2, Database, Save } from 'lucide-react';
+import { BarChart3, FileBarChart, FileText, AlertTriangle, Receipt, FileSpreadsheet, Building2, Database, Save, Plus, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
@@ -98,7 +98,7 @@ export function ReportsPage() {
 
   const [source, setSource] = useState<string>(SOURCE_KEYS[0]!);
   const [columns, setColumns] = useState<string[]>(SOURCES[SOURCE_KEYS[0]!]!.slice(0, 5));
-  const [filter, setFilter] = useState<Filter>({ field: SOURCES[SOURCE_KEYS[0]!]![0]!, op: '=', value: '' });
+  const [filters, setFilters] = useState<Filter[]>([]);
   const [result, setResult] = useState<RunResult | null>(null);
   const [showSave, setShowSave] = useState(false);
 
@@ -108,7 +108,7 @@ export function ReportsPage() {
   const onChangeSource = (next: string) => {
     setSource(next);
     setColumns(SOURCES[next]!.slice(0, 5));
-    setFilter({ field: SOURCES[next]![0]!, op: '=', value: '' });
+    setFilters([]);
     setResult(null);
   };
 
@@ -116,8 +116,17 @@ export function ReportsPage() {
     setColumns((cur) => (cur.includes(col) ? cur.filter((c) => c !== col) : [...cur, col]));
   };
 
-  const activeFilters = (): Filter[] | undefined =>
-    filter.value.trim() ? [{ field: filter.field, op: filter.op, value: filter.value.trim() }] : undefined;
+  const addFilter = () => setFilters((f) => [...f, { field: allCols[0]!, op: '=', value: '' }]);
+  const updateFilter = (i: number, patch: Partial<Filter>) =>
+    setFilters((f) => f.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+  const removeFilter = (i: number) => setFilters((f) => f.filter((_, idx) => idx !== i));
+
+  // Only conditions with a non-empty value are sent; the server binds values as
+  // parameters and validates fields/ops against its allowlist.
+  const activeFilters = (): Filter[] | undefined => {
+    const live = filters.filter((f) => f.value.trim()).map((f) => ({ ...f, value: f.value.trim() }));
+    return live.length ? live : undefined;
+  };
 
   const runReport = async () => {
     if (!columns.length) { toast.error('Select at least one column.'); return; }
@@ -213,29 +222,40 @@ export function ReportsPage() {
             </div>
           </FormField>
 
-          <FormField label="Filter (optional)" hint="Leave the value blank to skip filtering.">
-            <div className={shared.toolbar}>
-              <Select
-                value={filter.field}
-                onChange={(e) => setFilter((f) => ({ ...f, field: e.target.value }))}
-                aria-label="Filter field"
-              >
-                {allCols.map((col) => <option key={col} value={col}>{col}</option>)}
-              </Select>
-              <Select
-                value={filter.op}
-                onChange={(e) => setFilter((f) => ({ ...f, op: e.target.value as Op }))}
-                aria-label="Filter operator"
-              >
-                {OPS.map((op) => <option key={op} value={op}>{op}</option>)}
-              </Select>
-              <Input
-                value={filter.value}
-                onChange={(e) => setFilter((f) => ({ ...f, value: e.target.value }))}
-                placeholder="Value"
-                aria-label="Filter value"
-                style={{ minWidth: 160 }}
-              />
+          <FormField label="Filters (optional)" hint="All conditions are ANDed. Rows with a blank value are ignored.">
+            <div className={styles.filterList}>
+              {filters.length === 0 && <span className={styles.filterEmpty}>No filters - showing all rows.</span>}
+              {filters.map((f, i) => (
+                <div key={i} className={styles.filterRow}>
+                  <Select
+                    value={f.field}
+                    onChange={(e) => updateFilter(i, { field: e.target.value })}
+                    aria-label={`Filter ${i + 1} field`}
+                  >
+                    {allCols.map((col) => <option key={col} value={col}>{col}</option>)}
+                  </Select>
+                  <Select
+                    value={f.op}
+                    onChange={(e) => updateFilter(i, { op: e.target.value as Op })}
+                    aria-label={`Filter ${i + 1} operator`}
+                  >
+                    {OPS.map((op) => <option key={op} value={op}>{op}</option>)}
+                  </Select>
+                  <Input
+                    value={f.value}
+                    onChange={(e) => updateFilter(i, { value: e.target.value })}
+                    placeholder="Value"
+                    aria-label={`Filter ${i + 1} value`}
+                    style={{ minWidth: 160 }}
+                  />
+                  <Button variant="ghost" size="sm" icon={<X size={14} />} onClick={() => removeFilter(i)} aria-label={`Remove filter ${i + 1}`}>
+                    Remove
+                  </Button>
+                </div>
+              ))}
+              <div>
+                <Button variant="subtle" size="sm" icon={<Plus size={14} />} onClick={addFilter}>Add filter</Button>
+              </div>
             </div>
           </FormField>
 
