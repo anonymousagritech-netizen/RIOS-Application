@@ -36,12 +36,30 @@ import {
 } from '@rios/domain';
 import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
-import { findJurisdictionPack, JURISDICTION_PACKS } from '../content/jurisdictionPacks.js';
+import { writeAudit } from '../audit.js';
+import { findJurisdictionPack, JURISDICTION_PACKS, type JurisdictionPackDefinition } from '../content/jurisdictionPacks.js';
+import {
+  findContentDefault,
+  REGULATORY_CONTENT_DEFAULTS,
+  runFilingValidation,
+  type AssembledForValidation,
+  type RegulatoryContentBody,
+} from '../content/regulatoryContent.js';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const assembleSchema = z.object({
   asOf: z.string().regex(DATE_RE, 'asOf must be an ISO date (YYYY-MM-DD)').optional(),
+});
+
+const validateSchema = assembleSchema;
+
+const postContentSchema = z.object({
+  jurisdiction: z.string().min(1),
+  contentKey: z.string().min(1),
+  effectiveFrom: z.string().regex(DATE_RE, 'effectiveFrom must be an ISO date (YYYY-MM-DD)').optional(),
+  isCertified: z.boolean().optional(),
+  body: z.record(z.unknown()),
 });
 
 // Same financial-event vocabulary the retrocession/regulatory modules use
@@ -332,6 +350,125 @@ async function directionAggregates(
   return out;
 }
 
+/**
+ * Assemble a jurisdiction pack from live tenant data into resolved report-pack
+ * objects (each carries `.code`, `.values`, `.errors`, `.complete`). Shared by
+ * the /assemble and /validate endpoints so both bind the same figures. Must run
+ * inside the caller's runAs / RLS context.
+ */
+async function assemblePacks(db: Db, def: JurisdictionPackDefinition, asOf: string): Promise<Array<Record<string, unknown>>> {
+  const packs: Array<Record<string, unknown>> = [];
+
+  if (def.code === 'NAIC_SCHEDULE_F') {
+    const sf = await scheduleFData(db, asOf);
+    packs.push({
+      ...assembleReportPack(def.templates[0]!, sf.figures),
+      // ILLUSTRATIVE DEFAULT (configurable), not a certified NAIC factor.
+      overdueProvisionRate: sf.overdueProvisionRate,
+      detail: { counterparties: sf.detail },
+    });
+  } else if (def.code === 'SOLVENCY2_QRT') {
+    const [sf, gl, tp] = [await scheduleFData(db, asOf), await glBalances(db, asOf), await technicalProvisions(db, asOf)];
+    const totalRecoverable = sf.figures.SF_AUTH_RECOVERABLE! + sf.figures.SF_UNAUTH_RECOVERABLE!;
+    const rated = sf.detail.filter((d) => d.rating !== null);
+    const unrated = sf.detail.filter((d) => d.rating === null);
+    const figuresByTemplate: Record<string, Record<string, number>> = {
+      'S.02.01': {
+        S02_REINSURANCE_RECOVERABLES: totalRecoverable,
+        S02_TOTAL_ASSETS: gl.assets,
+        S02_TECHNICAL_PROVISIONS: tp,
+        S02_TOTAL_LIABILITIES: gl.liabilities,
+        S02_EQUITY_CHECK: gl.equityCheck,
+      },
+      'S.31.01': {
+        S31_RECOVERABLE_RATED: rated.reduce((a, d) => a + d.recoverableMinor, 0),
+        S31_RECOVERABLE_UNRATED: unrated.reduce((a, d) => a + d.recoverableMinor, 0),
+        S31_COLLATERAL_HELD: sf.figures.SF_COLLATERAL_HELD!,
+      },
+    };
+    for (const t of def.templates) {
+      packs.push({
+        ...assembleReportPack(t, figuresByTemplate[t.code]!),
+        ...(t.code === 'S.31.01' ? { detail: { reinsurers: sf.detail } } : {}),
+      });
+    }
+  } else if (def.code === 'IRDAI_REINSURANCE_RETURNS') {
+    const agg = await directionAggregates(db, asOf);
+    packs.push({
+      ...assembleReportPack(def.templates[0]!, {
+        IRDAI_INWARD_PREMIUM: agg.INWARDS.premium,
+        IRDAI_INWARD_CLAIMS_PAID: agg.INWARDS.losses,
+        IRDAI_OUTWARD_PREMIUM: agg.OUTWARDS.premium,
+        // Ceded loss share on OUTWARDS contracts = recoveries due under
+        // reinsurance ceded (the ceded copy of loss events).
+        IRDAI_OUTWARD_RECOVERIES: agg.OUTWARDS.losses,
+        IRDAI_NET_PREMIUM_CHECK: agg.INWARDS.premium - agg.OUTWARDS.premium,
+      }),
+    });
+  }
+
+  return packs;
+}
+
+/** Reshape assembled packs into the pure validation engine's input. */
+function forValidation(packs: Array<Record<string, unknown>>): AssembledForValidation[] {
+  return packs.map((p) => {
+    const appliedFactors: Record<string, number> = {};
+    if (typeof p.overdueProvisionRate === 'number') appliedFactors.overdueProvisionRate = p.overdueProvisionRate;
+    return {
+      templateCode: String(p.code),
+      values: (p.values as Record<string, number | null>) ?? {},
+      ...(Object.keys(appliedFactors).length ? { appliedFactors } : {}),
+    };
+  });
+}
+
+/**
+ * Load the effective filing content for a jurisdiction+key: the tenant's latest
+ * override if one exists, else the latest global (tenant_id null) DB row, else
+ * the shipped code default. Returns the resolved body plus its version/certified
+ * labelling and provenance. Must run inside runAs.
+ */
+async function loadEffectiveContent(
+  db: Db,
+  jurisdiction: string,
+  contentKey: string,
+): Promise<{ body: RegulatoryContentBody; version: number; isCertified: boolean; effectiveFrom: string; source: string } | null> {
+  const { rows } = await db.query<{
+    version: number;
+    is_certified: boolean;
+    body: RegulatoryContentBody;
+    effective_from: string;
+    scoped: boolean;
+  }>(
+    `select version, is_certified, body, to_char(effective_from,'YYYY-MM-DD') as effective_from,
+            (tenant_id is not null) as scoped
+       from regulatory_content_version
+      where jurisdiction = $1 and content_key = $2
+      order by (tenant_id is not null) desc, version desc, created_at desc
+      limit 1`,
+    [jurisdiction, contentKey],
+  );
+  if (rows[0]) {
+    return {
+      body: rows[0].body,
+      version: rows[0].version,
+      isCertified: rows[0].is_certified,
+      effectiveFrom: rows[0].effective_from,
+      source: rows[0].scoped ? 'tenant-override' : 'global-db',
+    };
+  }
+  const def = findContentDefault(jurisdiction, contentKey);
+  if (!def) return null;
+  return {
+    body: def.body,
+    version: def.version,
+    isCertified: def.isCertified,
+    effectiveFrom: def.effectiveFrom,
+    source: 'code-default',
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
@@ -381,56 +518,7 @@ export async function jurisdictionPacksModule(app: FastifyInstance): Promise<voi
       const asOf = parsed.data.asOf ?? new Date().toISOString().slice(0, 10);
 
       return runAs(ctx, async (db) => {
-        const packs: Array<Record<string, unknown>> = [];
-
-        if (def.code === 'NAIC_SCHEDULE_F') {
-          const sf = await scheduleFData(db, asOf);
-          packs.push({
-            ...assembleReportPack(def.templates[0]!, sf.figures),
-            // ILLUSTRATIVE DEFAULT (configurable), not a certified NAIC factor.
-            overdueProvisionRate: sf.overdueProvisionRate,
-            detail: { counterparties: sf.detail },
-          });
-        } else if (def.code === 'SOLVENCY2_QRT') {
-          const [sf, gl, tp] = [await scheduleFData(db, asOf), await glBalances(db, asOf), await technicalProvisions(db, asOf)];
-          const totalRecoverable = sf.figures.SF_AUTH_RECOVERABLE! + sf.figures.SF_UNAUTH_RECOVERABLE!;
-          const rated = sf.detail.filter((d) => d.rating !== null);
-          const unrated = sf.detail.filter((d) => d.rating === null);
-          const figuresByTemplate: Record<string, Record<string, number>> = {
-            'S.02.01': {
-              S02_REINSURANCE_RECOVERABLES: totalRecoverable,
-              S02_TOTAL_ASSETS: gl.assets,
-              S02_TECHNICAL_PROVISIONS: tp,
-              S02_TOTAL_LIABILITIES: gl.liabilities,
-              S02_EQUITY_CHECK: gl.equityCheck,
-            },
-            'S.31.01': {
-              S31_RECOVERABLE_RATED: rated.reduce((a, d) => a + d.recoverableMinor, 0),
-              S31_RECOVERABLE_UNRATED: unrated.reduce((a, d) => a + d.recoverableMinor, 0),
-              S31_COLLATERAL_HELD: sf.figures.SF_COLLATERAL_HELD!,
-            },
-          };
-          for (const t of def.templates) {
-            packs.push({
-              ...assembleReportPack(t, figuresByTemplate[t.code]!),
-              ...(t.code === 'S.31.01' ? { detail: { reinsurers: sf.detail } } : {}),
-            });
-          }
-        } else if (def.code === 'IRDAI_REINSURANCE_RETURNS') {
-          const agg = await directionAggregates(db, asOf);
-          packs.push({
-            ...assembleReportPack(def.templates[0]!, {
-              IRDAI_INWARD_PREMIUM: agg.INWARDS.premium,
-              IRDAI_INWARD_CLAIMS_PAID: agg.INWARDS.losses,
-              IRDAI_OUTWARD_PREMIUM: agg.OUTWARDS.premium,
-              // Ceded loss share on OUTWARDS contracts = recoveries due under
-              // reinsurance ceded (the ceded copy of loss events).
-              IRDAI_OUTWARD_RECOVERIES: agg.OUTWARDS.losses,
-              IRDAI_NET_PREMIUM_CHECK: agg.INWARDS.premium - agg.OUTWARDS.premium,
-            }),
-          });
-        }
-
+        const packs = await assemblePacks(db, def, asOf);
         return {
           code: def.code,
           jurisdiction: def.jurisdiction,
@@ -443,6 +531,225 @@ export async function jurisdictionPacksModule(app: FastifyInstance): Promise<voi
             'per-counterparty provision maths is currency-safe (Money).',
           packs,
         };
+      });
+    },
+  );
+
+  // -------------------------------------------------------------------------
+  // Filing content as VERSIONED CONFIG
+  // -------------------------------------------------------------------------
+
+  // Read the effective filing content (tenant override > global DB > code
+  // default) for the optional jurisdiction/key filters, with its version and
+  // honest is_certified labelling. Read-gated.
+  app.get<{ Querystring: { jurisdiction?: string; key?: string } }>(
+    '/api/regulatory/content',
+    { preHandler: requirePermission('regulatory:read') },
+    async (req) => {
+      const ctx = authContext(req);
+      const jFilter = req.query.jurisdiction?.toUpperCase();
+      const kFilter = req.query.key?.toUpperCase();
+      return runAs(ctx, async (db) => {
+        // The (jurisdiction, contentKey) pairs the platform knows about are the
+        // shipped defaults; a deployment can only version content it has a
+        // default for. Resolve the effective version of each matching pair.
+        const pairs = REGULATORY_CONTENT_DEFAULTS.filter(
+          (d) =>
+            (!jFilter || d.jurisdiction.toUpperCase() === jFilter) &&
+            (!kFilter || d.contentKey.toUpperCase() === kFilter),
+        );
+        const content = [];
+        for (const d of pairs) {
+          const eff = await loadEffectiveContent(db, d.jurisdiction, d.contentKey);
+          if (!eff) continue;
+          content.push({
+            jurisdiction: d.jurisdiction,
+            contentKey: d.contentKey,
+            version: eff.version,
+            effectiveFrom: eff.effectiveFrom,
+            isCertified: eff.isCertified,
+            source: eff.source,
+            body: eff.body,
+          });
+        }
+        return {
+          disclaimer:
+            'Filing content is versioned configuration. Shipped defaults are illustrative and is_certified=false; ' +
+            'a deployment certifies content per jurisdiction by posting a newer version.',
+          content,
+        };
+      });
+    },
+  );
+
+  // Create a tenant-scoped content override as a NEW version (append-only). The
+  // effective content for this tenant becomes this version. is_certified is what
+  // the deployment asserts (default false); the platform never fabricates
+  // certified numbers.
+  app.post(
+    '/api/regulatory/content',
+    { preHandler: requirePermission('regulatory:run') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = postContentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid content', details: parsed.error.flatten() };
+      }
+      const b = parsed.data;
+      // Only jurisdictions/keys the platform ships a default for can be versioned.
+      if (!findContentDefault(b.jurisdiction, b.contentKey)) {
+        reply.code(404);
+        return { error: `Unknown regulatory content: ${b.jurisdiction}/${b.contentKey}` };
+      }
+      return runAs(ctx, async (db) => {
+        // Next version outranks any prior DB version AND the shipped code
+        // default (which lives in code, not this table), so an override always
+        // becomes the latest effective content.
+        const { rows: verRows } = await db.query<{ maxv: number }>(
+          `select coalesce(max(version), 0) as maxv
+             from regulatory_content_version
+            where jurisdiction = $1 and content_key = $2`,
+          [b.jurisdiction, b.contentKey],
+        );
+        const codeDefaultVersion = findContentDefault(b.jurisdiction, b.contentKey)?.version ?? 0;
+        const version = Math.max(verRows[0]!.maxv, codeDefaultVersion) + 1;
+        const { rows } = await db.query<{ id: string; created_at: string }>(
+          `insert into regulatory_content_version
+             (tenant_id, jurisdiction, content_key, version, effective_from, body, is_certified, created_by)
+           values ($1,$2,$3,$4,coalesce($5::date, current_date),$6,$7,$8)
+           returning id, to_char(created_at,'YYYY-MM-DD"T"HH24:MI:SS') as created_at`,
+          [
+            ctx.tenantId,
+            b.jurisdiction,
+            b.contentKey,
+            version,
+            b.effectiveFrom ?? null,
+            JSON.stringify(b.body),
+            b.isCertified ?? false,
+            ctx.userId,
+          ],
+        );
+        const id = rows[0]!.id;
+        await writeAudit(db, ctx, {
+          action: 'create',
+          entityType: 'regulatory_content_version',
+          entityId: id,
+          after: { jurisdiction: b.jurisdiction, contentKey: b.contentKey, version, isCertified: b.isCertified ?? false },
+          actorLabel: req.auth?.displayName,
+        });
+        reply.code(201);
+        return {
+          id,
+          jurisdiction: b.jurisdiction,
+          contentKey: b.contentKey,
+          version,
+          isCertified: b.isCertified ?? false,
+          createdAt: rows[0]!.created_at,
+        };
+      });
+    },
+  );
+
+  // -------------------------------------------------------------------------
+  // Filing validation (the delivered capability)
+  // -------------------------------------------------------------------------
+
+  // Assemble a pack, then validate the assembled return against its effective
+  // content version (required cells present, control totals tie, factor bands
+  // applied). Persists the run + per-rule items; returns PASS/WARN/FAIL.
+  app.post<{ Params: { code: string } }>(
+    '/api/regulatory/packs/:code/validate',
+    { preHandler: requirePermission('regulatory:run') },
+    async (req, reply) => {
+      const ctx = authContext(req);
+      const parsed = validateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: 'Invalid validate request', details: parsed.error.flatten() };
+      }
+      const def = findJurisdictionPack(req.params.code);
+      if (!def) {
+        reply.code(404);
+        return { error: `Unknown jurisdiction pack: ${req.params.code}` };
+      }
+      const asOf = parsed.data.asOf ?? new Date().toISOString().slice(0, 10);
+
+      return runAs(ctx, async (db) => {
+        const packs = await assemblePacks(db, def, asOf);
+        const eff = await loadEffectiveContent(db, def.jurisdiction, def.code);
+        if (!eff) {
+          reply.code(404);
+          return { error: `No filing content for pack ${def.code}` };
+        }
+        const result = runFilingValidation(eff.body, forValidation(packs));
+
+        const { rows } = await db.query<{ id: string; created_at: string }>(
+          `insert into filing_validation (tenant_id, pack_code, as_of, status, created_by)
+           values ($1,$2,$3::date,$4,$5)
+           returning id, to_char(created_at,'YYYY-MM-DD"T"HH24:MI:SS') as created_at`,
+          [ctx.tenantId, def.code, asOf, result.status, ctx.userId],
+        );
+        const validationId = rows[0]!.id;
+        for (const item of result.items) {
+          await db.query(
+            `insert into filing_validation_item
+               (tenant_id, validation_id, rule_key, severity, message, expected, actual, ok)
+             values ($1,$2,$3,$4,$5,$6,$7,$8)`,
+            [
+              ctx.tenantId,
+              validationId,
+              item.ruleKey,
+              item.severity,
+              item.message,
+              JSON.stringify(item.expected ?? null),
+              JSON.stringify(item.actual ?? null),
+              item.ok,
+            ],
+          );
+        }
+        await writeAudit(db, ctx, {
+          action: 'validate',
+          entityType: 'filing_validation',
+          entityId: validationId,
+          after: { packCode: def.code, asOf, status: result.status, items: result.items.length },
+          actorLabel: req.auth?.displayName,
+        });
+
+        reply.code(201);
+        return {
+          id: validationId,
+          packCode: def.code,
+          jurisdiction: def.jurisdiction,
+          asOf,
+          status: result.status,
+          contentVersion: eff.version,
+          contentSource: eff.source,
+          isCertified: eff.isCertified,
+          disclaimer: def.disclaimer,
+          createdAt: rows[0]!.created_at,
+          items: result.items,
+        };
+      });
+    },
+  );
+
+  // Validation history for a pack (most recent first). Read-gated.
+  app.get<{ Params: { code: string } }>(
+    '/api/regulatory/packs/:code/validations',
+    { preHandler: requirePermission('regulatory:read') },
+    async (req) => {
+      const ctx = authContext(req);
+      return runAs(ctx, async (db) => {
+        const { rows } = await db.query(
+          `select id, pack_code as "packCode", to_char(as_of,'YYYY-MM-DD') as "asOf",
+                  status, created_by as "createdBy", to_char(created_at,'YYYY-MM-DD"T"HH24:MI:SS') as "createdAt"
+             from filing_validation
+            where pack_code = $1
+            order by created_at desc`,
+          [req.params.code],
+        );
+        return { packCode: req.params.code, validations: rows };
       });
     },
   );

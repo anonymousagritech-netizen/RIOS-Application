@@ -24,6 +24,7 @@ export * from './pricing.js';
 export * from './ifrs17.js';
 export * from './ifrs17Disclosure.js';
 export * from './solvency2.js';
+export * from './solvencyCorrelations.js';
 export * from './orsa.js';
 export * from './payroll.js';
 export * from './workflow.js';
