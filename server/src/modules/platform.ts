@@ -6,9 +6,58 @@
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { runAs } from '../db.js';
+import { runAs, type Db } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+
+/**
+ * Resolved entitlement for a single key. `configured` is false when neither an
+ * override nor the tenant's plan defines the key - callers MUST treat that as
+ * "no restriction" so enforcement stays behaviour-preserving. `source` records
+ * the winning layer: override > plan > (unset).
+ */
+export interface ResolvedEntitlement {
+  key: string;
+  kind: 'FLAG' | 'LIMIT' | null;
+  configured: boolean;
+  flag: boolean | null;
+  limit: number | null;
+  source: 'override' | 'plan' | null;
+}
+
+/**
+ * Resolve one entitlement for a tenant with precedence override > plan > unset.
+ * Reusable by other modules to gate features/limits. Must run inside runAs()
+ * (RLS scopes plan/entitlement/override rows to the tenant + global plans).
+ */
+export async function resolveEntitlement(db: Db, key: string): Promise<ResolvedEntitlement> {
+  const ov = await db.query<{ kind: 'FLAG' | 'LIMIT'; bool_value: boolean | null; limit_value: string | null }>(
+    `select kind, bool_value, limit_value from tenant_entitlement_override where key = $1`,
+    [key],
+  );
+  if (ov.rows[0]) {
+    const r = ov.rows[0];
+    return {
+      key, kind: r.kind, configured: true, source: 'override',
+      flag: r.bool_value, limit: r.limit_value === null ? null : Number(r.limit_value),
+    };
+  }
+  const pl = await db.query<{ kind: 'FLAG' | 'LIMIT'; bool_value: boolean | null; limit_value: string | null }>(
+    `select e.kind, e.bool_value, e.limit_value
+       from tenant_plan tp
+       join entitlement e on e.plan_id = tp.plan_id and e.key = $1
+      limit 1`,
+    [key],
+  );
+  if (pl.rows[0]) {
+    const r = pl.rows[0];
+    return {
+      key, kind: r.kind, configured: true, source: 'plan',
+      flag: r.bool_value, limit: r.limit_value === null ? null : Number(r.limit_value),
+    };
+  }
+  return { key, kind: null, configured: false, flag: null, limit: null, source: null };
+}
 
 const companySchema = z.object({
   code: z.string().min(1),
@@ -58,6 +107,20 @@ export async function platformModule(app: FastifyInstance): Promise<void> {
     if (!parsed.success) { reply.code(400); return { error: 'Invalid company', details: parsed.error.flatten() }; }
     const c = parsed.data;
     return runAs(ctx, async (db) => {
+      // Entitlement enforcement: block only NEW companies past a configured
+      // platform.maxCompanies limit. Unconfigured => no restriction (upserts of
+      // an existing code are updates, never counted against the limit).
+      const ent = await resolveEntitlement(db, 'platform.maxCompanies');
+      if (ent.configured && ent.limit !== null) {
+        const exists = await db.query(`select 1 from company where code = $1`, [c.code]);
+        if (exists.rowCount === 0) {
+          const { rows: cnt } = await db.query<{ n: string }>(`select count(*)::text as n from company`);
+          if (Number(cnt[0]!.n) >= ent.limit) {
+            reply.code(409);
+            return { error: 'Entitlement limit reached', key: 'platform.maxCompanies', limit: ent.limit };
+          }
+        }
+      }
       const { rows } = await db.query<{ id: string }>(
         `insert into company (tenant_id, code, name, country, base_currency, parent_id, status)
          values ($1,$2,$3,$4,$5,$6,$7)
@@ -148,5 +211,155 @@ export async function platformModule(app: FastifyInstance): Promise<void> {
       const { rows } = await db.query<{ enabled: boolean }>(`select enabled from feature_flag where key = $1`, [req.params.key]);
       return { key: req.params.key, enabled: rows[0]?.enabled ?? false };
     });
+  });
+
+  // =========================================================================
+  // Entitlement engine (0073): plan catalog, typed entitlements, tenant->plan
+  // assignment and per-tenant overrides. Resolution precedence is
+  // override > plan > unset; unset means "no restriction".
+  // =========================================================================
+  const planSchema = z.object({ code: z.string().min(1), name: z.string().min(1) });
+  const entitlementSchema = z.object({
+    key: z.string().min(1),
+    kind: z.enum(['FLAG', 'LIMIT']),
+    boolValue: z.boolean().nullable().optional(),
+    limitValue: z.number().int().nonnegative().nullable().optional(),
+  });
+  const assignSchema = z.object({ planId: z.string().uuid() });
+
+  // List plans visible to the tenant (own + global catalog) with entitlements.
+  app.get('/api/platform/plans', { preHandler: requirePermission('platform:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows: plans } = await db.query<{ id: string; code: string; name: string; isGlobal: boolean }>(
+        `select id, code, name, tenant_id is null as "isGlobal" from plan order by code`,
+      );
+      const { rows: ents } = await db.query<{ planId: string; key: string; kind: string; boolValue: boolean | null; limitValue: string | null }>(
+        `select plan_id as "planId", key, kind, bool_value as "boolValue", limit_value::text as "limitValue" from entitlement order by key`,
+      );
+      return {
+        plans: plans.map((p) => ({
+          ...p,
+          entitlements: ents
+            .filter((e) => e.planId === p.id)
+            .map((e) => ({ ...e, limitValue: e.limitValue === null ? null : Number(e.limitValue) })),
+        })),
+      };
+    });
+  });
+
+  // Create a tenant-scoped plan.
+  app.post('/api/platform/plans', { preHandler: requirePermission('platform:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const parsed = planSchema.safeParse(req.body);
+    if (!parsed.success) { reply.code(400); return { error: 'Invalid plan', details: parsed.error.flatten() }; }
+    const p = parsed.data;
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ id: string }>(
+        `insert into plan (tenant_id, code, name) values ($1,$2,$3)
+         on conflict (tenant_id, code) do update set name = excluded.name
+         returning id`,
+        [ctx.tenantId, p.code, p.name],
+      );
+      await writeAudit(db, ctx, { action: 'upsert', entityType: 'plan', entityId: rows[0]!.id, after: { code: p.code }, actorLabel: req.auth?.displayName });
+      reply.code(201);
+      return { id: rows[0]!.id };
+    });
+  });
+
+  // Set (upsert) an entitlement on a plan the tenant owns.
+  app.post<{ Params: { planId: string } }>('/api/platform/plans/:planId/entitlements', { preHandler: requirePermission('platform:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const parsed = entitlementSchema.safeParse(req.body);
+    if (!parsed.success) { reply.code(400); return { error: 'Invalid entitlement', details: parsed.error.flatten() }; }
+    const e = parsed.data;
+    return runAs(ctx, async (db) => {
+      const owns = await db.query(`select 1 from plan where id = $1 and tenant_id = $2`, [req.params.planId, ctx.tenantId]);
+      if (owns.rowCount === 0) { reply.code(404); return { error: 'Plan not found' }; }
+      const { rows } = await db.query<{ id: string }>(
+        `insert into entitlement (plan_id, tenant_id, key, kind, bool_value, limit_value)
+         values ($1,$2,$3,$4,$5,$6)
+         on conflict (plan_id, key) do update set
+           kind = excluded.kind, bool_value = excluded.bool_value, limit_value = excluded.limit_value
+         returning id`,
+        [req.params.planId, ctx.tenantId, e.key, e.kind, e.boolValue ?? null, e.limitValue ?? null],
+      );
+      await writeAudit(db, ctx, { action: 'upsert', entityType: 'entitlement', entityId: rows[0]!.id, after: { key: e.key, kind: e.kind }, actorLabel: req.auth?.displayName });
+      reply.code(201);
+      return { id: rows[0]!.id };
+    });
+  });
+
+  // Assign a plan (own or global) to the current tenant.
+  app.post('/api/platform/tenant-plan', { preHandler: requirePermission('platform:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const parsed = assignSchema.safeParse(req.body);
+    if (!parsed.success) { reply.code(400); return { error: 'Invalid assignment', details: parsed.error.flatten() }; }
+    return runAs(ctx, async (db) => {
+      const seen = await db.query(`select 1 from plan where id = $1`, [parsed.data.planId]);
+      if (seen.rowCount === 0) { reply.code(404); return { error: 'Plan not found' }; }
+      await db.query(
+        `insert into tenant_plan (tenant_id, plan_id) values ($1,$2)
+         on conflict (tenant_id) do update set plan_id = excluded.plan_id, assigned_at = now()`,
+        [ctx.tenantId, parsed.data.planId],
+      );
+      await writeAudit(db, ctx, { action: 'assign', entityType: 'tenant_plan', entityId: parsed.data.planId, after: { planId: parsed.data.planId }, actorLabel: req.auth?.displayName });
+      reply.code(201);
+      return { ok: true };
+    });
+  });
+
+  // Set (upsert) a per-tenant override for a single entitlement.
+  app.post('/api/platform/entitlement-overrides', { preHandler: requirePermission('platform:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const parsed = entitlementSchema.safeParse(req.body);
+    if (!parsed.success) { reply.code(400); return { error: 'Invalid override', details: parsed.error.flatten() }; }
+    const e = parsed.data;
+    return runAs(ctx, async (db) => {
+      await db.query(
+        `insert into tenant_entitlement_override (tenant_id, key, kind, bool_value, limit_value)
+         values ($1,$2,$3,$4,$5)
+         on conflict (tenant_id, key) do update set
+           kind = excluded.kind, bool_value = excluded.bool_value, limit_value = excluded.limit_value`,
+        [ctx.tenantId, e.key, e.kind, e.boolValue ?? null, e.limitValue ?? null],
+      );
+      await writeAudit(db, ctx, { action: 'upsert', entityType: 'entitlement_override', entityId: null, after: { key: e.key, kind: e.kind }, actorLabel: req.auth?.displayName });
+      reply.code(201);
+      return { ok: true };
+    });
+  });
+
+  // Remove a per-tenant override (falls back to the plan/unset resolution).
+  app.delete<{ Params: { key: string } }>('/api/platform/entitlement-overrides/:key', { preHandler: requirePermission('platform:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      await db.query(`delete from tenant_entitlement_override where key = $1`, [req.params.key]);
+      await writeAudit(db, ctx, { action: 'delete', entityType: 'entitlement_override', entityId: null, after: { key: req.params.key }, actorLabel: req.auth?.displayName });
+      reply.code(200);
+      return { ok: true };
+    });
+  });
+
+  // EFFECTIVE entitlements for the current tenant (override > plan), resolved.
+  app.get('/api/features/entitlements', { preHandler: requirePermission('platform:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows: keys } = await db.query<{ key: string }>(
+        `select e.key from tenant_plan tp join entitlement e on e.plan_id = tp.plan_id
+         union
+         select key from tenant_entitlement_override`,
+      );
+      const entitlements = [];
+      for (const { key } of keys) entitlements.push(await resolveEntitlement(db, key));
+      return { entitlements };
+    });
+  });
+
+  // Resolve a single flag/limit for the current tenant.
+  app.get<{ Querystring: { key?: string } }>('/api/features/check', { preHandler: requirePermission() }, async (req, reply) => {
+    const key = req.query.key;
+    if (!key) { reply.code(400); return { error: 'key query parameter is required' }; }
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => resolveEntitlement(db, key));
   });
 }

@@ -5,9 +5,24 @@
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { applyFieldSecurity, type FieldSecurityPolicy } from '@rios/domain';
 import { runAs, type Db, type TenantContext } from '../db.js';
 import { authContext, requirePermission } from '../auth.js';
 import { writeAudit } from '../audit.js';
+
+/**
+ * Load active field-security policies for an entity (0071). Returned empty when
+ * nothing is configured, so enforcement is opt-in and behaviour-preserving: with
+ * no policy the party read is byte-identical to before.
+ */
+async function fieldSecurityPolicies(db: Db, entity: string): Promise<FieldSecurityPolicy[]> {
+  const { rows } = await db.query(
+    `select entity, field, mask_strategy as "maskStrategy", min_permission as "minPermission", active
+       from field_security_policy where entity = $1 and active`,
+    [entity],
+  );
+  return rows as FieldSecurityPolicy[];
+}
 
 const createRatingSchema = z.object({
   agency: z.enum(['SP', 'AM_BEST', 'MOODYS', 'FITCH', 'INTERNAL']),
@@ -136,6 +151,7 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
     { preHandler: requirePermission('party:read') },
     async (req, reply) => {
       const ctx = authContext(req);
+      const perms = req.auth?.permissions ?? [];
       return runAs(ctx, async (db) => {
         const { rows } = await db.query(
           `select p.id, p.reference, p.legal_name as "legalName", p.short_name as "shortName",
@@ -149,7 +165,12 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
           reply.code(404);
           return { error: 'Party not found' };
         }
-        return rows[0];
+        // Field-level security (0071): mask configured sensitive fields (bank /
+        // settlement identifiers, compliance details) for callers lacking the
+        // policy's clearance permission. With no active policy this is a no-op,
+        // so the response stays byte-identical to the pre-enforcement contract.
+        const policies = await fieldSecurityPolicies(db, 'party');
+        return applyFieldSecurity('party', rows[0] as Record<string, unknown>, policies, perms);
       });
     },
   );

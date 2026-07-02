@@ -528,6 +528,21 @@ where acct.tenant_id = :'tenant_id'::uuid and acct.email = 'acct@demo.rios'
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
+-- A binding-authority grant: the coverholder (Coral Bay captive) may bind UK
+-- Property up to a generous per-risk line and aggregate. The authority *check*
+-- (line / aggregate / LOB / territory / expiry) is computed by @rios/domain.
+-- ---------------------------------------------------------------------------
+insert into binding_authority
+  (tenant_id, grantee_party_id, name, lob, territory, max_line_minor, max_aggregate_minor,
+   currency, valid_from, valid_to, status, created_by)
+select :'tenant_id'::uuid, p.id, 'Coral Bay UK Property BA', 'Property', 'UK',
+       500000000, 5000000000, 'USD', current_date - 30, current_date + 335, 'ACTIVE', u.id
+from party p, app_user u
+where p.tenant_id = :'tenant_id'::uuid and p.short_name = 'Coral Bay'
+  and u.tenant_id = :'tenant_id'::uuid and u.email = 'uw@demo.rios'
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
 -- Organization Management (§16): the corporate reporting structure as an
 -- org_unit tree - group -> companies -> branches / regional offices.
 -- ---------------------------------------------------------------------------
@@ -653,6 +668,28 @@ insert into feature_flag (tenant_id, key, name, enabled, seat_limit, plan) value
   (:'tenant_id'::uuid,'voice-assistant','Voice Assistant', false, null, 'enterprise'),
   (:'tenant_id'::uuid,'advanced-analytics','Advanced Analytics', true, null, 'enterprise')
 on conflict (tenant_id, key) do nothing;
+
+-- Entitlement engine (0073): a demo plan with a FLAG and generous LIMITs, and
+-- the demo tenant's assignment to it. Limits are deliberately generous so no
+-- existing flow is blocked; per-tenant overrides (none seeded) would outrank it.
+insert into plan (id, tenant_id, code, name) values
+  ('a3000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid, 'demo-standard', 'Demo Standard Plan')
+on conflict (tenant_id, code) do nothing;
+
+insert into entitlement (plan_id, tenant_id, key, kind, bool_value, limit_value)
+select p.id, :'tenant_id'::uuid, v.key, v.kind, v.bool_value, v.limit_value
+from plan p, (values
+  ('features.betaModules',              'FLAG',  true,        null::bigint),
+  ('platform.maxCompanies',             'LIMIT', null::boolean, 100::bigint),
+  ('documents.maxAttachmentsPerRecord', 'LIMIT', null::boolean, 1000::bigint)
+) as v(key, kind, bool_value, limit_value)
+where p.tenant_id = :'tenant_id'::uuid and p.code = 'demo-standard'
+on conflict (plan_id, key) do nothing;
+
+insert into tenant_plan (tenant_id, plan_id)
+select :'tenant_id'::uuid, p.id from plan p
+where p.tenant_id = :'tenant_id'::uuid and p.code = 'demo-standard'
+on conflict (tenant_id) do nothing;
 
 insert into cost_record (tenant_id, category, period, amount_minor, currency, capacity_provisioned, capacity_used, capacity_unit) values
   (:'tenant_id'::uuid,'compute','2026-06', 1850000,'USD', 32, 21, 'vCPU'),
