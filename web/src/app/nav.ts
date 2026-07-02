@@ -109,6 +109,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Cat Model / ELT', to: '/cat-model', icon: Radar, permission: 'exposure:read' },
       { label: 'Regulatory', to: '/regulatory', icon: Scale, permission: 'regulatory:read' },
       { label: 'Compliance', to: '/compliance', icon: ClipboardCheck, permission: 'regulatory:read' },
+      { label: 'Sanctions', to: '/sanctions', icon: ShieldAlert, permission: 'party:read' },
       { label: 'Returns', to: '/returns', icon: FileSpreadsheet, permission: 'regulatory:read' },
     ],
   },

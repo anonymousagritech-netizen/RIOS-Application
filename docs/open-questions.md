@@ -135,6 +135,13 @@ anything deferred is named here. "Delivered", "designed-for", and "deferred" are
   configuration - these packs are not filings. (§18.3)
 - **Data lineage to regulatory output** - the technical→financial chain is reconcilable and lineage-tracked
   (`source_event_id`); regulatory read models are designed-for. (§18.4)
+- **Sanctions screening** - the denylist (`sanctions_list_entry`), the pure normalised-token matcher
+  (`screenName`) and screen-on-create were already delivered; the **feed provider adapter is now delivered
+  too** (`sanctionsFeed` module): a `SanctionsFeedProvider` seam with a working in-repo bundled sample feed
+  that loads/refreshes the denylist (logged in `sanctions_feed_refresh`), a `screen-all` route that re-screens
+  the whole party book against the current list, and status/list read models. A live OFAC/EU/UN/UK-OFSI feed
+  (driven by the scheduler for periodic refresh) is the labelled seam behind the same interface; the sample
+  names are clearly synthetic. Surfaced at `/sanctions`. (§12)
 
 ## 5. Security & trust
 
