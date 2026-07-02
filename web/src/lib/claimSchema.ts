@@ -25,10 +25,11 @@ export const CLAIM_FNOL_GROUPS: FieldGroup[] = [
         key: 'perilCode',
         label: 'Peril / cause code',
         type: 'select',
+        required: true,
         options: ['Fire', 'Windstorm', 'Flood', 'Earthquake', 'Hail', 'Collision', 'Theft', 'Liability', 'Business interruption', 'Other'],
         hint: 'Primary cause of loss for occurrence coding.',
       },
-      { key: 'placeOfLoss', label: 'Place of loss', placeholder: 'e.g. Miami, FL, USA' },
+      { key: 'placeOfLoss', label: 'Place of loss', placeholder: 'e.g. Miami, FL, USA', maxLength: 120 },
       {
         key: 'catastrophe',
         label: 'Catastrophe loss?',
@@ -40,8 +41,10 @@ export const CLAIM_FNOL_GROUPS: FieldGroup[] = [
         key: 'catName',
         label: 'Catastrophe name',
         placeholder: 'e.g. Hurricane Milton',
-        // Cross-field: only relevant once the loss is flagged as a catastrophe.
+        // Cross-field: only relevant once the loss is flagged as a catastrophe,
+        // and mandatory once it is, so the event can be attributed.
         when: (ctx) => ctx.catastrophe === 'Yes',
+        validate: (v, ctx) => (ctx.catastrophe === 'Yes' && !v ? 'Catastrophe name is required for a catastrophe loss' : undefined),
       },
       {
         key: 'reservingClass',
@@ -62,13 +65,16 @@ export const CLAIM_FNOL_GROUPS: FieldGroup[] = [
         key: 'litigationForum',
         label: 'Litigation forum / jurisdiction',
         placeholder: 'e.g. Florida State Court',
-        // Cross-field: litigation follow-ups appear only once litigation = Yes.
+        // Cross-field: litigation follow-ups appear only once litigation = Yes,
+        // and the forum must then be named to route the case correctly.
         when: (ctx) => ctx.litigation === 'Yes',
+        validate: (v, ctx) => (ctx.litigation === 'Yes' && !v ? 'Litigation forum is required when litigation is involved' : undefined),
       },
       {
         key: 'legalDefenceReserve',
         label: 'Estimated legal defence cost',
         type: 'number',
+        min: 0,
         placeholder: 'e.g. 50000',
         when: (ctx) => ctx.litigation === 'Yes',
       },
