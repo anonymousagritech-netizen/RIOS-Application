@@ -218,7 +218,7 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
       onClose={() => { reset(); onClose(); }}
       size="lg"
       title="New party"
-      description="Register a counterparty: identification, classification, domicile and the roles it can play across contracts."
+      description="Register a market participant (cedent, reinsurer, broker or coverholder): identification, classification, domicile and the roles it can play across contracts."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>

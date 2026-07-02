@@ -35,7 +35,7 @@ export function AccountingPage() {
     { key: 'name', header: 'Treaty', sortValue: (t) => t.name, render: (t) => <span className={shared.cellMain}>{t.name}</span> },
     { key: 'cedent', header: 'Cedent', sortValue: (t) => t.cedentName ?? '', render: (t) => t.cedentName ?? <span className={shared.cellSub}>-</span> },
     { key: 'currency', header: 'CCY', align: 'right', render: (t) => <span className={shared.money}>{t.currency}</span> },
-    { key: 'period', header: 'Inception', sortValue: (t) => t.periodStart ?? '', render: (t) => formatDate(t.periodStart) },
+    { key: 'period', header: 'Inception Date', sortValue: (r) => r.periodStart ?? '', render: (r) => formatDate(r.periodStart) },
     { key: 'status', header: 'Status', align: 'right', sortValue: (t) => t.status, render: (t) => <StatusPill status={t.status} metaColors={statusColors} /> },
   ];
 
@@ -56,7 +56,7 @@ export function AccountingPage() {
         <div className={styles.kpis}>
           <KpiCard label="Postable treaties" value={formatNumber(postable.length)} hint="With a statement to reconcile" icon={<BookOpen size={20} />} accent="var(--primary)" loading={isLoading} />
           <KpiCard label="Bound & active" value={formatNumber(activeCount)} hint="Currently in force" icon={<Banknote size={20} />} accent="var(--accent-emerald)" loading={isLoading} />
-          <KpiCard label="Cedents" value={formatNumber(cedentCount)} hint="Distinct counterparties" icon={<Building2 size={20} />} accent="var(--accent-violet)" loading={isLoading} />
+          <KpiCard label="Cedents" value={formatNumber(cedentCount)} hint="Distinct cedents in scope" icon={<Building2 size={20} />} accent="var(--accent-violet)" loading={isLoading} />
           <KpiCard label="Currencies" value={formatNumber(currencyCount)} hint="Settlement currencies in play" icon={<Coins size={20} />} accent="var(--accent-cyan)" loading={isLoading} />
         </div>
 

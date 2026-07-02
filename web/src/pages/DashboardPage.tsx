@@ -21,6 +21,7 @@ import { Button } from '../components/Button';
 import { Tabs } from '../components/Tabs';
 import { ErrorState, PageLoader } from '../components/Feedback';
 import { formatMoneyCompact, formatNumber, formatPercent } from '../lib/format';
+import { t } from '../lib/i18n';
 import { CHART_DRILL } from './ExecutiveDashboardPage';
 import type { DashboardSummary } from '../lib/types';
 import shared from './shared.module.css';
@@ -122,8 +123,8 @@ function OverviewTab() {
         <KpiCard label="Active treaties" value={formatNumber(k?.activeTreaties)} loading={isLoading} icon={<CheckCircle2 size={20} />} accent="var(--accent-emerald)" onClick={() => navigate('/treaties')} />
         <KpiCard label="Parties" value={formatNumber(k?.parties)} loading={isLoading} icon={<Users size={20} />} accent="var(--accent-cyan)" onClick={() => navigate('/parties')} />
         <KpiCard label="Open claims" value={formatNumber(k?.openClaims)} loading={isLoading} icon={<ShieldAlert size={20} />} accent="var(--accent-orange)" onClick={() => navigate('/claims')} />
-        <KpiCard label="Gross written premium" value={k ? formatMoneyCompact(k.gwpMinor, k.currency) : '-'} hint={k?.currency} loading={isLoading} icon={<Wallet size={20} />} accent="var(--accent-indigo)" />
-        <KpiCard label="Outstanding reserves" value={k ? formatMoneyCompact(k.outstandingMinor, k.currency) : '-'} hint={k?.currency} loading={isLoading} icon={<PiggyBank size={20} />} accent="var(--accent-rose)" />
+        <KpiCard label={t('grossWrittenPremium')} value={k ? formatMoneyCompact(k.gwpMinor, k.currency) : '-'} hint={k?.currency} loading={isLoading} icon={<Wallet size={20} />} accent="var(--accent-indigo)" />
+        <KpiCard label={`${t('outstandingReserve')}s`} value={k ? formatMoneyCompact(k.outstandingMinor, k.currency) : '-'} hint={k?.currency} loading={isLoading} icon={<PiggyBank size={20} />} accent="var(--accent-rose)" />
       </div>
 
       <Card padded>
