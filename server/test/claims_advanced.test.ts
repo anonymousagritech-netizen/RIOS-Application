@@ -95,10 +95,29 @@ describe('claims advanced: cash call, recovery, net position', () => {
     expect(cashLoss).toBeTruthy();
     expect(cashLoss!.amountMinor).toBe(10_000_000);
 
-    // Paying the cash call flips its status.
+    // Governed release: pay before approval is rejected.
     const callId = call.json().id as string;
+    const early = await app.inject({ method: 'POST', url: `/api/claims/${claimId}/cash-call/${callId}/pay`, headers: auth });
+    expect(early.statusCode).toBe(409);
+
+    // Maker/checker: the requester cannot approve their own call.
+    const selfApprove = await app.inject({ method: 'POST', url: `/api/claims/${claimId}/cash-call/${callId}/approve`, headers: auth });
+    expect(selfApprove.statusCode).toBe(403);
+
+    // A different user (claims handler) approves; then payment releases.
+    const checkerTkn = await token(app, 'claims@demo.rios');
+    const checker = { authorization: `Bearer ${checkerTkn}` };
+    const approved = await app.inject({ method: 'POST', url: `/api/claims/${claimId}/cash-call/${callId}/approve`, headers: checker });
+    expect(approved.json().status).toBe('approved');
+
     const paid = await app.inject({ method: 'POST', url: `/api/claims/${claimId}/cash-call/${callId}/pay`, headers: auth });
     expect(paid.json().status).toBe('paid');
+
+    // The priority queue no longer lists the settled call.
+    const queue = await app.inject({ method: 'GET', url: '/api/claims/cash-calls/queue', headers: auth });
+    expect(queue.statusCode).toBe(200);
+    const inQueue = (queue.json().queue as Array<{ id: string }>).find((q) => q.id === callId);
+    expect(inQueue).toBeUndefined();
   });
 
   it('records a SALVAGE recovery and reflects it in the net position', async () => {

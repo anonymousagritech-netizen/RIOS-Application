@@ -89,18 +89,23 @@ audited overrides) · hash-chained audit · RBAC/MFA/OIDC · workflow engine · 
 
 ### 2.2 Missing vs the footprint — ranked by how fast a major reinsurer would hit the wall
 
-**Tier 1 — hit in week one of real operations**
-1. **Participation panel & signing.** Co-reinsurer lines (leader/follower), written vs signed shares,
-   signing-down workflow and written-vs-signed reconciliation. (Placement slips exist; the market-panel
-   workflow does not.)
-2. **Counterparty security management.** Rating capture (S&P/AM Best) with history, approved-markets
-   list, credit-limit consumption at bind, collateral (LOC / funds withheld / trust) tracking.
-3. **Sanctions/KYC screening** at party creation and payment release, with a screening audit log.
-4. **Typed contract terms.** Commissions, premiums, reinstatement schedules stored as validated, typed
-   structures (today: schemaless `terms` jsonb; the typed `contract_layer`/`participation` tables fill
-   only via later admin screens).
-5. **Cash-call & simultaneous-settlement workflow** with priority payment release (cash-call events exist;
-   the payment workflow does not).
+**Tier 1 — hit in week one of real operations — ✅ CLOSED in this audit wave**
+1. ~~Participation panel & signing~~ **Delivered**: `POST /api/placement/slips/:id/sign` (explicit
+   sign-down with `signed <= written` and `Σ signed <= order` guards, or PRO_RATA auto sign-down when
+   oversubscribed) + `GET .../signing` written-vs-signed reconciliation. Leader/follower terms on the
+   panel remain a follow-on.
+2. ~~Counterparty security management~~ **Delivered**: rating history (S&P/AM Best/Moody's/Fitch/internal),
+   per-currency credit limits with integer-exact headroom, collateral register (LOC/funds withheld/trust/
+   cash) and the `GET /api/parties/:id/security` committee view (migration 0052). Automatic limit
+   *consumption at bind* remains a follow-on.
+3. ~~Sanctions screening~~ **Delivered**: tenant-loaded denylist, deterministic normalised matcher
+   (BLOCKED/POTENTIAL_MATCH/CLEAR), screening log, `POST /api/parties/screen`, and automatic screening on
+   party creation. Live OFAC/UN/EU provider feeds populate the list per deployment.
+4. ~~Typed contract terms~~ **Delivered**: the treaty `terms` payload is now a typed, validated schema
+   (30+ commercial keys, cross-field refinements, passthrough for tenant extensions).
+5. ~~Cash-call workflow~~ **Delivered**: requested → approved → paid with **maker/checker** (requester
+   cannot approve own call), priority levels (NORMAL/URGENT/SIMULTANEOUS_SETTLEMENT) and the
+   `GET /api/claims/cash-calls/queue` priority payment queue (migration 0053).
 
 **Tier 2 — hit at first quarter close**
 6. **UPR/DAC earning patterns** (pro-rata, 8ths, 24ths, risk-attaching profiles) and the accrual jobs
