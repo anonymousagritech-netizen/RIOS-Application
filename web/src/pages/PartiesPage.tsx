@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useParties, useCreateParty, useCodeLists } from '../lib/queries';
+import { useParties, useCreateParty, useCodeLists, usePreference } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { PageHeader } from '../components/PageHeader';
@@ -14,8 +14,8 @@ import { FormField, FormSection, Input, Select, TextField } from '../components/
 import { formatNumber, titleCase } from '../lib/format';
 import { DynamicForm, collectVisibleValues, type FormContext } from '../lib/formEngine';
 import { PARTY_KYC_GROUPS } from '../lib/partySchema';
-import { Users, Building2, UserRound, CheckCircle2 } from 'lucide-react';
-import { ApiError } from '../lib/api';
+import { Users, Building2, UserRound, CheckCircle2, Download } from 'lucide-react';
+import { ApiError, downloadFile, qs } from '../lib/api';
 import type { PartyListItem } from '../lib/types';
 import shared from './shared.module.css';
 import styles from './PartiesPage.module.css';
@@ -42,8 +42,29 @@ export function PartiesPage() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const { data: codeLists } = useCodeLists();
+
+  // Saved filter preference: persists the search query and role filter across sessions.
+  const { value: savedFilters, save: saveFilters } = usePreference('filters:parties', { q: '', role: '' });
   const [q, setQ] = useState('');
   const [role, setRole] = useState('');
+  const savedApplied = useRef(false);
+  useEffect(() => {
+    if (!savedApplied.current && savedFilters !== undefined) {
+      savedApplied.current = true;
+      if (savedFilters.q) setQ(savedFilters.q);
+      if (savedFilters.role) setRole(savedFilters.role);
+    }
+  }, [savedFilters]);
+
+  const updateQ = (v: string) => {
+    setQ(v);
+    void saveFilters({ q: v, role });
+  };
+  const updateRole = (v: string) => {
+    setRole(v);
+    void saveFilters({ q, role: v });
+  };
+
   const [showNew, setShowNew] = useState(false);
 
   const { data, isLoading } = useParties({ q: q || undefined, role: role || undefined });
@@ -115,18 +136,26 @@ export function PartiesPage() {
             className={shared.searchInput}
             placeholder="Search by name…"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => updateQ(e.target.value)}
             aria-label="Search parties"
           />
           <div className={shared.filter}>
             <span className={shared.filterLabel}>Role</span>
-            <Select value={role} onChange={(e) => setRole(e.target.value)} aria-label="Filter by role">
+            <Select value={role} onChange={(e) => updateRole(e.target.value)} aria-label="Filter by role">
               <option value="">All</option>
               {roleOptions.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
             </Select>
           </div>
           <div className={shared.spacer} />
           <span className={shared.cellSub}>{data?.parties.length ?? 0} result{(data?.parties.length ?? 0) === 1 ? '' : 's'}</span>
+          <Button
+            variant="ghost"
+            icon={<Download size={15} />}
+            onClick={() => downloadFile(`/api/parties/export.csv${qs({ q: q || undefined, role: role || undefined })}`, 'parties.csv')}
+            aria-label="Export parties as CSV"
+          >
+            Export CSV
+          </Button>
         </div>
 
         <Table

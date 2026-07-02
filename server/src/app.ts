@@ -103,6 +103,7 @@ import { webauthnModule } from './modules/webauthn.js';
 import { marketplaceModule } from './modules/marketplace.js';
 import { automationStudioModule } from './modules/automationStudio.js';
 import { assistantEvalModule } from './modules/assistantEval.js';
+import { preferencesModule } from './modules/preferences.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -341,6 +342,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(marketplaceModule);
   await app.register(automationStudioModule);
   await app.register(assistantEvalModule);
+  await app.register(preferencesModule);
 
   app.setErrorHandler((err: Error & { statusCode?: number; code?: string }, req, reply) => {
     app.log.error(err);
