@@ -324,12 +324,12 @@ on conflict (tenant_id, kind, key, version) do nothing;
 -- ---------------------------------------------------------------------------
 -- Parties (one entity can hold several roles - §7 implication)
 -- ---------------------------------------------------------------------------
-insert into party (tenant_id, reference, legal_name, short_name, kind, country, identifiers) values
-  (:'tenant_id'::uuid,'PTY-0001','Atlantic Mutual Insurance Company','Atlantic Mutual','organisation','US','{"naic":"12345"}'),
-  (:'tenant_id'::uuid,'PTY-0002','Helvetia Re AG','Helvetia Re','organisation','CH','{"lei":"5299000ABCDE"}'),
-  (:'tenant_id'::uuid,'PTY-0003','Meridian Reinsurance Brokers Ltd','Meridian Brokers','organisation','GB','{}'),
-  (:'tenant_id'::uuid,'PTY-0004','Coral Bay Captive Ltd','Coral Bay','captive','BM','{}'),
-  (:'tenant_id'::uuid,'PTY-0005','Syndicate 4242','Synd 4242','syndicate','GB','{"lloyds_syndicate":"4242"}')
+insert into party (tenant_id, reference, legal_name, short_name, kind, country, identifiers, source) values
+  (:'tenant_id'::uuid,'PTY-0001','Atlantic Mutual Insurance Company','Atlantic Mutual','organisation','US','{"naic":"12345"}','demo'),
+  (:'tenant_id'::uuid,'PTY-0002','Helvetia Re AG','Helvetia Re','organisation','CH','{"lei":"5299000ABCDE"}','demo'),
+  (:'tenant_id'::uuid,'PTY-0003','Meridian Reinsurance Brokers Ltd','Meridian Brokers','organisation','GB','{}','demo'),
+  (:'tenant_id'::uuid,'PTY-0004','Coral Bay Captive Ltd','Coral Bay','captive','BM','{}','demo'),
+  (:'tenant_id'::uuid,'PTY-0005','Syndicate 4242','Synd 4242','syndicate','GB','{"lloyds_syndicate":"4242"}','demo')
 on conflict do nothing;
 
 insert into party_role (tenant_id, party_id, role_code)
@@ -368,10 +368,10 @@ on conflict do nothing;
 
 insert into contract (tenant_id, reference, name, contract_kind, basis, np_type, line_of_business,
                       direction, programme_id, cedent_party_id, broker_party_id, currency,
-                      period_start, period_end, status, wording_ref)
+                      period_start, period_end, status, wording_ref, source)
 select :'tenant_id'::uuid,'TRTY-2026-00001','Atlantic Mutual Property CAT XL 2026',
        'TREATY','NON_PROPORTIONAL','CAT_XL','PROPERTY','INWARDS',
-       prg.id, ced.id, brk.id, 'USD', date '2026-01-01', date '2026-12-31','BOUND','MRC-2026-AMIC-CATXL'
+       prg.id, ced.id, brk.id, 'USD', date '2026-01-01', date '2026-12-31','BOUND','MRC-2026-AMIC-CATXL','demo'
 from programme prg
   join party ced on ced.tenant_id=:'tenant_id'::uuid and ced.short_name='Atlantic Mutual'
   join party brk on brk.tenant_id=:'tenant_id'::uuid and brk.short_name='Meridian Brokers'
@@ -380,30 +380,30 @@ on conflict do nothing;
 
 -- Two XL layers: $5m xs $5m and $10m xs $10m
 insert into contract_layer (tenant_id, contract_id, layer_no, name, currency,
-                            attachment_minor, limit_minor, reinstatements, reinstatement_rates, rate_on_line)
+                            attachment_minor, limit_minor, reinstatements, reinstatement_rates, rate_on_line, source)
 select :'tenant_id'::uuid, c.id, 1, '$5m xs $5m', 'USD',
-       500000000, 500000000, 1, '[1.0]'::jsonb, 0.10
+       500000000, 500000000, 1, '[1.0]'::jsonb, 0.10, 'demo'
 from contract c where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
 on conflict do nothing;
 
 insert into contract_layer (tenant_id, contract_id, layer_no, name, currency,
-                            attachment_minor, limit_minor, reinstatements, reinstatement_rates, rate_on_line)
+                            attachment_minor, limit_minor, reinstatements, reinstatement_rates, rate_on_line, source)
 select :'tenant_id'::uuid, c.id, 2, '$10m xs $10m', 'USD',
-       1000000000, 1000000000, 2, '[1.0,0.5]'::jsonb, 0.06
+       1000000000, 1000000000, 2, '[1.0,0.5]'::jsonb, 0.06, 'demo'
 from contract c where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
 on conflict do nothing;
 
 -- Reinsurer participations on layer 1 (signed down from written)
-insert into participation (tenant_id, contract_id, layer_id, party_id, written_line, signed_line, order_pct, status)
-select :'tenant_id'::uuid, c.id, l.id, re.id, 0.50, 0.40, 1.0, 'SIGNED'
+insert into participation (tenant_id, contract_id, layer_id, party_id, written_line, signed_line, order_pct, status, source)
+select :'tenant_id'::uuid, c.id, l.id, re.id, 0.50, 0.40, 1.0, 'SIGNED', 'demo'
 from contract c
   join contract_layer l on l.contract_id=c.id and l.layer_no=1
   join party re on re.tenant_id=:'tenant_id'::uuid and re.short_name='Helvetia Re'
 where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
 on conflict do nothing;
 
-insert into participation (tenant_id, contract_id, layer_id, party_id, written_line, signed_line, order_pct, status)
-select :'tenant_id'::uuid, c.id, l.id, re.id, 0.75, 0.60, 1.0, 'SIGNED'
+insert into participation (tenant_id, contract_id, layer_id, party_id, written_line, signed_line, order_pct, status, source)
+select :'tenant_id'::uuid, c.id, l.id, re.id, 0.75, 0.60, 1.0, 'SIGNED', 'demo'
 from contract c
   join contract_layer l on l.contract_id=c.id and l.layer_no=1
   join party re on re.tenant_id=:'tenant_id'::uuid and re.short_name='Synd 4242'
@@ -473,16 +473,16 @@ on conflict do nothing;
 -- levy stack (§9, §13). Valuations & levy maths live in @rios/domain.
 -- ---------------------------------------------------------------------------
 insert into investment_holding (tenant_id, portfolio, name, instrument_type, currency,
-                                face_value_minor, book_value_minor, market_value_minor, coupon_rate, maturity_date)
+                                face_value_minor, book_value_minor, market_value_minor, coupon_rate, maturity_date, source)
 values
   (:'tenant_id'::uuid,'GENERAL','US Treasury 2.5% 2029','BOND','USD',
-     500000000, 498000000, 505000000, 0.025, date '2029-05-15'),
+     500000000, 498000000, 505000000, 0.025, date '2029-05-15','demo'),
   (:'tenant_id'::uuid,'GENERAL','Corporate Bond AA 4.2% 2031','BOND','USD',
-     300000000, 300000000, 294000000, 0.042, date '2031-03-01'),
+     300000000, 300000000, 294000000, 0.042, date '2031-03-01','demo'),
   (:'tenant_id'::uuid,'GENERAL','3-month T-Bill','BILL','USD',
-     200000000, 199000000, 199500000, 0.0480, date '2026-09-30'),
+     200000000, 199000000, 199500000, 0.0480, date '2026-09-30','demo'),
   (:'tenant_id'::uuid,'GENERAL','Money Market Fund','FUND','USD',
-     0, 150000000, 150000000, null, null)
+     0, 150000000, 150000000, null, null,'demo')
 on conflict do nothing;
 
 insert into tax_levy (tenant_id, code, name, jurisdiction, rate, basis, active) values
@@ -635,30 +635,30 @@ insert into cat_event (tenant_id, event_code, name, peril, region, event_date, s
 on conflict (tenant_id, event_code) do nothing;
 
 insert into claim (tenant_id, reference, contract_id, cat_event_id, description, loss_date,
-                   currency, gross_loss_minor, outstanding_minor, paid_minor, status)
+                   currency, gross_loss_minor, outstanding_minor, paid_minor, status, source)
 select :'tenant_id'::uuid, 'CLM-2026-000001', c.id, ce.id,
        'Windstorm property damage - coastal portfolio', date '2026-03-14',
-       'USD', 750000000, 500000000, 250000000, 'RESERVED'
+       'USD', 750000000, 500000000, 250000000, 'RESERVED', 'demo'
 from contract c
   join cat_event ce on ce.tenant_id=:'tenant_id'::uuid and ce.event_code='WS-2026-ATLANTIC'
 where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
 on conflict do nothing;
 
 insert into claim (tenant_id, reference, contract_id, cat_event_id, description, loss_date,
-                   currency, gross_loss_minor, outstanding_minor, paid_minor, status)
+                   currency, gross_loss_minor, outstanding_minor, paid_minor, status, source)
 select :'tenant_id'::uuid, 'CLM-2026-000002', c.id, ce.id,
        'Windstorm - secondary surge losses', date '2026-03-15',
-       'USD', 320000000, 320000000, 0, 'NOTIFIED'
+       'USD', 320000000, 320000000, 0, 'NOTIFIED', 'demo'
 from contract c
   join cat_event ce on ce.tenant_id=:'tenant_id'::uuid and ce.event_code='WS-2026-ATLANTIC'
 where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
 on conflict do nothing;
 
 insert into claim (tenant_id, reference, contract_id, description, loss_date,
-                   currency, gross_loss_minor, outstanding_minor, paid_minor, status)
+                   currency, gross_loss_minor, outstanding_minor, paid_minor, status, source)
 select :'tenant_id'::uuid, 'CLM-2026-000003', c.id,
        'Attritional fire loss', date '2026-02-02',
-       'USD', 90000000, 0, 90000000, 'SETTLED'
+       'USD', 90000000, 0, 90000000, 'SETTLED', 'demo'
 from contract c
 where c.tenant_id=:'tenant_id'::uuid and c.reference='TRTY-2026-00001'
 on conflict do nothing;
@@ -832,18 +832,18 @@ from app_user u where u.tenant_id=:'tenant_id'::uuid and u.email='admin@demo.rio
 -- ---------------------------------------------------------------------------
 
 -- Broker & cedent relationship profiles.
-insert into broker_profile (party_id, tenant_id, tier, region, default_commission_pct, relationship_score, notes)
-select p.id, :'tenant_id'::uuid, 'GLOBAL', 'EMEA', 12.5, 84, 'Strategic global partner.'
+insert into broker_profile (party_id, tenant_id, tier, region, default_commission_pct, relationship_score, notes, source)
+select p.id, :'tenant_id'::uuid, 'GLOBAL', 'EMEA', 12.5, 84, 'Strategic global partner.', 'demo'
 from party p where p.tenant_id=:'tenant_id'::uuid and p.short_name='Meridian Brokers'
 on conflict (party_id) do nothing;
 
-insert into cedent_profile (party_id, tenant_id, domicile, rating_agency, rating, financial_strength_minor, relationship_score, capacity_allocated_minor, notes)
-select p.id, :'tenant_id'::uuid, 'US', 'AM Best', 'A+', 2500000000, 78, 5000000000, 'Long-standing cedent, strong renewals.'
+insert into cedent_profile (party_id, tenant_id, domicile, rating_agency, rating, financial_strength_minor, relationship_score, capacity_allocated_minor, notes, source)
+select p.id, :'tenant_id'::uuid, 'US', 'AM Best', 'A+', 2500000000, 78, 5000000000, 'Long-standing cedent, strong renewals.', 'demo'
 from party p where p.tenant_id=:'tenant_id'::uuid and p.short_name='Atlantic Mutual'
 on conflict (party_id) do nothing;
 
-insert into cedent_profile (party_id, tenant_id, domicile, rating_agency, rating, financial_strength_minor, relationship_score, capacity_allocated_minor, notes)
-select p.id, :'tenant_id'::uuid, 'BM', 'S&P', 'AA-', 4000000000, 71, 3000000000, 'Growing programme.'
+insert into cedent_profile (party_id, tenant_id, domicile, rating_agency, rating, financial_strength_minor, relationship_score, capacity_allocated_minor, notes, source)
+select p.id, :'tenant_id'::uuid, 'BM', 'S&P', 'AA-', 4000000000, 71, 3000000000, 'Growing programme.', 'demo'
 from party p where p.tenant_id=:'tenant_id'::uuid and p.short_name='Coral Bay'
 on conflict (party_id) do nothing;
 
@@ -985,9 +985,9 @@ with picked as (
   select id, short_name, row_number() over (order by short_name) rn from party
   where short_name in ('Helvetia Re','Synd 4242','Alpha Re','Beta Re','Gamma Re')
 ), q(k,share,rate,status) as (values (0,35.0,1.8,'QUOTED'),(1,25.0,2.1,'QUOTED'),(2,20.0,1.65,'ACCEPTED'),(3,15.0,2.4,'DECLINED'))
-insert into fac_quote (tenant_id, risk_id, reinsurer_party_id, reinsurer_name, share_pct, premium_minor, rate_pct, status, valid_until)
+insert into fac_quote (tenant_id, risk_id, reinsurer_party_id, reinsurer_name, share_pct, premium_minor, rate_pct, status, valid_until, source)
 select :'tenant_id'::uuid, p.id, re.id, re.short_name, q.share,
-       round((p.sum_insured_minor * q.rate/100.0))::bigint, q.rate, q.status, date '2026-09-30'
+       round((p.sum_insured_minor * q.rate/100.0))::bigint, q.rate, q.status, date '2026-09-30', 'demo'
 from picked p cross join q join re on re.rn = ((p.rn + q.k) % 5) + 1
 on conflict do nothing;
 
@@ -998,16 +998,16 @@ with picked as (
   select id, short_name, row_number() over (order by short_name) rn from party
   where short_name in ('Helvetia Re','Synd 4242','Alpha Re','Beta Re','Gamma Re')
 ), l(k,kind,wr,sg) as (values (0,'LEAD',40.0,35.0),(1,'FOLLOW',35.0,30.0),(2,'COINSURANCE',30.0,20.0))
-insert into fac_placement_line (tenant_id, risk_id, reinsurer_party_id, reinsurer_name, kind, written_pct, signed_pct, premium_minor, status)
+insert into fac_placement_line (tenant_id, risk_id, reinsurer_party_id, reinsurer_name, kind, written_pct, signed_pct, premium_minor, status, source)
 select :'tenant_id'::uuid, p.id, re.id, re.short_name, l.kind, l.wr, l.sg,
-       round(p.sum_insured_minor * l.sg/100.0 * 0.02)::bigint, 'SIGNED'
+       round(p.sum_insured_minor * l.sg/100.0 * 0.02)::bigint, 'SIGNED', 'demo'
 from picked p cross join l join re on re.rn = ((p.rn + l.k) % 5) + 1
 on conflict do nothing;
 
-insert into fac_engineering (tenant_id, risk_id, kind, inspector, risk_grade, findings, inspected_on)
+insert into fac_engineering (tenant_id, risk_id, kind, inspector, risk_grade, findings, inspected_on, source)
 select :'tenant_id'::uuid, id, 'ENGINEERING', 'Marsh Risk Consulting', 'ELEVATED',
        'Sprinkler protection adequate; recommend upgrade of electrical switchgear and improved flood defences to riverside elevation.',
-       date '2026-05-15'
+       date '2026-05-15', 'demo'
 from risk order by inception desc nulls last limit 3
 on conflict do nothing;
 
@@ -1097,15 +1097,15 @@ on conflict do nothing;
 -- ---------------------------------------------------------------------------
 -- DEMO CEDENT parties (8)  — reference DEMO-PTY-Cnnn
 -- ---------------------------------------------------------------------------
-insert into party (id, tenant_id, reference, legal_name, short_name, kind, country, identifiers) values
-  ('a1000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C001', 'GIC Re India',                     'GIC Re',          'organisation', 'IN', '{}'),
-  ('a1000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C002', 'National Insurance Company',        'National Ins',    'organisation', 'IN', '{}'),
-  ('a1000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C003', 'Royal Sundaram Alliance Insurance', 'Royal Sundaram',  'organisation', 'IN', '{}'),
-  ('a1000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C004', 'Bhutan Insurance Limited',          'Bhutan Ins',      'organisation', 'BT', '{}'),
-  ('a1000000-0000-0000-0000-000000000005'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C005', 'Munich Re Primary Insurance',       'Munich Re Prim',  'organisation', 'DE', '{}'),
-  ('a1000000-0000-0000-0000-000000000006'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C006', 'Hannover Life Reassurance',         'Hannover Life',   'organisation', 'DE', '{}'),
-  ('a1000000-0000-0000-0000-000000000007'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C007', 'Lloyd''s Syndicate 2468',           'Synd 2468',       'syndicate',    'GB', '{"lloyds_syndicate":"2468"}'),
-  ('a1000000-0000-0000-0000-000000000008'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C008', 'General Re Corporation',            'Gen Re',          'organisation', 'US', '{}')
+insert into party (id, tenant_id, reference, legal_name, short_name, kind, country, identifiers, source) values
+  ('a1000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C001', 'GIC Re India',                     'GIC Re',          'organisation', 'IN', '{}', 'demo'),
+  ('a1000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C002', 'National Insurance Company',        'National Ins',    'organisation', 'IN', '{}', 'demo'),
+  ('a1000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C003', 'Royal Sundaram Alliance Insurance', 'Royal Sundaram',  'organisation', 'IN', '{}', 'demo'),
+  ('a1000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C004', 'Bhutan Insurance Limited',          'Bhutan Ins',      'organisation', 'BT', '{}', 'demo'),
+  ('a1000000-0000-0000-0000-000000000005'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C005', 'Munich Re Primary Insurance',       'Munich Re Prim',  'organisation', 'DE', '{}', 'demo'),
+  ('a1000000-0000-0000-0000-000000000006'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C006', 'Hannover Life Reassurance',         'Hannover Life',   'organisation', 'DE', '{}', 'demo'),
+  ('a1000000-0000-0000-0000-000000000007'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C007', 'Lloyd''s Syndicate 2468',           'Synd 2468',       'syndicate',    'GB', '{"lloyds_syndicate":"2468"}', 'demo'),
+  ('a1000000-0000-0000-0000-000000000008'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-C008', 'General Re Corporation',            'Gen Re',          'organisation', 'US', '{}', 'demo')
 on conflict do nothing;
 
 insert into party_role (tenant_id, party_id, role_code) values
@@ -1122,11 +1122,11 @@ on conflict do nothing;
 -- ---------------------------------------------------------------------------
 -- DEMO BROKER parties (4)  — reference DEMO-PTY-Bnnn
 -- ---------------------------------------------------------------------------
-insert into party (id, tenant_id, reference, legal_name, short_name, kind, country, identifiers) values
-  ('a2000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-B001', 'Marsh & McLennan Reinsurance',    'Marsh Re',       'organisation', 'US', '{}'),
-  ('a2000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-B002', 'Aon Benfield Capital Markets',    'Aon Benfield',   'organisation', 'GB', '{}'),
-  ('a2000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-B003', 'Willis Re India',                 'Willis Re IN',   'organisation', 'IN', '{}'),
-  ('a2000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-B004', 'Guy Carpenter & Company',         'Guy Carpenter',  'organisation', 'BM', '{}')
+insert into party (id, tenant_id, reference, legal_name, short_name, kind, country, identifiers, source) values
+  ('a2000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-B001', 'Marsh & McLennan Reinsurance',    'Marsh Re',       'organisation', 'US', '{}', 'demo'),
+  ('a2000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-B002', 'Aon Benfield Capital Markets',    'Aon Benfield',   'organisation', 'GB', '{}', 'demo'),
+  ('a2000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-B003', 'Willis Re India',                 'Willis Re IN',   'organisation', 'IN', '{}', 'demo'),
+  ('a2000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-B004', 'Guy Carpenter & Company',         'Guy Carpenter',  'organisation', 'BM', '{}', 'demo')
 on conflict do nothing;
 
 insert into party_role (tenant_id, party_id, role_code) values
@@ -1137,23 +1137,23 @@ insert into party_role (tenant_id, party_id, role_code) values
 on conflict do nothing;
 
 -- Broker profiles so the tier / analytics endpoints have meaningful data
-insert into broker_profile (party_id, tenant_id, tier, region, default_commission_pct, relationship_score, notes)
+insert into broker_profile (party_id, tenant_id, tier, region, default_commission_pct, relationship_score, notes, source)
 values
-  ('a2000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid, 'GLOBAL',   'Americas', 20.0, 90, 'Largest reinsurance broker globally.'),
-  ('a2000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid, 'GLOBAL',   'EMEA',     20.0, 87, 'Strong EMEA and Asian placement capability.'),
-  ('a2000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid, 'REGIONAL', 'APAC',     22.0, 75, 'Specialist Indian sub-continent broker.'),
-  ('a2000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid, 'GLOBAL',   'Bermuda',  20.0, 88, 'Strong cat book expertise.')
+  ('a2000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid, 'GLOBAL',   'Americas', 20.0, 90, 'Largest reinsurance broker globally.', 'demo'),
+  ('a2000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid, 'GLOBAL',   'EMEA',     20.0, 87, 'Strong EMEA and Asian placement capability.', 'demo'),
+  ('a2000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid, 'REGIONAL', 'APAC',     22.0, 75, 'Specialist Indian sub-continent broker.', 'demo'),
+  ('a2000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid, 'GLOBAL',   'Bermuda',  20.0, 88, 'Strong cat book expertise.', 'demo')
 on conflict (party_id) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- DEMO REINSURER parties (5)  — reference DEMO-PTY-Rnnn
 -- ---------------------------------------------------------------------------
-insert into party (id, tenant_id, reference, legal_name, short_name, kind, country, identifiers) values
-  ('a3000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-R001', 'Swiss Re Capital Markets',     'Swiss Re CM',    'organisation', 'CH', '{}'),
-  ('a3000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-R002', 'Everest Re Group',             'Everest Re',     'organisation', 'BM', '{}'),
-  ('a3000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-R003', 'RenaissanceRe Holdings',       'RenRe',          'organisation', 'BM', '{}'),
-  ('a3000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-R004', 'Transatlantic Holdings',       'Transatlantic',  'organisation', 'US', '{}'),
-  ('a3000000-0000-0000-0000-000000000005'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-R005', 'PartnerRe Ltd',                'PartnerRe',      'organisation', 'BM', '{}')
+insert into party (id, tenant_id, reference, legal_name, short_name, kind, country, identifiers, source) values
+  ('a3000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-R001', 'Swiss Re Capital Markets',     'Swiss Re CM',    'organisation', 'CH', '{}', 'demo'),
+  ('a3000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-R002', 'Everest Re Group',             'Everest Re',     'organisation', 'BM', '{}', 'demo'),
+  ('a3000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-R003', 'RenaissanceRe Holdings',       'RenRe',          'organisation', 'BM', '{}', 'demo'),
+  ('a3000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-R004', 'Transatlantic Holdings',       'Transatlantic',  'organisation', 'US', '{}', 'demo'),
+  ('a3000000-0000-0000-0000-000000000005'::uuid, :'tenant_id'::uuid, 'DEMO-PTY-R005', 'PartnerRe Ltd',                'PartnerRe',      'organisation', 'BM', '{}', 'demo')
 on conflict do nothing;
 
 insert into party_role (tenant_id, party_id, role_code) values
@@ -1182,70 +1182,70 @@ on conflict do nothing;
 
 insert into contract (id, tenant_id, reference, name, contract_kind, basis, proportional_type, np_type,
                       line_of_business, direction, cedent_party_id, broker_party_id,
-                      currency, period_start, period_end, status) values
+                      currency, period_start, period_end, status, source) values
   -- QS treaties
   ('a4000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid,
    'DEMO-2024-QS-001', 'GIC Re India Property QS 2024',
    'TREATY','PROPORTIONAL','QUOTA_SHARE',null,'PROPERTY','INWARDS',
    'a1000000-0000-0000-0000-000000000001'::uuid, 'a2000000-0000-0000-0000-000000000001'::uuid,
-   'INR', date '2024-01-01', date '2024-12-31', 'BOUND'),
+   'INR', date '2024-01-01', date '2024-12-31', 'BOUND', 'demo'),
 
   ('a4000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid,
    'DEMO-2024-QS-002', 'National Insurance Property QS 2024',
    'TREATY','PROPORTIONAL','QUOTA_SHARE',null,'PROPERTY','INWARDS',
    'a1000000-0000-0000-0000-000000000002'::uuid, 'a2000000-0000-0000-0000-000000000002'::uuid,
-   'INR', date '2024-01-01', date '2024-12-31', 'BOUND'),
+   'INR', date '2024-01-01', date '2024-12-31', 'BOUND', 'demo'),
 
   ('a4000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid,
    'DEMO-2024-QS-003', 'Bhutan Insurance Motor QS 2024',
    'TREATY','PROPORTIONAL','QUOTA_SHARE',null,'MOTOR','INWARDS',
    'a1000000-0000-0000-0000-000000000004'::uuid, 'a2000000-0000-0000-0000-000000000003'::uuid,
-   'BTN', date '2024-01-01', date '2024-12-31', 'BOUND'),
+   'BTN', date '2024-01-01', date '2024-12-31', 'BOUND', 'demo'),
 
   -- XL treaties
   ('a4000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid,
    'DEMO-2024-XL-001', 'Lloyd''s Syndicate 2468 Marine XL 2024',
    'TREATY','NON_PROPORTIONAL',null,'PER_RISK_XL','MARINE','INWARDS',
    'a1000000-0000-0000-0000-000000000007'::uuid, 'a2000000-0000-0000-0000-000000000004'::uuid,
-   'GBP', date '2024-01-01', date '2024-12-31', 'BOUND'),
+   'GBP', date '2024-01-01', date '2024-12-31', 'BOUND', 'demo'),
 
   ('a4000000-0000-0000-0000-000000000005'::uuid, :'tenant_id'::uuid,
    'DEMO-2024-XL-002', 'Munich Re Primary Casualty XL 2024',
    'TREATY','NON_PROPORTIONAL',null,'PER_RISK_XL','CASUALTY','INWARDS',
    'a1000000-0000-0000-0000-000000000005'::uuid, 'a2000000-0000-0000-0000-000000000001'::uuid,
-   'EUR', date '2024-01-01', date '2024-12-31', 'BOUND'),
+   'EUR', date '2024-01-01', date '2024-12-31', 'BOUND', 'demo'),
 
   ('a4000000-0000-0000-0000-000000000006'::uuid, :'tenant_id'::uuid,
    'DEMO-2024-XL-003', 'Hannover Life Property XL 2024',
    'TREATY','NON_PROPORTIONAL',null,'PER_RISK_XL','PROPERTY','INWARDS',
    'a1000000-0000-0000-0000-000000000006'::uuid, 'a2000000-0000-0000-0000-000000000002'::uuid,
-   'EUR', date '2024-01-01', date '2024-12-31', 'BOUND'),
+   'EUR', date '2024-01-01', date '2024-12-31', 'BOUND', 'demo'),
 
   -- Catastrophe XL treaties
   ('a4000000-0000-0000-0000-000000000007'::uuid, :'tenant_id'::uuid,
    'DEMO-2024-CATXL-001', 'GIC Re India Property Cat XL 2024',
    'TREATY','NON_PROPORTIONAL',null,'CAT_XL','PROPERTY','INWARDS',
    'a1000000-0000-0000-0000-000000000001'::uuid, 'a2000000-0000-0000-0000-000000000003'::uuid,
-   'USD', date '2024-01-01', date '2024-12-31', 'BOUND'),
+   'USD', date '2024-01-01', date '2024-12-31', 'BOUND', 'demo'),
 
   ('a4000000-0000-0000-0000-000000000008'::uuid, :'tenant_id'::uuid,
    'DEMO-2024-CATXL-002', 'National Insurance Property Cat XL 2024',
    'TREATY','NON_PROPORTIONAL',null,'CAT_XL','PROPERTY','INWARDS',
    'a1000000-0000-0000-0000-000000000002'::uuid, 'a2000000-0000-0000-0000-000000000004'::uuid,
-   'USD', date '2024-01-01', date '2024-12-31', 'BOUND'),
+   'USD', date '2024-01-01', date '2024-12-31', 'BOUND', 'demo'),
 
   -- Stop-Loss treaties
   ('a4000000-0000-0000-0000-000000000009'::uuid, :'tenant_id'::uuid,
    'DEMO-2024-SL-001', 'Munich Re Primary Stop-Loss 2024',
    'TREATY','NON_PROPORTIONAL',null,'STOP_LOSS','PROPERTY','INWARDS',
    'a1000000-0000-0000-0000-000000000005'::uuid, 'a2000000-0000-0000-0000-000000000001'::uuid,
-   'EUR', date '2024-01-01', date '2024-12-31', 'BOUND'),
+   'EUR', date '2024-01-01', date '2024-12-31', 'BOUND', 'demo'),
 
   ('a4000000-0000-0000-0000-00000000000a'::uuid, :'tenant_id'::uuid,
    'DEMO-2024-SL-002', 'Hannover Life Stop-Loss 2024',
    'TREATY','NON_PROPORTIONAL',null,'STOP_LOSS','CASUALTY','INWARDS',
    'a1000000-0000-0000-0000-000000000006'::uuid, 'a2000000-0000-0000-0000-000000000002'::uuid,
-   'EUR', date '2024-01-01', date '2024-12-31', 'BOUND')
+   'EUR', date '2024-01-01', date '2024-12-31', 'BOUND', 'demo')
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
@@ -1266,107 +1266,107 @@ on conflict do nothing;
 --   SL2  EUR 12M premium  = 1_200_000_000 ; commission 12% =   144_000_000
 -- ---------------------------------------------------------------------------
 insert into financial_event
-  (id, tenant_id, contract_id, event_type, direction, amount_minor, currency, booked_at, narrative)
+  (id, tenant_id, contract_id, event_type, direction, amount_minor, currency, booked_at, narrative, source)
 values
   -- QS1 (GIC Re India / Marsh Re)
   ('a5000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000001'::uuid,
    'DEPOSIT_PREMIUM', 'DR', 8000000000, 'INR', date '2024-01-15',
-   'Deposit premium — GIC Re India QS 2024'),
+   'Deposit premium — GIC Re India QS 2024', 'demo'),
   ('a5000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000001'::uuid,
    'CEDING_COMMISSION', 'CR', 1760000000, 'INR', date '2024-01-15',
-   'Ceding commission 22% — GIC Re India QS 2024'),
+   'Ceding commission 22% — GIC Re India QS 2024', 'demo'),
 
   -- QS2 (National Insurance / Aon Benfield)
   ('a5000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000002'::uuid,
    'DEPOSIT_PREMIUM', 'DR', 8000000000, 'INR', date '2024-01-15',
-   'Deposit premium — National Insurance QS 2024'),
+   'Deposit premium — National Insurance QS 2024', 'demo'),
   ('a5000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000002'::uuid,
    'CEDING_COMMISSION', 'CR', 1760000000, 'INR', date '2024-01-15',
-   'Ceding commission 22% — National Insurance QS 2024'),
+   'Ceding commission 22% — National Insurance QS 2024', 'demo'),
 
   -- QS3 (Bhutan Insurance / Willis Re India)
   ('a5000000-0000-0000-0000-000000000005'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000003'::uuid,
    'DEPOSIT_PREMIUM', 'DR', 500000000, 'BTN', date '2024-01-15',
-   'Deposit premium — Bhutan Insurance QS 2024'),
+   'Deposit premium — Bhutan Insurance QS 2024', 'demo'),
   ('a5000000-0000-0000-0000-000000000006'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000003'::uuid,
    'CEDING_COMMISSION', 'CR', 100000000, 'BTN', date '2024-01-15',
-   'Ceding commission 20% — Bhutan Insurance QS 2024'),
+   'Ceding commission 20% — Bhutan Insurance QS 2024', 'demo'),
 
   -- XL1 (Lloyd''s Syndicate 2468 / Guy Carpenter)
   ('a5000000-0000-0000-0000-000000000007'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000004'::uuid,
    'DEPOSIT_PREMIUM', 'DR', 3000000000, 'GBP', date '2024-01-15',
-   'Deposit premium — Lloyd''s Syndicate 2468 Marine XL 2024'),
+   'Deposit premium — Lloyd''s Syndicate 2468 Marine XL 2024', 'demo'),
   ('a5000000-0000-0000-0000-000000000008'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000004'::uuid,
    'CEDING_COMMISSION', 'CR', 600000000, 'GBP', date '2024-01-15',
-   'Ceding commission 20% — Lloyd''s Syndicate 2468 Marine XL 2024'),
+   'Ceding commission 20% — Lloyd''s Syndicate 2468 Marine XL 2024', 'demo'),
 
   -- XL2 (Munich Re Primary / Marsh Re)
   ('a5000000-0000-0000-0000-000000000009'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000005'::uuid,
    'DEPOSIT_PREMIUM', 'DR', 4000000000, 'EUR', date '2024-01-15',
-   'Deposit premium — Munich Re Primary Casualty XL 2024'),
+   'Deposit premium — Munich Re Primary Casualty XL 2024', 'demo'),
   ('a5000000-0000-0000-0000-00000000000a'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000005'::uuid,
    'CEDING_COMMISSION', 'CR', 880000000, 'EUR', date '2024-01-15',
-   'Ceding commission 22% — Munich Re Primary Casualty XL 2024'),
+   'Ceding commission 22% — Munich Re Primary Casualty XL 2024', 'demo'),
 
   -- XL3 (Hannover Life / Aon Benfield)
   ('a5000000-0000-0000-0000-00000000000b'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000006'::uuid,
    'DEPOSIT_PREMIUM', 'DR', 3500000000, 'EUR', date '2024-01-15',
-   'Deposit premium — Hannover Life Property XL 2024'),
+   'Deposit premium — Hannover Life Property XL 2024', 'demo'),
   ('a5000000-0000-0000-0000-00000000000c'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000006'::uuid,
    'CEDING_COMMISSION', 'CR', 700000000, 'EUR', date '2024-01-15',
-   'Ceding commission 20% — Hannover Life Property XL 2024'),
+   'Ceding commission 20% — Hannover Life Property XL 2024', 'demo'),
 
   -- CatXL1 (GIC Re India / Willis Re India)
   ('a5000000-0000-0000-0000-00000000000d'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000007'::uuid,
    'DEPOSIT_PREMIUM', 'DR', 2000000000, 'USD', date '2024-01-15',
-   'Deposit premium — GIC Re India Cat XL 2024'),
+   'Deposit premium — GIC Re India Cat XL 2024', 'demo'),
   ('a5000000-0000-0000-0000-00000000000e'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000007'::uuid,
    'CEDING_COMMISSION', 'CR', 300000000, 'USD', date '2024-01-15',
-   'Ceding commission 15% — GIC Re India Cat XL 2024'),
+   'Ceding commission 15% — GIC Re India Cat XL 2024', 'demo'),
 
   -- CatXL2 (National Insurance / Guy Carpenter)
   ('a5000000-0000-0000-0000-00000000000f'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000008'::uuid,
    'DEPOSIT_PREMIUM', 'DR', 2500000000, 'USD', date '2024-01-15',
-   'Deposit premium — National Insurance Cat XL 2024'),
+   'Deposit premium — National Insurance Cat XL 2024', 'demo'),
   ('a5000000-0000-0000-0000-000000000010'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000008'::uuid,
    'CEDING_COMMISSION', 'CR', 375000000, 'USD', date '2024-01-15',
-   'Ceding commission 15% — National Insurance Cat XL 2024'),
+   'Ceding commission 15% — National Insurance Cat XL 2024', 'demo'),
 
   -- StopLoss1 (Munich Re Primary / Marsh Re)
   ('a5000000-0000-0000-0000-000000000011'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000009'::uuid,
    'DEPOSIT_PREMIUM', 'DR', 1500000000, 'EUR', date '2024-01-15',
-   'Deposit premium — Munich Re Primary Stop-Loss 2024'),
+   'Deposit premium — Munich Re Primary Stop-Loss 2024', 'demo'),
   ('a5000000-0000-0000-0000-000000000012'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-000000000009'::uuid,
    'CEDING_COMMISSION', 'CR', 180000000, 'EUR', date '2024-01-15',
-   'Ceding commission 12% — Munich Re Primary Stop-Loss 2024'),
+   'Ceding commission 12% — Munich Re Primary Stop-Loss 2024', 'demo'),
 
   -- StopLoss2 (Hannover Life / Aon Benfield)
   ('a5000000-0000-0000-0000-000000000013'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-00000000000a'::uuid,
    'DEPOSIT_PREMIUM', 'DR', 1200000000, 'EUR', date '2024-01-15',
-   'Deposit premium — Hannover Life Stop-Loss 2024'),
+   'Deposit premium — Hannover Life Stop-Loss 2024', 'demo'),
   ('a5000000-0000-0000-0000-000000000014'::uuid, :'tenant_id'::uuid,
    'a4000000-0000-0000-0000-00000000000a'::uuid,
    'CEDING_COMMISSION', 'CR', 144000000, 'EUR', date '2024-01-15',
-   'Ceding commission 12% — Hannover Life Stop-Loss 2024')
+   'Ceding commission 12% — Hannover Life Stop-Loss 2024', 'demo')
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
@@ -1375,97 +1375,97 @@ on conflict do nothing;
 -- ---------------------------------------------------------------------------
 insert into claim (id, tenant_id, reference, contract_id, description,
                    loss_date, notified_date, currency,
-                   gross_loss_minor, outstanding_minor, paid_minor, status)
+                   gross_loss_minor, outstanding_minor, paid_minor, status, source)
 values
   -- QS1 claims (GIC Re India, INR)
   ('a6000000-0000-0000-0000-000000000001'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-001',
    'a4000000-0000-0000-0000-000000000001'::uuid,
    'Flood damage — Maharashtra commercial property', date '2024-02-10', date '2024-02-20',
-   'INR', 120000000, 80000000, 40000000, 'RESERVED'),
+   'INR', 120000000, 80000000, 40000000, 'RESERVED', 'demo'),
 
   ('a6000000-0000-0000-0000-000000000002'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-002',
    'a4000000-0000-0000-0000-000000000001'::uuid,
    'Cyclone Remal property losses — QS portfolio', date '2024-05-26', date '2024-06-01',
-   'INR', 340000000, 340000000, 0, 'NOTIFIED'),
+   'INR', 340000000, 340000000, 0, 'NOTIFIED', 'demo'),
 
   ('a6000000-0000-0000-0000-000000000003'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-003',
    'a4000000-0000-0000-0000-000000000001'::uuid,
    'Fire loss — industrial estate Gujarat', date '2024-07-14', date '2024-07-20',
-   'INR', 55000000, 0, 55000000, 'SETTLED'),
+   'INR', 55000000, 0, 55000000, 'SETTLED', 'demo'),
 
   -- QS2 claims (National Insurance, INR)
   ('a6000000-0000-0000-0000-000000000004'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-004',
    'a4000000-0000-0000-0000-000000000002'::uuid,
    'Heavy rain / urban flood — Chennai 2024', date '2024-10-15', date '2024-10-20',
-   'INR', 210000000, 150000000, 60000000, 'RESERVED'),
+   'INR', 210000000, 150000000, 60000000, 'RESERVED', 'demo'),
 
   ('a6000000-0000-0000-0000-000000000005'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-005',
    'a4000000-0000-0000-0000-000000000002'::uuid,
    'Attritional property losses Q3 2024', date '2024-09-01', date '2024-09-15',
-   'INR', 42000000, 0, 42000000, 'SETTLED'),
+   'INR', 42000000, 0, 42000000, 'SETTLED', 'demo'),
 
   -- QS3 claim (Bhutan Insurance, BTN)
   ('a6000000-0000-0000-0000-000000000006'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-006',
    'a4000000-0000-0000-0000-000000000003'::uuid,
    'Motor TP liability claim — Thimphu', date '2024-03-22', date '2024-04-01',
-   'BTN', 4500000, 2000000, 2500000, 'RESERVED'),
+   'BTN', 4500000, 2000000, 2500000, 'RESERVED', 'demo'),
 
   -- XL1 claims (Lloyd''s Syndicate 2468, GBP)
   ('a6000000-0000-0000-0000-000000000007'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-007',
    'a4000000-0000-0000-0000-000000000004'::uuid,
    'Container vessel collision — Strait of Malacca', date '2024-04-08', date '2024-04-15',
-   'GBP', 85000000, 85000000, 0, 'NOTIFIED'),
+   'GBP', 85000000, 85000000, 0, 'NOTIFIED', 'demo'),
 
   ('a6000000-0000-0000-0000-000000000008'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-008',
    'a4000000-0000-0000-0000-000000000004'::uuid,
    'Cargo theft — Port of Felixstowe', date '2024-06-19', date '2024-06-25',
-   'GBP', 12000000, 0, 12000000, 'SETTLED'),
+   'GBP', 12000000, 0, 12000000, 'SETTLED', 'demo'),
 
   -- XL2 claims (Munich Re Primary, EUR)
   ('a6000000-0000-0000-0000-000000000009'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-009',
    'a4000000-0000-0000-0000-000000000005'::uuid,
    'Product liability class action — Germany', date '2024-01-30', date '2024-02-10',
-   'EUR', 230000000, 180000000, 50000000, 'RESERVED'),
+   'EUR', 230000000, 180000000, 50000000, 'RESERVED', 'demo'),
 
   ('a6000000-0000-0000-0000-00000000000a'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-010',
    'a4000000-0000-0000-0000-000000000005'::uuid,
    'Professional indemnity claim — financial sector', date '2024-08-05', date '2024-08-12',
-   'EUR', 67000000, 67000000, 0, 'NOTIFIED'),
+   'EUR', 67000000, 67000000, 0, 'NOTIFIED', 'demo'),
 
   -- XL3 claims (Hannover Life, EUR)
   ('a6000000-0000-0000-0000-00000000000b'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-011',
    'a4000000-0000-0000-0000-000000000006'::uuid,
    'Storm Ciaran property portfolio losses', date '2024-11-01', date '2024-11-08',
-   'EUR', 195000000, 120000000, 75000000, 'RESERVED'),
+   'EUR', 195000000, 120000000, 75000000, 'RESERVED', 'demo'),
 
   -- CatXL1 claims (GIC Re India Cat, USD)
   ('a6000000-0000-0000-0000-00000000000c'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-012',
    'a4000000-0000-0000-0000-000000000007'::uuid,
    'Bay of Bengal cyclone — cat occurrence 2024-04', date '2024-04-20', date '2024-04-28',
-   'USD', 320000000, 200000000, 120000000, 'RESERVED'),
+   'USD', 320000000, 200000000, 120000000, 'RESERVED', 'demo'),
 
   ('a6000000-0000-0000-0000-00000000000d'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-013',
    'a4000000-0000-0000-0000-000000000007'::uuid,
    'Monsoon flood aggregate — July 2024', date '2024-07-01', date '2024-07-20',
-   'USD', 185000000, 185000000, 0, 'NOTIFIED'),
+   'USD', 185000000, 185000000, 0, 'NOTIFIED', 'demo'),
 
   -- CatXL2 claims (National Insurance Cat, USD)
   ('a6000000-0000-0000-0000-00000000000e'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-014',
    'a4000000-0000-0000-0000-000000000008'::uuid,
    'Northeast India earthquake — cat event 2024-02', date '2024-02-20', date '2024-03-01',
-   'USD', 450000000, 300000000, 150000000, 'RESERVED'),
+   'USD', 450000000, 300000000, 150000000, 'RESERVED', 'demo'),
 
   -- StopLoss1 claim (Munich Re Primary, EUR)
   ('a6000000-0000-0000-0000-00000000000f'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-015',
    'a4000000-0000-0000-0000-000000000009'::uuid,
    'Stop-loss aggregate trigger — combined ratio 105%', date '2024-12-31', date '2025-01-15',
-   'EUR', 750000000, 750000000, 0, 'NOTIFIED'),
+   'EUR', 750000000, 750000000, 0, 'NOTIFIED', 'demo'),
 
   -- StopLoss2 claim (Hannover Life, EUR)
   ('a6000000-0000-0000-0000-000000000010'::uuid, :'tenant_id'::uuid, 'DEMO-CLM-2024-016',
    'a4000000-0000-0000-0000-00000000000a'::uuid,
    'Stop-loss trigger — casualty book aggregate', date '2024-12-31', date '2025-01-20',
-   'EUR', 620000000, 620000000, 0, 'NOTIFIED')
+   'EUR', 620000000, 620000000, 0, 'NOTIFIED', 'demo')
 on conflict do nothing;
 
 commit;
