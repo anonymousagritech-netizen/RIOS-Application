@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { LayerDTO, ParticipationDTO } from '@rios/shared';
 import {
   useTreaty, useFinancialEvents, useStatement, useTransitionTreaty,
-  usePostToGl, useStatusColors,
+  usePostToGl, useStatusColors, useClaims,
 } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
@@ -29,6 +29,7 @@ const TABS = [
   { id: 'terms', label: 'Terms' },
   { id: 'financials', label: 'Financial events' },
   { id: 'statement', label: 'Statement' },
+  { id: 'claims', label: 'Claims' },
 ];
 
 export function TreatyDetailPage() {
@@ -86,7 +87,14 @@ export function TreatyDetailPage() {
             {treaty.npType ? ` ${treaty.npType}` : ''}
             <span className={styles.dot}>·</span>
             {treaty.currency}
-            {treaty.cedentName ? <><span className={styles.dot}>·</span>{treaty.cedentName}</> : null}
+            {treaty.cedentName ? (
+              <>
+                <span className={styles.dot}>·</span>
+                {treaty.cedentPartyId
+                  ? <Link className={styles.cedentLink} to={`/parties/${treaty.cedentPartyId}`}>{treaty.cedentName}</Link>
+                  : treaty.cedentName}
+              </>
+            ) : null}
           </span>
         }
         actions={
@@ -121,6 +129,7 @@ export function TreatyDetailPage() {
           {tab === 'terms' && <TermsTab terms={treaty.terms} />}
           {tab === 'financials' && <FinancialsTab id={id!} currency={currency} />}
           {tab === 'statement' && <StatementTab id={id!} canPost={hasPermission('accounting:post')} />}
+          {tab === 'claims' && <ClaimsTab id={id!} />}
         </div>
       </Card>
 
@@ -230,6 +239,31 @@ function FinancialsTab({ id, currency }: { id: string; currency: string }) {
       loading={isLoading}
       rowKey={(e) => e.id}
       empty={<EmptyState title="No financial events" message="Events are booked as the treaty progresses through its lifecycle (e.g. on binding)." icon={<DollarSign size={16} />} />}
+    />
+  );
+}
+
+function ClaimsTab({ id }: { id: string }) {
+  const navigate = useNavigate();
+  const { data, isLoading } = useClaims({ contractId: id });
+  const statusColors = useStatusColors('claim_status');
+  const claims = data?.claims ?? [];
+  const cols: Column<(typeof claims)[number]>[] = [
+    { key: 'reference', header: 'Reference', sortValue: (c) => c.reference ?? '', render: (c) => <span className={shared.cellRef}>{c.reference ?? '-'}</span> },
+    { key: 'description', header: 'Claim', sortValue: (c) => c.description ?? '', render: (c) => <span className={shared.cellMain}>{c.description ?? 'Untitled claim'}</span> },
+    { key: 'lossDate', header: 'Loss date', sortValue: (c) => c.lossDate ?? '', render: (c) => formatDate(c.lossDate) },
+    { key: 'gross', header: 'Gross', align: 'right', sortValue: (c) => c.grossLossMinor, render: (c) => <span className={shared.money}>{formatMoney(c.grossLossMinor, c.currency)}</span> },
+    { key: 'outstanding', header: 'Outstanding', align: 'right', sortValue: (c) => c.outstandingMinor, render: (c) => <span className={shared.money}>{formatMoney(c.outstandingMinor, c.currency)}</span> },
+    { key: 'status', header: 'Status', align: 'right', sortValue: (c) => c.status, render: (c) => <StatusPill status={c.status} metaColors={statusColors} /> },
+  ];
+  return (
+    <Table
+      columns={cols}
+      rows={claims}
+      loading={isLoading}
+      rowKey={(c) => c.id}
+      onRowClick={(c) => navigate(`/claims/${c.id}`)}
+      empty={<EmptyState title="No claims" message="No losses have been notified against this treaty." icon={<ClipboardList size={16} />} />}
     />
   );
 }

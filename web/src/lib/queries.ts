@@ -82,7 +82,7 @@ export function useCreateParty() {
 }
 
 /* ---------------- Treaties ---------------- */
-export function useTreaties(params: { status?: string; kind?: string }) {
+export function useTreaties(params: { status?: string; kind?: string; cedentId?: string; brokerId?: string }) {
   return useQuery({
     queryKey: ['treaties', params],
     queryFn: () => api<TreatiesResponse>(`/api/treaties${qs(params)}`),

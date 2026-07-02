@@ -106,7 +106,7 @@ const createContractSchema = z.object({
 });
 
 export async function treatiesModule(app: FastifyInstance): Promise<void> {
-  app.get<{ Querystring: { status?: string; kind?: string } }>(
+  app.get<{ Querystring: { status?: string; kind?: string; cedentId?: string; brokerId?: string } }>(
     '/api/treaties',
     { preHandler: requirePermission('treaty:read') },
     async (req) => {
@@ -117,14 +117,18 @@ export async function treatiesModule(app: FastifyInstance): Promise<void> {
                   c.proportional_type as "proportionalType", c.np_type as "npType",
                   c.line_of_business as "lineOfBusiness", c.direction, c.currency,
                   c.period_start as "periodStart", c.period_end as "periodEnd", c.status,
-                  ced.short_name as "cedentName"
+                  c.cedent_party_id as "cedentPartyId", c.broker_party_id as "brokerPartyId",
+                  ced.short_name as "cedentName", brk.short_name as "brokerName"
              from contract c
              left join party ced on ced.id = c.cedent_party_id
+             left join party brk on brk.id = c.broker_party_id
             where not c.is_deleted
               and ($1::citext is null or c.status = $1)
               and ($2::citext is null or c.contract_kind = $2)
+              and ($3::uuid is null or c.cedent_party_id = $3)
+              and ($4::uuid is null or c.broker_party_id = $4)
             order by c.created_at desc`,
-          [req.query.status ?? null, req.query.kind ?? null],
+          [req.query.status ?? null, req.query.kind ?? null, req.query.cedentId ?? null, req.query.brokerId ?? null],
         );
         return { treaties: rows };
       });

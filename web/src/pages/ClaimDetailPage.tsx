@@ -1,6 +1,8 @@
 import { ShieldAlert, Wallet, CircleDollarSign, Undo2, History } from 'lucide-react';
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../lib/api';
 import { useClaim, useReserveMovement, useStatusColors } from '../lib/queries';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
@@ -11,7 +13,7 @@ import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, Input, Select, Textarea } from '../components/Form';
-import { EmptyState } from '../components/Table';
+import { Table, type Column, EmptyState } from '../components/Table';
 import { DefinitionList, ErrorState, PageLoader, SectionLabel } from '../components/Feedback';
 import { formatMoney, formatDate, formatDateTime, titleCase } from '../lib/format';
 import { ApiError } from '../lib/api';
@@ -21,11 +23,33 @@ import styles from './ClaimDetailPage.module.css';
 
 type MovementType = 'OPEN' | 'INCREASE' | 'DECREASE' | 'PAYMENT' | 'CLOSE';
 
+// Recovery shape mirrors GET /api/claims/:id/recoveries (see ClaimsRecoveriesPage).
+interface RecoveryItem {
+  id: string;
+  claimId: string;
+  recoveryContractId: string | null;
+  recoveryType: string;
+  amountMinor: number;
+  currency: string;
+  status: string | null;
+  collectedDate: string | null;
+  createdAt: string | null;
+}
+
+function useClaimRecoveries(claimId: string | undefined) {
+  return useQuery({
+    queryKey: ['claims', claimId, 'recoveries'],
+    queryFn: () => api<{ recoveries: RecoveryItem[] }>(`/api/claims/${claimId}/recoveries`),
+    enabled: !!claimId,
+  });
+}
+
 export function ClaimDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const { data: claim, isLoading, isError } = useClaim(id);
+  const recoveries = useClaimRecoveries(id);
   const statusColors = useStatusColors('claim_status');
   const [showMove, setShowMove] = useState(false);
 
@@ -42,7 +66,12 @@ export function ClaimDetailPage() {
       <PageHeader
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Claims', to: '/claims' }, { label: claim.reference ?? 'Claim' }]}
         title={claim.description ?? 'Claim'}
-        description={<span><span className={shared.cellRef}>{claim.reference}</span> · {claim.contractName ?? claim.contractId}</span>}
+        description={
+          <span>
+            <span className={shared.cellRef}>{claim.reference}</span> ·{' '}
+            <Link className={styles.treatyLink} to={`/treaties/${claim.contractId}`}>{claim.contractName ?? claim.contractId}</Link>
+          </span>
+        }
         actions={
           <div className={styles.actions}>
             <StatusPill status={claim.status} metaColors={statusColors} />
@@ -95,10 +124,38 @@ export function ClaimDetailPage() {
         </Card>
       </div>
 
+      <div style={{ marginTop: 'var(--space-5)' }}>
+        <Card padded={false}>
+          <div style={{ padding: 'var(--space-4)' }} className={shared.toolbar}>
+            <div>
+              <SectionLabel>Recoveries</SectionLabel>
+              <p className={shared.cellSub}>Reinsurance, salvage and subrogation recovered against this loss.</p>
+            </div>
+            <div className={shared.spacer} />
+            <Link to="/recoveries"><Button size="sm" variant="secondary" icon={<Undo2 size={16} />}>Manage recoveries</Button></Link>
+          </div>
+          <Table
+            columns={recoveryColumns}
+            rows={recoveries.data?.recoveries}
+            loading={recoveries.isLoading}
+            rowKey={(r) => r.id}
+            empty={<EmptyState title="No recoveries" message="No recoveries have been booked against this claim." icon={<Undo2 size={16} />} />}
+          />
+        </Card>
+      </div>
+
       <MovementModal claimId={id!} currency={ccy} open={showMove} onClose={() => setShowMove(false)} />
     </>
   );
 }
+
+const recoveryColumns: Column<RecoveryItem>[] = [
+  { key: 'type', header: 'Type', sortValue: (r) => r.recoveryType, render: (r) => <Badge color="blue">{titleCase(r.recoveryType)}</Badge> },
+  { key: 'amount', header: 'Amount', align: 'right', sortValue: (r) => r.amountMinor, render: (r) => <span className={shared.money}>{formatMoney(r.amountMinor, r.currency)}</span> },
+  { key: 'status', header: 'Status', render: (r) => <span className={shared.cellSub}>{r.status ? titleCase(r.status) : '-'}</span> },
+  { key: 'collected', header: 'Collected', render: (r) => formatDate(r.collectedDate) },
+  { key: 'created', header: 'Booked', sortValue: (r) => r.createdAt ?? '', render: (r) => formatDate(r.createdAt) },
+];
 
 function MovementRow({ m, currency }: { m: ClaimMovement; currency: string }) {
   const color =

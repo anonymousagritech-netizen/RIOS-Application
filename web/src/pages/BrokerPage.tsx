@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users, Landmark, Award, TrendingUp, Building2, Network,
-  MessageSquare, Plus, Pencil, Star, Download,
+  MessageSquare, Plus, Pencil, Star, Download, ArrowUpRight,
 } from 'lucide-react';
 import { api, ApiError, downloadFile } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -329,6 +329,7 @@ function BrokerDrawer({
   brokerId, canWrite, onClose,
 }: { brokerId: string | null; canWrite: boolean; onClose: () => void }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
 
   const detailQ = useQuery({
@@ -367,13 +368,16 @@ function BrokerDrawer({
               <Badge color={scoreBand(b.relationshipScore)}>
                 <Star size={12} /> {b.relationshipScore ?? '—'}/100
               </Badge>
-              {canWrite && (
-                <div style={{ marginLeft: 'auto' }}>
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 'var(--space-2)' }}>
+                <Button size="sm" variant="secondary" icon={<ArrowUpRight size={14} />} onClick={() => navigate(`/parties/${b.id}`)}>
+                  Party hub
+                </Button>
+                {canWrite && (
                   <Button size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setEditOpen(true)}>
                     Edit profile
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             <RelationshipScoreCard score={b.score} book={b.book} />

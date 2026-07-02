@@ -51,7 +51,10 @@ export interface TreatyListItem {
   periodStart: string | null;
   periodEnd: string | null;
   status: string;
+  cedentPartyId: string | null;
+  brokerPartyId: string | null;
   cedentName: string | null;
+  brokerName: string | null;
 }
 export interface TreatiesResponse { treaties: TreatyListItem[]; }
 

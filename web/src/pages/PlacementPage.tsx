@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useTreaties, useParties, useStatusColors } from '../lib/queries';
@@ -187,7 +188,7 @@ export function PlacementPage() {
         </Card>
 
         {selectedSlip && (
-          <SlipDetailCard slipId={selectedSlip} canWrite={canWrite} statusColors={statusColors} />
+          <SlipDetailCard slipId={selectedSlip} contractId={contractId} canWrite={canWrite} statusColors={statusColors} />
         )}
       </div>
 
@@ -196,7 +197,7 @@ export function PlacementPage() {
   );
 }
 
-function SlipDetailCard({ slipId, canWrite, statusColors }: { slipId: string; canWrite: boolean; statusColors: Record<string, string> }) {
+function SlipDetailCard({ slipId, contractId, canWrite, statusColors }: { slipId: string; contractId: string; canWrite: boolean; statusColors: Record<string, string> }) {
   const { data: slip, isLoading } = useSlip(slipId);
   const { data: parties } = useParties({});
   const toast = useToast();
@@ -259,11 +260,14 @@ function SlipDetailCard({ slipId, canWrite, statusColors }: { slipId: string; ca
               : 'Loading…'
           }
           actions={
-            canWrite ? (
-              <Button variant="secondary" onClick={() => setConfirmSign(true)} loading={signDown.isPending} disabled={!slip || !slip.marketLines.length}>
-                Sign down
-              </Button>
-            ) : null
+            <span className={styles.inlineMeta}>
+              <Link to={`/treaties/${contractId}`}><Button variant="ghost" size="sm">View treaty</Button></Link>
+              {canWrite ? (
+                <Button variant="secondary" onClick={() => setConfirmSign(true)} loading={signDown.isPending} disabled={!slip || !slip.marketLines.length}>
+                  Sign down
+                </Button>
+              ) : null}
+            </span>
           }
         />
       </div>
