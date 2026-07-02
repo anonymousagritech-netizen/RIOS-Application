@@ -4,20 +4,32 @@
  * Rule-driven allocation of every inward premium/claim financial event to the
  * outward retrocession program. A rule targets one retro contract, applies to
  * PREMIUM, CLAIM or BOTH, may filter by line of business / currency / event-date
- * window, and (for QUOTA_SHARE) cedes a percentage of the gross event amount.
+ * window, and cedes a share of the gross event amount under one of three methods:
  *
- * Multiple matching rules allocate independently - each cedes its own pct of the
- * gross - but the integer minor-unit split is done with the largest-remainder
+ *   - QUOTA_SHARE : cede `cessionPct`% of the gross.
+ *   - SURPLUS     : cede the surplus above a retention line, capped by max lines
+ *                   of capacity (reuses proportional.ts `surplusCession`).
+ *   - XL          : cede the layer between `attachment` and `attachment + limit`
+ *                   of the gross (reuses nonproportional.ts `layerRecovery`).
+ *
+ * Multiple matching rules allocate independently - each cedes its own share of
+ * the gross - but the integer minor-unit split is done with the largest-remainder
  * method against the combined exact total, capped at the source amount, so the
  * sum of allocations can never exceed the source event (reconcilability, §7.6).
  *
- * Pure: no I/O, no DB, no clock. The server persists; this file computes.
+ * Pure: no I/O, no DB, no clock. The server persists; this file computes. The
+ * reinsurance math is not re-derived here - SURPLUS and XL delegate to the
+ * proportional/non-proportional cores so correctness stays in one place.
  */
 
 import { Money, MoneyError, money, subtract } from './money.js';
+import { surplusCession } from './proportional.js';
+import { layerRecovery, type Layer } from './nonproportional.js';
 
 export type RetroEventKind = 'PREMIUM' | 'CLAIM';
 export type RetroAppliesTo = 'PREMIUM' | 'CLAIM' | 'BOTH';
+/** Cession methods the allocation engine can apply to a source event. */
+export type RetroMethod = 'QUOTA_SHARE' | 'SURPLUS' | 'XL';
 
 export interface RetroRuleFilter {
   /** Match only events on contracts with this line of business (exact, case-sensitive as supplied). */
@@ -37,10 +49,18 @@ export interface RetroAllocationRule {
   retroContractId: string;
   appliesTo: RetroAppliesTo;
   filter?: RetroRuleFilter;
-  /** Only QUOTA_SHARE is implemented; SURPLUS-style rules express a fixed pct the same way. */
-  method: 'QUOTA_SHARE';
-  /** Cession percentage of the gross event amount, in (0, 100]. */
-  cessionPct: number;
+  /** Cession method (see RetroMethod). Each method reads its own params below. */
+  method: RetroMethod;
+  /** QUOTA_SHARE: cession percentage of the gross event amount, in (0, 100]. */
+  cessionPct?: number;
+  /** SURPLUS: the retained line in integer minor units (> 0). */
+  retentionMinor?: number;
+  /** SURPLUS: number of surplus lines of capacity (>= 0); capacity = retention × maxLines. */
+  maxLines?: number;
+  /** XL: attachment point in integer minor units (>= 0); losses below this are retained. */
+  attachmentMinor?: number;
+  /** XL: layer limit in integer minor units (> 0); the most the layer cedes for one event. */
+  limitMinor?: number;
   /** Lower runs first; purely an ordering/tie-break concern for the remainder distribution. */
   priority: number;
 }
@@ -58,6 +78,11 @@ export interface RetroSourceEvent {
 export interface RetroAllocationLine {
   ruleId: string;
   retroContractId: string;
+  /** The method that produced this line. */
+  method: RetroMethod;
+  /** Effective ceded share of the gross, as a percentage (rounded to 4 dp). For
+   *  QUOTA_SHARE this is the rule's requested pct; for SURPLUS/XL it is the
+   *  realised share the method resolved to for this event. */
   cessionPct: number;
   /** Ceded amount in integer minor units, same currency as the source. */
   amount: Money;
@@ -75,11 +100,30 @@ const PCT_SCALE = 10_000n;
 const DENOMINATOR = 100n * PCT_SCALE;
 
 function assertValidRule(rule: RetroAllocationRule): void {
-  if (rule.method !== 'QUOTA_SHARE') {
-    throw new RangeError(`Unsupported allocation method: ${String(rule.method)}`);
-  }
-  if (!Number.isFinite(rule.cessionPct) || rule.cessionPct <= 0 || rule.cessionPct > 100) {
-    throw new RangeError(`cessionPct must be in (0, 100], got ${rule.cessionPct}`);
+  switch (rule.method) {
+    case 'QUOTA_SHARE':
+      if (!Number.isFinite(rule.cessionPct) || (rule.cessionPct ?? 0) <= 0 || (rule.cessionPct ?? 0) > 100) {
+        throw new RangeError(`QUOTA_SHARE cessionPct must be in (0, 100], got ${rule.cessionPct}`);
+      }
+      return;
+    case 'SURPLUS':
+      if (!Number.isFinite(rule.retentionMinor) || (rule.retentionMinor ?? 0) <= 0) {
+        throw new RangeError(`SURPLUS retentionMinor must be > 0, got ${rule.retentionMinor}`);
+      }
+      if (!Number.isFinite(rule.maxLines) || (rule.maxLines ?? -1) < 0) {
+        throw new RangeError(`SURPLUS maxLines must be >= 0, got ${rule.maxLines}`);
+      }
+      return;
+    case 'XL':
+      if (!Number.isFinite(rule.attachmentMinor) || (rule.attachmentMinor ?? -1) < 0) {
+        throw new RangeError(`XL attachmentMinor must be >= 0, got ${rule.attachmentMinor}`);
+      }
+      if (!Number.isFinite(rule.limitMinor) || (rule.limitMinor ?? 0) <= 0) {
+        throw new RangeError(`XL limitMinor must be > 0, got ${rule.limitMinor}`);
+      }
+      return;
+    default:
+      throw new RangeError(`Unsupported allocation method: ${String((rule as { method: unknown }).method)}`);
   }
 }
 
@@ -96,15 +140,68 @@ export function matchesRetroRule(event: RetroSourceEvent, rule: RetroAllocationR
   return true;
 }
 
+const round4 = (pct: number): number => Math.round(pct * 10_000) / 10_000;
+
+/**
+ * The exact cession a single rule would make against `event`, before the
+ * cross-rule remainder distribution and source cap.
+ *
+ *   numerator / DENOMINATOR = the exact ceded amount in minor units.
+ *
+ * QUOTA_SHARE carries a genuine fractional numerator (so several QS rules share
+ * the sub-minor-unit remainder fairly); SURPLUS and XL delegate to the domain
+ * cores, which already yield an integer amount, so their numerator is that
+ * integer × DENOMINATOR (no remainder to distribute).
+ */
+function ruleCession(
+  event: RetroSourceEvent,
+  rule: RetroAllocationRule,
+  source: bigint,
+): { numerator: bigint; displayPct: number } {
+  switch (rule.method) {
+    case 'QUOTA_SHARE': {
+      const numerator = source * BigInt(Math.round((rule.cessionPct ?? 0) * Number(PCT_SCALE)));
+      return { numerator, displayPct: round4(rule.cessionPct ?? 0) };
+    }
+    case 'SURPLUS': {
+      // Reuse the proportional surplus core: the source amount is the exposure
+      // basis; the ceded amount is source × cededShare in integer minor units.
+      const res = surplusCession(Number(source), event.amount, {
+        retentionLine: rule.retentionMinor ?? 0,
+        numberOfLines: rule.maxLines ?? 0,
+      });
+      return { numerator: BigInt(res.cededPremium.amount) * DENOMINATOR, displayPct: round4(res.cededShare * 100) };
+    }
+    case 'XL': {
+      // Reuse the XL layer-recovery core: cede the slice of the source between
+      // attachment and attachment + limit.
+      const layer: Layer = {
+        attachment: money(rule.attachmentMinor ?? 0, event.amount.currency),
+        limit: money(rule.limitMinor ?? 0, event.amount.currency),
+        reinstatements: 0,
+      };
+      const ceded = layerRecovery(event.amount, layer);
+      const src = Number(source);
+      return {
+        numerator: BigInt(ceded.amount) * DENOMINATOR,
+        displayPct: src > 0 ? round4((ceded.amount / src) * 100) : 0,
+      };
+    }
+    default:
+      // assertValidRule has already rejected unknown methods.
+      return { numerator: 0n, displayPct: 0 };
+  }
+}
+
 /**
  * Allocate one inward event across the matching rules.
  *
- * Each matching rule cedes `cessionPct` of the gross amount. Integer minor units
- * are split by largest remainder: every line gets the floor of its exact share,
- * then the leftover units (up to the floor of the combined exact total, and never
- * beyond the source amount) go one at a time to the largest fractional remainders
- * (ties broken by rule order). If the rule percentages sum past 100%, the total
- * is capped at the source amount by trimming the lowest-priority lines, so the
+ * Each matching rule cedes its method's share of the gross amount. Integer minor
+ * units are split by largest remainder: every line gets the floor of its exact
+ * share, then the leftover units (up to the floor of the combined exact total,
+ * and never beyond the source amount) go one at a time to the largest fractional
+ * remainders (ties broken by rule order). If the combined shares run past the
+ * source, the total is capped by trimming the lowest-priority lines, so the
  * allocation can never invent money.
  */
 export function allocateRetrocession(
@@ -122,7 +219,8 @@ export function allocateRetrocession(
     .sort((a, b) => (a.priority - b.priority) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
   const source = BigInt(event.amount.amount);
-  const numerators = matched.map((r) => source * BigInt(Math.round(r.cessionPct * Number(PCT_SCALE))));
+  const cessions = matched.map((r) => ruleCession(event, r, source));
+  const numerators = cessions.map((c) => c.numerator);
   const bases = numerators.map((n) => n / DENOMINATOR);
   const remainders = numerators.map((n) => n % DENOMINATOR);
 
@@ -147,7 +245,7 @@ export function allocateRetrocession(
       idx += 1;
     }
   } else if (allocated > target) {
-    // Percentages summed past 100%: trim from the lowest-priority lines.
+    // Shares summed past the source: trim from the lowest-priority lines.
     for (let i = parts.length - 1; i >= 0 && allocated > target; i--) {
       const cut = minBig(parts[i]!, allocated - target);
       parts[i] = parts[i]! - cut;
@@ -158,7 +256,8 @@ export function allocateRetrocession(
   const allocations: RetroAllocationLine[] = matched.map((rule, i) => ({
     ruleId: rule.id,
     retroContractId: rule.retroContractId,
-    cessionPct: rule.cessionPct,
+    method: rule.method,
+    cessionPct: cessions[i]!.displayPct,
     amount: money(Number(parts[i]!), currency),
   }));
   const totalCeded = money(Number(allocated), currency);

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, qs, ApiError } from '../lib/api';
 import { useStatusColors, useCurrencies, useCodeLists, useParties } from '../lib/queries';
@@ -54,6 +55,7 @@ function useCreateFacultative() {
 
 export function FacultativePage() {
   const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [status, setStatus] = useState('');
   const [showNew, setShowNew] = useState(false);
 
@@ -158,6 +160,7 @@ export function FacultativePage() {
           rows={data?.facultative}
           loading={isLoading}
           rowKey={(r) => r.id}
+          onRowClick={(r) => navigate(`/facultative/${r.id}`)}
           empty={<EmptyState title="No facultative cessions" message="Create a new cession to place a single risk facultatively." icon={<FileCheck2 size={16} />} />}
         />
       </Card>
@@ -177,11 +180,16 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
   // Identification
   const [name, setName] = useState('');
   const [basis, setBasis] = useState('PROPORTIONAL');
+  const [facType, setFacType] = useState('FAC_FACULTATIVE');
   const [lineOfBusiness, setLineOfBusiness] = useState('');
   const [currency, setCurrency] = useState('USD');
   // Parties & risk
   const [cedentPartyId, setCedentPartyId] = useState('');
+  const [reinsurerPartyId, setReinsurerPartyId] = useState('');
   const [insuredName, setInsuredName] = useState('');
+  // Slip dates
+  const [validUntil, setValidUntil] = useState('');
+  const [inspectedOn, setInspectedOn] = useState('');
   // Sum insured & premium
   const [sumInsured, setSumInsured] = useState('');
   const [premium, setPremium] = useState('');
@@ -208,8 +216,9 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
   );
 
   const reset = () => {
-    setName(''); setBasis('PROPORTIONAL'); setLineOfBusiness(''); setCurrency('USD');
-    setCedentPartyId(''); setInsuredName('');
+    setName(''); setBasis('PROPORTIONAL'); setFacType('FAC_FACULTATIVE'); setLineOfBusiness(''); setCurrency('USD');
+    setCedentPartyId(''); setReinsurerPartyId(''); setInsuredName('');
+    setValidUntil(''); setInspectedOn('');
     setSumInsured(''); setPremium(''); setCededShare(''); setClassDetails({}); setError(null);
   };
 
@@ -217,10 +226,13 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
     e.preventDefault();
     setError(null);
     if (!name.trim()) { setError('Enter a cession name.'); return; }
-    const body: Record<string, unknown> = { name: name.trim(), basis, currency };
+    const body: Record<string, unknown> = { name: name.trim(), basis, facType, currency };
     if (lineOfBusiness) body.lineOfBusiness = lineOfBusiness;
     if (cedentPartyId) body.cedentPartyId = cedentPartyId;
+    if (reinsurerPartyId) body.reinsurerPartyId = reinsurerPartyId;
     if (insuredName.trim()) body.insuredName = insuredName.trim();
+    if (validUntil) body.validUntil = validUntil;
+    if (inspectedOn) body.inspectedOn = inspectedOn;
     const si = Number(sumInsured);
     if (sumInsured && !Number.isNaN(si)) body.sumInsured = si;
     const prem = Number(premium);
@@ -272,6 +284,12 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
               <option value="NON_PROPORTIONAL">Non-proportional (excess of loss)</option>
             </Select>
           </FormField>
+          <FormField label="Fac type" hint="Obligatory (framework) vs facultative (free on each risk).">
+            <Select value={facType} onChange={(e) => setFacType(e.target.value)}>
+              <option value="FAC_FACULTATIVE">Fac-facultative</option>
+              <option value="FAC_OBLIG">Fac-obligatory</option>
+            </Select>
+          </FormField>
           <FormField label="Line of business">
             <Select value={lineOfBusiness} onChange={(e) => setLineOfBusiness(e.target.value)}>
               <option value="">Unspecified</option>
@@ -287,9 +305,15 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
           </FormField>
         </FormSection>
 
-        <FormSection title="Cedent & risk" description="The reinsured ceding the risk and the underlying insured.">
+        <FormSection title="Cedent, reinsurer & risk" description="The reinsured ceding the risk, the reinsurer taking the line, and the underlying insured.">
           <FormField label="Cedent / reinsured">
             <Select value={cedentPartyId} onChange={(e) => setCedentPartyId(e.target.value)}>
+              <option value="">Select a party…</option>
+              {parties.map((p) => <option key={p.id} value={p.id}>{partyName(p)}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Reinsurer">
+            <Select value={reinsurerPartyId} onChange={(e) => setReinsurerPartyId(e.target.value)}>
               <option value="">Select a party…</option>
               {parties.map((p) => <option key={p.id} value={p.id}>{partyName(p)}</option>)}
             </Select>
@@ -297,6 +321,12 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
           <div style={{ gridColumn: '1 / -1' }}>
             <TextField label="Insured name" value={insuredName} onChange={setInsuredName} placeholder="e.g. Acme Industrial Ltd" />
           </div>
+          <FormField label="Quote valid until" hint="Date the offer/quote lapses.">
+            <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+          </FormField>
+          <FormField label="Last inspected" hint="Date of the latest engineering / survey.">
+            <Input type="date" value={inspectedOn} onChange={(e) => setInspectedOn(e.target.value)} />
+          </FormField>
         </FormSection>
 
         <DynamicForm

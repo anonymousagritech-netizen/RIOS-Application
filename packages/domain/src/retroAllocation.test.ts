@@ -169,6 +169,100 @@ describe('allocateRetrocession: multiple rules, largest remainder, source cap', 
   });
 });
 
+describe('allocateRetrocession: surplus cession', () => {
+  // A surplus rule: retention line of $10,000 (1,000,000 minor) with 9 lines of
+  // capacity (max ceded = 9,000,000 above the retention).
+  const surplus = (over: Partial<RetroAllocationRule> = {}): RetroAllocationRule =>
+    rule({ method: 'SURPLUS', cessionPct: undefined, retentionMinor: 1_000_000, maxLines: 9, ...over });
+
+  it('cedes nothing when the source is at or below the retention line', () => {
+    const res = allocateRetrocession(premium(1_000_000), [surplus()]);
+    expect(res.allocations[0]!.amount.amount).toBe(0);
+    expect(res.retained.amount).toBe(1_000_000);
+    expect(res.allocations[0]!.method).toBe('SURPLUS');
+  });
+
+  it('cedes the whole surplus above the retention when within capacity', () => {
+    // source 5,000,000; retention 1,000,000; surplus 4,000,000 (< capacity 9,000,000).
+    const res = allocateRetrocession(premium(5_000_000), [surplus()]);
+    expect(res.allocations[0]!.amount.amount).toBe(4_000_000);
+    expect(res.totalCeded.amount).toBe(4_000_000);
+    expect(res.retained.amount).toBe(1_000_000);
+    // Realised share = 4,000,000 / 5,000,000 = 80%.
+    expect(res.allocations[0]!.cessionPct).toBe(80);
+  });
+
+  it('caps the cession at retention × maxLines of capacity', () => {
+    // source 20,000,000; retention 1,000,000; capacity 9,000,000 → ceded 9,000,000.
+    const res = allocateRetrocession(premium(20_000_000), [surplus()]);
+    expect(res.allocations[0]!.amount.amount).toBe(9_000_000);
+    expect(res.retained.amount).toBe(11_000_000);
+    expect(res.totalCeded.amount).toBeLessThanOrEqual(20_000_000);
+  });
+
+  it('conservation: surplus allocation never exceeds the source', () => {
+    for (const amt of [0, 1, 999_999, 1_000_000, 1_000_001, 4_500_000, 10_000_000, 50_000_000]) {
+      const res = allocateRetrocession(premium(amt), [surplus()]);
+      const sum = res.allocations.reduce((s, a) => s + a.amount.amount, 0);
+      expect(sum).toBe(res.totalCeded.amount);
+      expect(sum + res.retained.amount).toBe(amt);
+      expect(sum).toBeLessThanOrEqual(amt);
+    }
+  });
+});
+
+describe('allocateRetrocession: XL layer cession', () => {
+  // XL layer: $40,000 xs $10,000 (limit 4,000,000 minor, attachment 1,000,000 minor).
+  const xl = (over: Partial<RetroAllocationRule> = {}): RetroAllocationRule =>
+    rule({ method: 'XL', cessionPct: undefined, attachmentMinor: 1_000_000, limitMinor: 4_000_000, ...over });
+
+  it('cedes nothing when the source is at or below the attachment', () => {
+    const res = allocateRetrocession(premium(1_000_000), [xl()]);
+    expect(res.allocations[0]!.amount.amount).toBe(0);
+    expect(res.retained.amount).toBe(1_000_000);
+    expect(res.allocations[0]!.method).toBe('XL');
+  });
+
+  it('cedes the excess above the attachment while inside the limit', () => {
+    // source 3,000,000; attachment 1,000,000 → excess 2,000,000 (< limit 4,000,000).
+    const res = allocateRetrocession(premium(3_000_000), [xl()]);
+    expect(res.allocations[0]!.amount.amount).toBe(2_000_000);
+    expect(res.retained.amount).toBe(1_000_000);
+  });
+
+  it('caps the cession at the layer limit for a large source', () => {
+    // source 10,000,000; attachment 1,000,000; excess 9,000,000 capped to limit 4,000,000.
+    const res = allocateRetrocession(premium(10_000_000), [xl()]);
+    expect(res.allocations[0]!.amount.amount).toBe(4_000_000);
+    expect(res.retained.amount).toBe(6_000_000);
+  });
+
+  it('conservation: XL allocation never exceeds the source', () => {
+    for (const amt of [0, 1, 999_999, 1_000_000, 1_000_001, 4_999_999, 5_000_000, 5_000_001, 100_000_000]) {
+      const res = allocateRetrocession(premium(amt), [xl()]);
+      const sum = res.allocations.reduce((s, a) => s + a.amount.amount, 0);
+      expect(sum).toBe(res.totalCeded.amount);
+      expect(sum + res.retained.amount).toBe(amt);
+      expect(sum).toBeLessThanOrEqual(amt);
+    }
+  });
+
+  it('mixes methods across rules and still caps the combined total at the source', () => {
+    const rules = [
+      rule({ id: 'qs', method: 'QUOTA_SHARE', cessionPct: 50, priority: 10 }),
+      rule({ id: 'xl', method: 'XL', cessionPct: undefined, attachmentMinor: 0, limitMinor: 4_000_000, priority: 20 }),
+    ];
+    // QS 50% of 6,000,000 = 3,000,000; XL 0 xs 0 up to 4,000,000 = 4,000,000;
+    // combined 7,000,000 > source 6,000,000 → trimmed to 6,000,000.
+    const res = allocateRetrocession(premium(6_000_000), rules);
+    expect(res.totalCeded.amount).toBe(6_000_000);
+    expect(res.retained.amount).toBe(0);
+    // Higher-priority QS keeps its full 3,000,000; the XL line is trimmed.
+    expect(res.allocations.find((a) => a.ruleId === 'qs')!.amount.amount).toBe(3_000_000);
+    expect(res.allocations.find((a) => a.ruleId === 'xl')!.amount.amount).toBe(3_000_000);
+  });
+});
+
 describe('allocateRetrocession: validation', () => {
   it('rejects cessionPct outside (0, 100]', () => {
     expect(() => allocateRetrocession(premium(1000), [rule({ cessionPct: 0 })])).toThrow(RangeError);
@@ -177,9 +271,16 @@ describe('allocateRetrocession: validation', () => {
     expect(() => allocateRetrocession(premium(1000), [rule({ cessionPct: 100 })])).not.toThrow();
   });
 
+  it('rejects surplus/XL rules missing their required params', () => {
+    expect(() => allocateRetrocession(premium(1000), [rule({ method: 'SURPLUS', cessionPct: undefined })])).toThrow(RangeError);
+    expect(() => allocateRetrocession(premium(1000), [rule({ method: 'SURPLUS', cessionPct: undefined, retentionMinor: 0, maxLines: 9 })])).toThrow(RangeError);
+    expect(() => allocateRetrocession(premium(1000), [rule({ method: 'XL', cessionPct: undefined })])).toThrow(RangeError);
+    expect(() => allocateRetrocession(premium(1000), [rule({ method: 'XL', cessionPct: undefined, attachmentMinor: 0, limitMinor: 0 })])).toThrow(RangeError);
+  });
+
   it('rejects unsupported methods and negative source amounts', () => {
     expect(() =>
-      allocateRetrocession(premium(1000), [rule({ method: 'SURPLUS' as unknown as 'QUOTA_SHARE' })]),
+      allocateRetrocession(premium(1000), [rule({ method: 'BOGUS' as unknown as 'QUOTA_SHARE' })]),
     ).toThrow(RangeError);
     expect(() => allocateRetrocession(premium(-1), [rule()])).toThrow();
   });

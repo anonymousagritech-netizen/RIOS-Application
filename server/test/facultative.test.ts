@@ -116,6 +116,82 @@ describe('facultative: one-screen cession with auto-accounting', () => {
     expect(d.risks[0].details).toEqual(details);
   });
 
+  it('persists facType (fac-obligatory) and the reinsurer/validUntil/inspectedOn slip fields and returns them', async () => {
+    if (!dbUp) return;
+    const tkn = await token(app, 'admin@demo.rios');
+    const auth = { authorization: `Bearer ${tkn}` };
+
+    // A real reinsurer party to attach to the line.
+    const parties = await app.inject({ method: 'GET', url: '/api/parties', headers: auth });
+    const reinsurer = (parties.json().parties as { id: string; shortName: string | null; legalName: string }[])[0];
+    expect(reinsurer?.id).toBeTruthy();
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/facultative',
+      headers: auth,
+      payload: {
+        name: 'Fac Obligatory Cession',
+        basis: 'PROPORTIONAL',
+        facType: 'FAC_OBLIG',
+        currency: 'USD',
+        insuredName: 'Oblig Corp',
+        sumInsured: 2_000_000,
+        cededShare: 0.25,
+        reinsurerPartyId: reinsurer.id,
+        validUntil: '2026-12-31',
+        inspectedOn: '2026-05-15',
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const id = created.json().id as string;
+
+    const detail = await app.inject({ method: 'GET', url: `/api/facultative/${id}`, headers: auth });
+    expect(detail.statusCode).toBe(200);
+    const d = detail.json();
+    expect(d.facType).toBe('FAC_OBLIG');
+    expect(d.terms.facType).toBe('FAC_OBLIG');
+    expect(d.risks).toHaveLength(1);
+    expect(d.risks[0].reinsurerPartyId).toBe(reinsurer.id);
+    expect(d.risks[0].reinsurerName).toBe(reinsurer.shortName ?? null);
+    expect(d.risks[0].validUntil).toBe('2026-12-31');
+    expect(d.risks[0].inspectedOn).toBe('2026-05-15');
+  });
+
+  it('supports a single-risk fast cession from a minimal payload and defaults facType', async () => {
+    if (!dbUp) return;
+    const tkn = await token(app, 'admin@demo.rios');
+    const auth = { authorization: `Bearer ${tkn}` };
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/facultative',
+      headers: auth,
+      payload: { name: 'Fast Cession', basis: 'NON_PROPORTIONAL', currency: 'USD' },
+    });
+    expect(created.statusCode).toBe(201);
+    const body = created.json();
+    expect(typeof body.id).toBe('string');
+    expect(typeof body.riskId).toBe('string');
+    expect(body.financialEvents).toHaveLength(0);
+
+    const detail = await app.inject({ method: 'GET', url: `/api/facultative/${body.id}`, headers: auth });
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json().facType).toBe('FAC_FACULTATIVE'); // schema default
+  });
+
+  it('returns 404 for a facultative cession that does not exist', async () => {
+    if (!dbUp) return;
+    const tkn = await token(app, 'admin@demo.rios');
+    const auth = { authorization: `Bearer ${tkn}` };
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/facultative/00000000-0000-0000-0000-000000000000',
+      headers: auth,
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
   it('books the full premium for non-proportional facultative', async () => {
     if (!dbUp) return;
     const tkn = await token(app, 'admin@demo.rios');

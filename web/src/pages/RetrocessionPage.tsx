@@ -165,6 +165,16 @@ const NP_TYPES = [
   { code: 'STOP_LOSS', label: 'Stop loss' },
 ];
 
+// The outward programme structure the slip captures. QS/Surplus are proportional;
+// XL is non-proportional. The engine's allocation methods mirror these.
+const STRUCTURES = [
+  { code: 'QUOTA_SHARE', label: 'Quota share' },
+  { code: 'SURPLUS', label: 'Surplus' },
+  { code: 'XL', label: 'Excess of loss (XL)' },
+];
+
+const num = (v: string) => (v.trim() && !Number.isNaN(Number(v)) ? Number(v) : undefined);
+
 function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const create = useCreateRetrocession();
@@ -173,9 +183,21 @@ function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () =>
 
   // Identification
   const [name, setName] = useState('');
-  const [basis, setBasis] = useState('NON_PROPORTIONAL');
+  const [structure, setStructure] = useState('QUOTA_SHARE');
   const [npType, setNpType] = useState('PER_RISK_XL');
   const [currency, setCurrency] = useState('USD');
+  // Period
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
+  // Structure terms
+  const [cessionPct, setCessionPct] = useState('');       // QS
+  const [retention, setRetention] = useState('');          // Surplus (major units)
+  const [maxLines, setMaxLines] = useState('');            // Surplus (lines)
+  const [attachment, setAttachment] = useState('');        // XL (major units)
+  const [limit, setLimit] = useState('');                  // XL (major units)
+  // Premium & commission
+  const [premium, setPremium] = useState('');
+  const [commissionPct, setCommissionPct] = useState('');
   // Parties
   const [cedentPartyId, setCedentPartyId] = useState('');
   const [retrocessionairePartyId, setRetrocessionairePartyId] = useState('');
@@ -183,11 +205,16 @@ function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () =>
 
   const currencies = ccy?.currencies ?? [];
   const parties = partyData?.parties ?? [];
-  const isNonProp = basis === 'NON_PROPORTIONAL';
+  const isXl = structure === 'XL';
+  const isSurplus = structure === 'SURPLUS';
+  const isQs = structure === 'QUOTA_SHARE';
   const partyName = (p: { shortName?: string | null; legalName: string }) => p.shortName || p.legalName;
 
   const reset = () => {
-    setName(''); setBasis('NON_PROPORTIONAL'); setNpType('PER_RISK_XL'); setCurrency('USD');
+    setName(''); setStructure('QUOTA_SHARE'); setNpType('PER_RISK_XL'); setCurrency('USD');
+    setPeriodStart(''); setPeriodEnd('');
+    setCessionPct(''); setRetention(''); setMaxLines(''); setAttachment(''); setLimit('');
+    setPremium(''); setCommissionPct('');
     setCedentPartyId(''); setRetrocessionairePartyId(''); setError(null);
   };
 
@@ -195,10 +222,33 @@ function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () =>
     e.preventDefault();
     setError(null);
     if (!name.trim()) { setError('Enter a retrocession name.'); return; }
+
+    // Structure → basis + proportionalType/npType (mirrors the treaty slip).
+    const basis = isXl ? 'NON_PROPORTIONAL' : 'PROPORTIONAL';
+
+    // Typed slip terms (major units / percentages) → the contract's term bag.
+    const terms: Record<string, unknown> = {};
+    if (isQs && num(cessionPct) !== undefined) terms.cessionPct = num(cessionPct);
+    if (isSurplus) {
+      if (num(retention) !== undefined) terms.retentionLines = num(retention);
+      if (num(maxLines) !== undefined) terms.maxLines = num(maxLines);
+    }
+    if (isXl) {
+      if (num(attachment) !== undefined) terms.attachment = num(attachment);
+      if (num(limit) !== undefined) terms.limit = num(limit);
+    }
+    if (num(premium) !== undefined) terms.premium = num(premium);
+    if (num(commissionPct) !== undefined) terms.commissionPct = num(commissionPct);
+
     const body: Record<string, unknown> = { name: name.trim(), basis, currency };
-    if (isNonProp) body.npType = npType;
+    if (isXl) body.npType = npType;
+    else body.proportionalType = structure;
+    if (periodStart) body.periodStart = periodStart;
+    if (periodEnd) body.periodEnd = periodEnd;
+    if (Object.keys(terms).length) body.terms = terms;
     if (cedentPartyId) body.cedentPartyId = cedentPartyId;
     if (retrocessionairePartyId) body.retrocessionairePartyId = retrocessionairePartyId;
+
     try {
       const res = await create.mutateAsync(body);
       toast.success(`Retrocession ${res.reference} created`);
@@ -215,7 +265,7 @@ function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () =>
       onClose={() => { reset(); onClose(); }}
       size="lg"
       title="New retrocession"
-      description="Create a draft outwards retrocession protection: identification, structure and the retrocedent / retrocessionaire parties."
+      description="Capture the outward slip: identification, period, structure, premium & commission, and the retrocedent / retrocessionaire parties."
       footer={
         <>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
@@ -224,23 +274,10 @@ function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () =>
       }
     >
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-        <FormSection title="Identification & structure">
+        <FormSection title="Identification">
           <div style={{ gridColumn: '1 / -1' }}>
             <TextField label="Retrocession name" value={name} onChange={setName} required placeholder="e.g. Whole Account Retro XL 2026" />
           </div>
-          <FormField label="Basis" required>
-            <Select value={basis} onChange={(e) => setBasis(e.target.value)}>
-              <option value="NON_PROPORTIONAL">Non-proportional (excess of loss)</option>
-              <option value="PROPORTIONAL">Proportional</option>
-            </Select>
-          </FormField>
-          {isNonProp && (
-            <FormField label="Excess-of-loss type">
-              <Select value={npType} onChange={(e) => setNpType(e.target.value)}>
-                {NP_TYPES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
-              </Select>
-            </FormField>
-          )}
           <FormField label="Currency" required>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {(currencies.length ? currencies.map((c) => c.code) : ['USD', 'EUR', 'GBP', 'JPY']).map((c) => (
@@ -248,6 +285,46 @@ function NewRetrocessionModal({ open, onClose }: { open: boolean; onClose: () =>
               ))}
             </Select>
           </FormField>
+        </FormSection>
+
+        <FormSection title="Period">
+          <TextField label="Inception date" type="date" value={periodStart} onChange={setPeriodStart} />
+          <TextField label="Expiry date" type="date" value={periodEnd} onChange={setPeriodEnd} />
+        </FormSection>
+
+        <FormSection title="Structure" description="The cession method the outward programme applies; it drives the allocation engine.">
+          <FormField label="Structure" required>
+            <Select value={structure} onChange={(e) => setStructure(e.target.value)}>
+              {STRUCTURES.map((s) => <option key={s.code} value={s.code}>{s.label}</option>)}
+            </Select>
+          </FormField>
+          {isXl && (
+            <FormField label="Excess-of-loss type">
+              <Select value={npType} onChange={(e) => setNpType(e.target.value)}>
+                {NP_TYPES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+              </Select>
+            </FormField>
+          )}
+          {isQs && (
+            <TextField label="Cession %" type="number" value={cessionPct} onChange={setCessionPct} placeholder="e.g. 30" hint="Ceded share of each event" />
+          )}
+          {isSurplus && (
+            <>
+              <TextField label="Retention (line, major units)" type="number" value={retention} onChange={setRetention} placeholder="e.g. 10000" hint="Retained line above which the surplus cedes" />
+              <TextField label="Max cession (lines)" type="number" value={maxLines} onChange={setMaxLines} placeholder="e.g. 9" hint="Number of surplus lines of capacity" />
+            </>
+          )}
+          {isXl && (
+            <>
+              <TextField label="Attachment / retention (major units)" type="number" value={attachment} onChange={setAttachment} placeholder="e.g. 10000" hint="Losses below this are retained" />
+              <TextField label="Limit / cover (major units)" type="number" value={limit} onChange={setLimit} placeholder="e.g. 40000" hint="Layer limit above attachment" />
+            </>
+          )}
+        </FormSection>
+
+        <FormSection title="Premium & commission">
+          <TextField label={`Premium (major units of ${currency})`} type="number" value={premium} onChange={setPremium} placeholder="e.g. 12000" />
+          <TextField label="Commission %" type="number" value={commissionPct} onChange={setCommissionPct} placeholder="e.g. 15" />
         </FormSection>
 
         <FormSection title="Parties" description="The retrocedent ceding the outwards line and the retrocessionaire taking it.">
