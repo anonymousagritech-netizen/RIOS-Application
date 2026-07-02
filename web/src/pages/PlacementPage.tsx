@@ -13,6 +13,7 @@ import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
+import { DocumentsPanel } from '../components/DocumentsPanel';
 import { formatPercent, formatNumber } from '../lib/format';
 import { PenLine, FileSignature, Percent, TrendingUp, AlertTriangle } from 'lucide-react';
 import shared from './shared.module.css';
@@ -247,6 +248,7 @@ function SlipDetailCard({ slipId, contractId, canWrite, statusColors }: { slipId
   };
 
   return (
+    <>
     <Card padded={false}>
       <div className={styles.detailHead}>
         <CardHeader
@@ -312,6 +314,12 @@ function SlipDetailCard({ slipId, contractId, canWrite, statusColors }: { slipId
         loading={signDown.isPending}
       />
     </Card>
+
+    {/* Documents linked to this placement slip (server entity_type is 'slip') */}
+    <div style={{ marginTop: 'var(--space-4)' }}>
+      <DocumentsPanel entityType="slip" entityId={slipId} />
+    </div>
+    </>
   );
 }
 

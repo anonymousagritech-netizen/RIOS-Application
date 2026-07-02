@@ -19,6 +19,7 @@ import { Modal } from '../components/Modal';
 import { DonutChart } from '../components/DonutChart';
 import { BarChart } from '../components/BarChart';
 import { FormField, FormSection, Input, Select, TextField, Textarea } from '../components/Form';
+import { DocumentsPanel } from '../components/DocumentsPanel';
 import { titleCase } from '../lib/format';
 import styles from './BrokerPage.module.css';
 
@@ -386,6 +387,8 @@ function BrokerDrawer({
             <ContractsCard brokerId={b.id} contracts={b.contracts} canWrite={canWrite} onDone={invalidate} />
             <PortfolioCard items={b.portfolio} />
             <CommunicationsCard brokerId={b.id} comms={b.communications} canWrite={canWrite} onDone={invalidate} />
+            {/* Documents (brokers are parties → entityType="party") */}
+            <DocumentsPanel entityType="party" entityId={b.id} />
           </div>
         )}
       </Drawer>
