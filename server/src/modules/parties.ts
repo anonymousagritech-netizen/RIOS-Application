@@ -15,6 +15,8 @@ const createPartySchema = z.object({
   kind: z.enum(['organisation', 'individual', 'syndicate', 'pool', 'captive']).default('organisation'),
   country: z.string().length(2).optional(),
   roles: z.array(z.string()).default([]),
+  // Regulatory / market identifiers (LEI, tax id, NAIC, Lloyd's syndicate number, ...).
+  identifiers: z.record(z.string()).optional(),
 });
 
 export async function partiesModule(app: FastifyInstance): Promise<void> {
@@ -77,9 +79,10 @@ export async function partiesModule(app: FastifyInstance): Promise<void> {
     return runAs(ctx, async (db) => {
       const ref = await nextReference(db, ctx.tenantId, 'party_reference', 'PTY');
       const { rows } = await db.query<{ id: string }>(
-        `insert into party (tenant_id, reference, legal_name, short_name, kind, country)
-         values ($1,$2,$3,$4,$5,$6) returning id`,
-        [ctx.tenantId, ref, body.legalName, body.shortName ?? null, body.kind, body.country ?? null],
+        `insert into party (tenant_id, reference, legal_name, short_name, kind, country, identifiers)
+         values ($1,$2,$3,$4,$5,$6,$7) returning id`,
+        [ctx.tenantId, ref, body.legalName, body.shortName ?? null, body.kind, body.country ?? null,
+         JSON.stringify(body.identifiers ?? {})],
       );
       const id = rows[0]!.id;
       for (const role of body.roles) {

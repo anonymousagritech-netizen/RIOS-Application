@@ -154,6 +154,10 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
   const [kind, setKind] = useState('organisation');
   const [country, setCountry] = useState('');
   const [roles, setRoles] = useState<string[]>([]);
+  // Regulatory / market identifiers
+  const [lei, setLei] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [marketId, setMarketId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
@@ -172,6 +176,13 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
       const res = await create.mutateAsync({
         legalName: legalName.trim(),
         shortName: shortName.trim() || undefined,
+        identifiers: (lei.trim() || taxId.trim() || marketId.trim())
+          ? {
+              ...(lei.trim() ? { lei: lei.trim() } : {}),
+              ...(taxId.trim() ? { taxId: taxId.trim() } : {}),
+              ...(marketId.trim() ? { marketId: marketId.trim() } : {}),
+            }
+          : undefined,
         kind,
         country: iso || undefined,
         roles,
@@ -205,6 +216,9 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
             <TextField label="Legal name" value={legalName} onChange={setLegalName} required placeholder="e.g. Aurora Reinsurance Ltd" hint="Full registered legal name." />
           </div>
           <TextField label="Short name" value={shortName} onChange={setShortName} placeholder="Aurora Re" hint="Display name in lists and tables." />
+          <TextField label="LEI" value={lei} onChange={setLei} placeholder="e.g. 5493001KJTIIGC8Y1R12" hint="Legal Entity Identifier (20 chars)." />
+          <TextField label="Tax ID" value={taxId} onChange={setTaxId} placeholder="e.g. VAT / EIN / PAN" hint="Tax identifier in the party's domicile." />
+          <TextField label="Market ID" value={marketId} onChange={setMarketId} placeholder="e.g. NAIC 12345 / Lloyd's 2987" hint="NAIC code, Lloyd's syndicate number, or bureau id." />
           <FormField label="Kind" required hint="Legal classification of the counterparty.">
             <Select value={kind} onChange={(e) => setKind(e.target.value)}>
               {KINDS.map((k) => <option key={k.code} value={k.code}>{k.label}</option>)}

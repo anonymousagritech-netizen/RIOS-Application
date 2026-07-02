@@ -18,6 +18,9 @@ const createClaimSchema = z.object({
   lossDate: z.string().optional(),
   currency: z.string().length(3),
   grossLoss: z.number().nonnegative().default(0),
+  // Catastrophe/occurrence coding: ties the FNOL to a market event so event-level
+  // aggregation (hours clause, event limits) can roll claims up per occurrence.
+  catEventId: z.string().uuid().optional(),
 });
 
 const reserveSchema = z.object({
@@ -93,9 +96,9 @@ export async function claimsModule(app: FastifyInstance): Promise<void> {
     return runAs(ctx, async (db) => {
       const ref = await nextReference(db, ctx.tenantId, 'claim_reference', 'CLM');
       const { rows } = await db.query<{ id: string }>(
-        `insert into claim (tenant_id, reference, contract_id, description, loss_date, currency, gross_loss_minor, outstanding_minor, status, created_by)
-         values ($1,$2,$3,$4,$5,$6,$7,$7,'NOTIFIED',$8) returning id`,
-        [ctx.tenantId, ref, b.contractId, b.description ?? null, b.lossDate ?? null, b.currency, gross.amount, ctx.userId],
+        `insert into claim (tenant_id, reference, contract_id, description, loss_date, currency, gross_loss_minor, outstanding_minor, status, created_by, cat_event_id)
+         values ($1,$2,$3,$4,$5,$6,$7,$7,'NOTIFIED',$8,$9) returning id`,
+        [ctx.tenantId, ref, b.contractId, b.description ?? null, b.lossDate ?? null, b.currency, gross.amount, ctx.userId, b.catEventId ?? null],
       );
       const id = rows[0]!.id;
       if (gross.amount > 0) {
@@ -167,4 +170,49 @@ export async function claimsModule(app: FastifyInstance): Promise<void> {
       });
     },
   );
+
+  // --- Catastrophe / occurrence events (market event coding for FNOL) --------
+  app.get('/api/claims/cat-events', { preHandler: requirePermission('claims:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query(
+        `select id, event_code as "eventCode", name, peril, region,
+                to_char(event_date, 'YYYY-MM-DD') as "eventDate", status
+           from cat_event order by event_date desc nulls last, created_at desc`,
+      );
+      return { events: rows };
+    });
+  });
+
+  const createCatEventSchema = z.object({
+    eventCode: z.string().min(1),
+    name: z.string().min(1),
+    peril: z.string().optional(),
+    region: z.string().optional(),
+    eventDate: z.string().optional(),
+  });
+
+  app.post('/api/claims/cat-events', { preHandler: requirePermission('claims:write') }, async (req, reply) => {
+    const ctx = authContext(req);
+    const parsed = createCatEventSchema.safeParse(req.body);
+    if (!parsed.success) {
+      reply.code(400);
+      return { error: 'Invalid cat event', details: parsed.error.flatten() };
+    }
+    const b = parsed.data;
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query<{ id: string }>(
+        `insert into cat_event (tenant_id, event_code, name, peril, region, event_date)
+         values ($1,$2,$3,$4,$5,$6) returning id`,
+        [ctx.tenantId, b.eventCode, b.name, b.peril ?? null, b.region ?? null, b.eventDate ?? null],
+      );
+      const id = rows[0]!.id;
+      await writeAudit(db, ctx, {
+        action: 'create', entityType: 'cat_event', entityId: id,
+        after: { eventCode: b.eventCode, name: b.name, peril: b.peril }, actorLabel: req.auth?.displayName,
+      });
+      reply.code(201);
+      return { id, eventCode: b.eventCode, name: b.name };
+    });
+  });
 }

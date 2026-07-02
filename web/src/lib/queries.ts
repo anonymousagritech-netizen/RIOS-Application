@@ -75,6 +75,7 @@ export function useCreateParty() {
   return useMutation({
     mutationFn: (body: {
       legalName: string; shortName?: string; kind: string; country?: string; roles: string[];
+      identifiers?: Record<string, string>;
     }) => api<{ id: string; reference: string }>('/api/parties', { body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['parties'] }),
   });
@@ -163,7 +164,7 @@ export function useClaim(id: string | undefined) {
 export function useCreateClaim() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { contractId: string; description?: string; lossDate?: string; currency: string; grossLoss: number }) =>
+    mutationFn: (body: { contractId: string; description?: string; lossDate?: string; currency: string; grossLoss: number; catEventId?: string }) =>
       api<{ id: string; reference: string }>('/api/claims', { body }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['claims'] });
