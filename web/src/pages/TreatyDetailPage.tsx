@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { LayerDTO, ParticipationDTO } from '@rios/shared';
 import {
   useTreaty, useFinancialEvents, useStatement, useTransitionTreaty,
@@ -86,7 +86,14 @@ export function TreatyDetailPage() {
             {treaty.npType ? ` ${treaty.npType}` : ''}
             <span className={styles.dot}>·</span>
             {treaty.currency}
-            {treaty.cedentName ? <><span className={styles.dot}>·</span>{treaty.cedentName}</> : null}
+            {treaty.cedentName ? (
+              <>
+                <span className={styles.dot}>·</span>
+                {treaty.cedentPartyId
+                  ? <Link className={styles.cedentLink} to={`/parties/${treaty.cedentPartyId}`}>{treaty.cedentName}</Link>
+                  : treaty.cedentName}
+              </>
+            ) : null}
           </span>
         }
         actions={

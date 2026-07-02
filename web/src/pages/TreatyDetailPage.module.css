@@ -40,3 +40,6 @@
 }
 .recOk { color: var(--success); font-weight: var(--weight-semibold); }
 .recBad { color: var(--danger); font-weight: var(--weight-semibold); }
+
+.cedentLink { color: var(--primary); text-decoration: none; font-weight: var(--weight-medium); }
+.cedentLink:hover { text-decoration: underline; }
