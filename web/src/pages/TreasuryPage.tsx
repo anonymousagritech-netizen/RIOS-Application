@@ -34,6 +34,9 @@ interface Holding {
   id: string; portfolio: string; name: string; instrumentType: string; currency: string;
   faceValueMinor: number; bookValueMinor: number; marketValueMinor: number;
   couponRate?: number | null; maturityDate?: string | null; status: string;
+  units?: number | null; navPerUnit?: number | null;
+  fdTenorDays?: number | null; fdRate?: number | null; fdMaturity?: string | null;
+  accruedInterestMinor?: number;
 }
 interface Summary { currency: string; count: number; bookValueMinor: number; marketValueMinor: number; unrealisedMinor: number; accruedInterestMinor: number; bookYield: number }
 interface Levy { id: string; code: string; name: string; jurisdiction?: string | null; rate: number; basis: string; active: boolean }
@@ -45,7 +48,28 @@ interface Trade {
   currency: string; status: string; journalId?: string | null; createdAt?: string | null;
 }
 
-const INSTRUMENT_TYPES = ['BOND', 'BILL', 'EQUITY', 'CASH', 'FUND'] as const;
+const INSTRUMENT_TYPES = [
+  'BOND', 'BILL', 'EQUITY', 'CASH', 'FUND',
+  'FIXED_DEPOSIT', 'MUTUAL_FUND', 'GOVERNMENT_BOND', 'CORPORATE_BOND',
+  'TREASURY_BILL', 'MONEY_MARKET', 'STRUCTURED',
+] as const;
+
+type InstrumentTypeValue = typeof INSTRUMENT_TYPES[number];
+
+const INSTRUMENT_LABELS: Record<InstrumentTypeValue, string> = {
+  BOND: 'Bond',
+  BILL: 'Treasury Bill',
+  EQUITY: 'Equity',
+  CASH: 'Cash',
+  FUND: 'Fund',
+  FIXED_DEPOSIT: 'Fixed Deposit',
+  MUTUAL_FUND: 'Mutual Fund',
+  GOVERNMENT_BOND: 'Government Bond',
+  CORPORATE_BOND: 'Corporate Bond',
+  TREASURY_BILL: 'Treasury Bill (Short)',
+  MONEY_MARKET: 'Money Market',
+  STRUCTURED: 'Structured Product',
+};
 
 export function TreasuryPage() {
   const [tab, setTab] = useState('portfolio');
@@ -109,14 +133,27 @@ function Portfolio() {
 
   const cols: Column<Holding>[] = [
     { key: 'name', header: 'Holding', render: (h) => <span className={shared.cellMain}>{h.name}</span> },
-    { key: 'type', header: 'Type', render: (h) => <Badge color="slate">{titleCase(h.instrumentType)}</Badge> },
-    { key: 'coupon', header: 'Coupon', align: 'right', render: (h) => h.couponRate != null ? formatPercent(h.couponRate) : '-' },
-    { key: 'maturity', header: 'Maturity', render: (h) => h.maturityDate ? formatDate(h.maturityDate) : '-' },
+    { key: 'type', header: 'Type', render: (h) => <Badge color="slate">{INSTRUMENT_LABELS[h.instrumentType as InstrumentTypeValue] ?? titleCase(h.instrumentType)}</Badge> },
+    { key: 'coupon', header: 'Coupon / Rate', align: 'right', render: (h) => {
+      if (h.instrumentType === 'FIXED_DEPOSIT' && h.fdRate != null) return <span title="FD annual rate">{formatPercent(h.fdRate / 100)}</span>;
+      return h.couponRate != null ? formatPercent(h.couponRate) : '-';
+    } },
+    { key: 'maturity', header: 'Maturity', render: (h) => {
+      if (h.instrumentType === 'FIXED_DEPOSIT' && h.fdMaturity) return formatDate(h.fdMaturity);
+      return h.maturityDate ? formatDate(h.maturityDate) : '-';
+    } },
     { key: 'book', header: 'Book', align: 'right', sortValue: (h) => h.bookValueMinor, render: (h) => formatMoney(h.bookValueMinor, h.currency) },
     { key: 'market', header: 'Market', align: 'right', sortValue: (h) => h.marketValueMinor, render: (h) => formatMoney(h.marketValueMinor, h.currency) },
     { key: 'pnl', header: 'Unrealised', align: 'right', sortValue: (h) => h.marketValueMinor - h.bookValueMinor, render: (h) => {
       const d = h.marketValueMinor - h.bookValueMinor;
       return <span className={d >= 0 ? styles.pos : styles.neg}>{formatMoney(d, h.currency)}</span>;
+    } },
+    { key: 'extra', header: 'Accrued / Units', align: 'right', render: (h) => {
+      if (h.instrumentType === 'FIXED_DEPOSIT' && h.accruedInterestMinor != null && h.accruedInterestMinor > 0)
+        return <span title="Accrued interest (simple)">{formatMoney(h.accruedInterestMinor, h.currency)}</span>;
+      if (h.instrumentType === 'MUTUAL_FUND' && h.units != null)
+        return <span title={`${h.units} units`}>{formatNumber(h.units)} units</span>;
+      return '-';
     } },
   ];
 
@@ -160,13 +197,23 @@ function AddHoldingModal({ open, onClose }: { open: boolean; onClose: () => void
 
   const [name, setName] = useState('');
   const [portfolio, setPortfolio] = useState('GENERAL');
-  const [instrumentType, setInstrumentType] = useState<typeof INSTRUMENT_TYPES[number]>('BOND');
+  const [instrumentType, setInstrumentType] = useState<InstrumentTypeValue>('BOND');
   const [currency, setCurrency] = useState('USD');
   const [bookMajor, setBookMajor] = useState('');
   const [marketMajor, setMarketMajor] = useState('');
   const [couponPct, setCouponPct] = useState('');
   const [maturityDate, setMaturityDate] = useState('');
+  // Fixed deposit fields
+  const [fdTenorDays, setFdTenorDays] = useState('');
+  const [fdRate, setFdRate] = useState('');
+  const [fdMaturity, setFdMaturity] = useState('');
+  // Mutual fund fields
+  const [units, setUnits] = useState('');
+  const [navPerUnit, setNavPerUnit] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const isFixedDeposit = instrumentType === 'FIXED_DEPOSIT';
+  const isMutualFund = instrumentType === 'MUTUAL_FUND';
 
   const add = useMutation({
     mutationFn: (body: object) => api<{ id: string }>('/api/treasury/holdings', { body }),
@@ -178,7 +225,10 @@ function AddHoldingModal({ open, onClose }: { open: boolean; onClose: () => void
   const reset = () => {
     setName(''); setPortfolio('GENERAL'); setInstrumentType('BOND');
     setCurrency('USD'); setBookMajor(''); setMarketMajor('');
-    setCouponPct(''); setMaturityDate(''); setError(null);
+    setCouponPct(''); setMaturityDate('');
+    setFdTenorDays(''); setFdRate(''); setFdMaturity('');
+    setUnits(''); setNavPerUnit('');
+    setError(null);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -198,6 +248,13 @@ function AddHoldingModal({ open, onClose }: { open: boolean; onClose: () => void
         faceValueMinor: bookValueMinor,
         couponRate: couponRate ?? undefined,
         maturityDate: maturityDate || undefined,
+        // Fixed deposit
+        fdTenorDays: isFixedDeposit && fdTenorDays ? Number(fdTenorDays) : undefined,
+        fdRate: isFixedDeposit && fdRate ? Number(fdRate) : undefined,
+        fdMaturity: isFixedDeposit && fdMaturity ? fdMaturity : undefined,
+        // Mutual fund
+        units: isMutualFund && units ? Number(units) : undefined,
+        navPerUnit: isMutualFund && navPerUnit ? Number(navPerUnit) : undefined,
       });
       toast.success(`Holding recorded (id ${res.id.slice(0, 8)}…)`);
       reset();
@@ -227,8 +284,8 @@ function AddHoldingModal({ open, onClose }: { open: boolean; onClose: () => void
         <TextField label="Name / description" value={name} onChange={setName} required placeholder="e.g. US Treasury 4.25% 2035" hint="Descriptive name shown in the holdings table." />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
           <FormField label="Instrument type" required>
-            <Select value={instrumentType} onChange={(e) => setInstrumentType(e.target.value as typeof INSTRUMENT_TYPES[number])}>
-              {INSTRUMENT_TYPES.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
+            <Select value={instrumentType} onChange={(e) => setInstrumentType(e.target.value as InstrumentTypeValue)}>
+              {INSTRUMENT_TYPES.map((t) => <option key={t} value={t}>{INSTRUMENT_LABELS[t]}</option>)}
             </Select>
           </FormField>
           <FormField label="Currency" required hint="ISO 4217, e.g. USD">
@@ -249,14 +306,45 @@ function AddHoldingModal({ open, onClose }: { open: boolean; onClose: () => void
             <Input type="number" min="0" step="0.01" value={marketMajor} onChange={(e) => setMarketMajor(e.target.value)} placeholder="same as book" />
           </FormField>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-          <FormField label="Coupon rate (%)" hint="Annual coupon — bonds only">
-            <Input type="number" min="0" max="100" step="0.001" value={couponPct} onChange={(e) => setCouponPct(e.target.value)} placeholder="4.25" />
-          </FormField>
-          <FormField label="Maturity date" hint="ISO date (YYYY-MM-DD) — bonds/bills only">
-            <Input type="date" value={maturityDate} onChange={(e) => setMaturityDate(e.target.value)} />
-          </FormField>
-        </div>
+        {!isFixedDeposit && !isMutualFund && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+            <FormField label="Coupon rate (%)" hint="Annual coupon — bonds only">
+              <Input type="number" min="0" max="100" step="0.001" value={couponPct} onChange={(e) => setCouponPct(e.target.value)} placeholder="4.25" />
+            </FormField>
+            <FormField label="Maturity date" hint="ISO date (YYYY-MM-DD) — bonds/bills only">
+              <Input type="date" value={maturityDate} onChange={(e) => setMaturityDate(e.target.value)} />
+            </FormField>
+          </div>
+        )}
+        {isFixedDeposit && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', padding: 'var(--space-3)', background: 'var(--surface-2)', borderRadius: 'var(--radius)' }}>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-2)', margin: 0 }}>Fixed deposit details — accrued interest is computed using simple interest (face × rate × days / 365).</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)' }}>
+              <FormField label="Tenor (days)" hint="Total deposit term">
+                <Input type="number" min="1" step="1" value={fdTenorDays} onChange={(e) => setFdTenorDays(e.target.value)} placeholder="365" />
+              </FormField>
+              <FormField label="Annual rate (%)" hint="e.g. 7.5 for 7.5%">
+                <Input type="number" min="0" max="100" step="0.0001" value={fdRate} onChange={(e) => setFdRate(e.target.value)} placeholder="7.5" />
+              </FormField>
+              <FormField label="Maturity date">
+                <Input type="date" value={fdMaturity} onChange={(e) => setFdMaturity(e.target.value)} />
+              </FormField>
+            </div>
+          </div>
+        )}
+        {isMutualFund && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', padding: 'var(--space-3)', background: 'var(--surface-2)', borderRadius: 'var(--radius)' }}>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-2)', margin: 0 }}>Mutual fund details — book value is computed as units × NAV per unit.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <FormField label="Units held" hint="Number of fund units">
+                <Input type="number" min="0" step="any" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="1000" />
+              </FormField>
+              <FormField label="NAV per unit (major)" hint="Net asset value per unit in major currency">
+                <Input type="number" min="0" step="0.0001" value={navPerUnit} onChange={(e) => setNavPerUnit(e.target.value)} placeholder="10.50" />
+              </FormField>
+            </div>
+          </div>
+        )}
         <TextField label="Portfolio" value={portfolio} onChange={setPortfolio} placeholder="GENERAL" hint="Portfolio bucket; defaults to GENERAL." />
         {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm)' }} role="alert">{error}</p>}
       </form>

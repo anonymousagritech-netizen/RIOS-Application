@@ -11,6 +11,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   portfolioSummary, computeLevies, bucketCashFlows,
+  fdAccruedInterest, mutualFundBookValue,
   type Holding, type Levy, type ScheduledCashItem,
 } from '@rios/domain';
 import { runAs, type Db } from '../db.js';
@@ -20,13 +21,24 @@ import { writeAudit } from '../audit.js';
 const holdingSchema = z.object({
   name: z.string().min(1),
   portfolio: z.string().default('GENERAL'),
-  instrumentType: z.enum(['BOND', 'BILL', 'EQUITY', 'CASH', 'FUND']),
+  instrumentType: z.enum([
+    'BOND', 'BILL', 'EQUITY', 'CASH', 'FUND',
+    'FIXED_DEPOSIT', 'MUTUAL_FUND', 'GOVERNMENT_BOND', 'CORPORATE_BOND',
+    'TREASURY_BILL', 'MONEY_MARKET', 'STRUCTURED',
+  ]),
   currency: z.string().length(3),
   faceValueMinor: z.number().int().nonnegative().default(0),
   bookValueMinor: z.number().int().nonnegative().default(0),
   marketValueMinor: z.number().int().nonnegative().default(0),
   couponRate: z.number().nonnegative().nullable().optional(),
   maturityDate: z.string().nullable().optional(),
+  // Fixed-deposit specific
+  fdTenorDays: z.number().int().positive().nullable().optional(),
+  fdRate: z.number().nonnegative().nullable().optional(),
+  fdMaturity: z.string().nullable().optional(),
+  // Mutual-fund specific
+  units: z.number().nonnegative().nullable().optional(),
+  navPerUnit: z.number().nonnegative().nullable().optional(),
 });
 
 const levySchema = z.object({
@@ -66,20 +78,38 @@ export async function treasuryModule(app: FastifyInstance): Promise<void> {
         `select id, portfolio, name, instrument_type as "instrumentType", currency,
                 face_value_minor as "faceValueMinor", book_value_minor as "bookValueMinor",
                 market_value_minor as "marketValueMinor", coupon_rate as "couponRate",
-                maturity_date as "maturityDate", status
+                maturity_date as "maturityDate", status,
+                nav_per_unit as "navPerUnit", units::float8 as units,
+                fd_tenor_days as "fdTenorDays", fd_rate::float8 as "fdRate",
+                to_char(fd_maturity,'YYYY-MM-DD') as "fdMaturity",
+                accrued_interest_minor as "accruedInterestMinor"
            from investment_holding
           where status = 'HELD'
           order by book_value_minor desc`,
       );
+
+      // Compute derived values for FD and MF instrument types
+      const enriched = (rows as HoldingRow[]).map((r) => {
+        if (r.instrumentType === 'FIXED_DEPOSIT' && r.fdTenorDays != null && r.fdRate != null) {
+          const computed = fdAccruedInterest(BigInt(r.faceValueMinor), Number(r.fdRate), r.fdTenorDays);
+          return { ...r, accruedInterestMinor: Number(computed) };
+        }
+        if (r.instrumentType === 'MUTUAL_FUND' && r.units != null && r.navPerUnit != null) {
+          const computed = mutualFundBookValue(Number(r.units), Number(r.navPerUnit));
+          return { ...r, bookValueMinor: Number(computed) };
+        }
+        return r;
+      });
+
       // Summarise per currency so we never cross-add (the domain helper throws otherwise).
       const byCcy = new Map<string, Holding[]>();
-      for (const r of rows as Holding[]) {
+      for (const r of enriched as Holding[]) {
         const list = byCcy.get(r.currency) ?? [];
         list.push(r);
         byCcy.set(r.currency, list);
       }
       const summaries = [...byCcy.entries()].map(([currency, list]) => ({ currency, ...portfolioSummary(list) }));
-      return { holdings: rows, summaries };
+      return { holdings: enriched, summaries };
     });
   });
 
@@ -95,10 +125,13 @@ export async function treasuryModule(app: FastifyInstance): Promise<void> {
       const { rows } = await db.query<{ id: string }>(
         `insert into investment_holding
            (tenant_id, portfolio, name, instrument_type, currency, face_value_minor,
-            book_value_minor, market_value_minor, coupon_rate, maturity_date, created_by)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
+            book_value_minor, market_value_minor, coupon_rate, maturity_date,
+            units, nav_per_unit, fd_tenor_days, fd_rate, fd_maturity, created_by)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning id`,
         [ctx.tenantId, h.portfolio, h.name, h.instrumentType, h.currency, h.faceValueMinor,
-         h.bookValueMinor, h.marketValueMinor, h.couponRate ?? null, h.maturityDate ?? null, ctx.userId],
+         h.bookValueMinor, h.marketValueMinor, h.couponRate ?? null, h.maturityDate ?? null,
+         h.units ?? null, h.navPerUnit ?? null, h.fdTenorDays ?? null,
+         h.fdRate ?? null, h.fdMaturity ?? null, ctx.userId],
       );
       await writeAudit(db, ctx, {
         action: 'create', entityType: 'investment_holding', entityId: rows[0]!.id,
@@ -463,6 +496,22 @@ export async function treasuryModule(app: FastifyInstance): Promise<void> {
 // Dealing / forecast helpers (kept local; they replicate - not import - the
 // accounting.ts posting idiom, per the module boundary).
 // ---------------------------------------------------------------------------
+
+interface HoldingRow {
+  id: string;
+  instrumentType: string;
+  currency: string;
+  faceValueMinor: number;
+  bookValueMinor: number;
+  marketValueMinor: number;
+  units?: number | null;
+  navPerUnit?: number | null;
+  fdTenorDays?: number | null;
+  fdRate?: number | null;
+  fdMaturity?: string | null;
+  accruedInterestMinor: number;
+  [k: string]: unknown;
+}
 
 interface TradeRow {
   id: string;

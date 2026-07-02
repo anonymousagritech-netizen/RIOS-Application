@@ -231,3 +231,28 @@ export interface UnpostedResponse {
   events: UnpostedEvent[];
   count: number;
 }
+
+// ---------------------------------------------------------------------------
+// Treasury types (P3-C)
+// ---------------------------------------------------------------------------
+
+export interface TreasuryHolding {
+  id: string;
+  instrumentType: string;
+  name: string;
+  portfolio: string;
+  valueMinor: number;
+  currency: string;
+  faceValueMinor: number;
+  bookValueMinor: number;
+  marketValueMinor: number;
+  maturityDate: string | null;
+  couponRate?: number | null;
+  units?: number | null;
+  navPerUnit?: number | null;
+  fdTenorDays?: number | null;
+  fdRate?: number | null;
+  fdMaturity?: string | null;
+  accruedInterestMinor?: number;
+  status: string;
+}
