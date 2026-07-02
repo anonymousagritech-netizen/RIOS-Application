@@ -12,6 +12,8 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { formatDate, titleCase } from '../lib/format';
+import { DynamicForm, collectVisibleValues, type FormContext } from '../lib/formEngine';
+import { LOB_CLASS_GROUPS } from '../lib/lobSchema';
 import { ApiError } from '../lib/api';
 import type { TreatyListItem } from '../lib/types';
 import { Plus, FileText, Layers, CheckCircle2, Activity, FileSignature } from 'lucide-react';
@@ -161,52 +163,6 @@ const NP_TYPES = [
 
 const num = (v: string) => (v.trim() && !Number.isNaN(Number(v)) ? Number(v) : undefined);
 
-// Class-of-business detail schema. The New Treaty form is adaptive: selecting a
-// line of business auto-reveals the risk fields that class actually needs, so a
-// Marine slip captures cargo/vessel/route while an Aviation slip captures
-// hull/fleet. Matched by keyword against the LOB code+label, so new code-list
-// values that contain these words pick up the right group with no code change.
-// Values persist into terms.classDetails (the terms bag is passthrough).
-type ClassField = { key: string; label: string; type?: 'text' | 'number' | 'select'; options?: string[]; placeholder?: string; hint?: string };
-type ClassGroup = { id: string; title: string; description: string; match: string[]; fields: ClassField[] };
-const CLASS_GROUPS: ClassGroup[] = [
-  {
-    id: 'property', title: 'Property risk details', match: ['PROPERTY', 'FIRE', 'ENGINEERING', 'PROP'],
-    description: 'Shown automatically for property business.',
-    fields: [
-      { key: 'construction', label: 'Construction', placeholder: 'e.g. Concrete / steel frame' },
-      { key: 'occupancy', label: 'Occupancy', placeholder: 'e.g. Commercial / industrial' },
-      { key: 'totalInsuredValue', label: 'Total insured value (TIV)', type: 'number', placeholder: 'e.g. 250000000' },
-      { key: 'catPeril', label: 'CAT peril(s)', placeholder: 'e.g. Windstorm, Earthquake, Flood' },
-    ],
-  },
-  {
-    id: 'marine', title: 'Marine risk details', match: ['MARINE', 'CARGO', 'HULL', 'MAT'],
-    description: 'Shown automatically for marine business.',
-    fields: [
-      { key: 'cargo', label: 'Cargo type', placeholder: 'e.g. Containerised general goods' },
-      { key: 'vessel', label: 'Vessel / hull', placeholder: 'e.g. Bulk carrier, 45,000 GT' },
-      { key: 'route', label: 'Voyage / route', placeholder: 'e.g. Rotterdam – Singapore' },
-      { key: 'port', label: 'Port(s)', placeholder: 'e.g. Rotterdam, Singapore' },
-      { key: 'warRisk', label: 'War risk', type: 'select', options: ['Excluded', 'Included', 'Separate placement'] },
-    ],
-  },
-  {
-    id: 'aviation', title: 'Aviation risk details', match: ['AVIATION', 'AIRLINE', 'AEROSPACE', 'AVI'],
-    description: 'Shown automatically for aviation business.',
-    fields: [
-      { key: 'aircraft', label: 'Aircraft type', placeholder: 'e.g. Airbus A320 family' },
-      { key: 'hullValue', label: 'Hull value', type: 'number', placeholder: 'e.g. 45000000' },
-      { key: 'airport', label: 'Airport(s)', placeholder: 'e.g. LHR, JFK' },
-      { key: 'fleetSize', label: 'Fleet size', type: 'number', placeholder: 'e.g. 120' },
-    ],
-  },
-];
-function classGroupFor(haystack: string): ClassGroup | undefined {
-  const u = haystack.toUpperCase();
-  return CLASS_GROUPS.find((g) => g.match.some((m) => u.includes(m)));
-}
-
 function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const toast = useToast();
@@ -280,12 +236,20 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
   const isProportional = basis === 'PROPORTIONAL';
   const isSurplus = isProportional && proportionalType === 'SURPLUS';
   const isAggregate = !isProportional && (npType === 'AGG_XL' || npType === 'STOP_LOSS');
-  // Match the class-detail group against both the LOB code and its label.
-  const classGroup = useMemo(() => {
-    if (!lineOfBusiness) return undefined;
+  // The context the adaptive class-detail form reshapes against. The LOB haystack
+  // is code + label so the engine's keyword predicates match either.
+  const formCtx = useMemo<FormContext>(() => {
     const label = lobOptions.find((o) => o.code === lineOfBusiness)?.label ?? '';
-    return classGroupFor(`${lineOfBusiness} ${label}`);
-  }, [lineOfBusiness, lobOptions]);
+    return {
+      lob: `${lineOfBusiness} ${label}`,
+      structure: basis,
+      type: isProportional ? proportionalType : npType,
+    };
+  }, [lineOfBusiness, lobOptions, basis, proportionalType, npType, isProportional]);
+  const activeClass = useMemo(
+    () => LOB_CLASS_GROUPS.find((g) => !g.when || g.when(formCtx))?.id,
+    [formCtx],
+  );
 
   const reset = () => {
     setName(''); setContractKind('TREATY'); setDirection('INWARDS'); setLineOfBusiness('');
@@ -345,17 +309,12 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
       if (num(hoursClause) !== undefined) terms.hoursClause = num(hoursClause);
       if (num(eventLimit) !== undefined) terms.eventLimit = num(eventLimit);
     }
-    // Class-specific details: persist only the fields for the active LOB group.
-    if (classGroup) {
-      const details: Record<string, string> = {};
-      for (const f of classGroup.fields) {
-        const v = classDetails[f.key];
-        if (v && v.trim()) details[f.key] = v.trim();
-      }
-      if (Object.keys(details).length) {
-        terms.classOfBusiness = classGroup.id;
-        terms.classDetails = details;
-      }
+    // Class-specific details: the engine returns only the fields currently
+    // visible for this LOB, so a class the user navigated away from leaves nothing.
+    const details = collectVisibleValues(LOB_CLASS_GROUPS, formCtx, classDetails);
+    if (Object.keys(details).length) {
+      if (activeClass) terms.classOfBusiness = activeClass;
+      terms.classDetails = details;
     }
     if (num(brokeragePct) !== undefined) terms.brokeragePct = num(brokeragePct);
     if (num(epi) !== undefined) terms.estimatedPremiumIncome = num(epi);
@@ -518,33 +477,12 @@ function NewTreatyModal({ open, onClose }: { open: boolean; onClose: () => void 
           )}
         </FormSection>
 
-        {classGroup && (
-          <FormSection key={classGroup.id} title={classGroup.title} description={classGroup.description}>
-            {classGroup.fields.map((f) =>
-              f.type === 'select' ? (
-                <FormField key={f.key} label={f.label} hint={f.hint}>
-                  <Select
-                    value={classDetails[f.key] ?? ''}
-                    onChange={(e) => setClassDetails((d) => ({ ...d, [f.key]: e.target.value }))}
-                  >
-                    <option value="">Select…</option>
-                    {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
-                  </Select>
-                </FormField>
-              ) : (
-                <TextField
-                  key={f.key}
-                  label={f.label}
-                  type={f.type === 'number' ? 'number' : 'text'}
-                  value={classDetails[f.key] ?? ''}
-                  onChange={(v) => setClassDetails((d) => ({ ...d, [f.key]: v }))}
-                  placeholder={f.placeholder}
-                  hint={f.hint}
-                />
-              ),
-            )}
-          </FormSection>
-        )}
+        <DynamicForm
+          groups={LOB_CLASS_GROUPS}
+          ctx={formCtx}
+          values={classDetails}
+          onChange={(key, value) => setClassDetails((d) => ({ ...d, [key]: value }))}
+        />
 
         <FormSection title="Commission & brokerage" description={isProportional ? undefined : 'Commissions apply to proportional treaties; brokerage applies to all.'}>
           {isProportional && <>
