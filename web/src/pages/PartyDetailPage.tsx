@@ -7,6 +7,7 @@ import { Card, CardHeader } from '../components/Card';
 import { Badge, StatusPill } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Table, type Column, EmptyState } from '../components/Table';
+import { DocumentsPanel } from '../components/DocumentsPanel';
 import { DefinitionList, ErrorState, PageLoader, SectionLabel } from '../components/Feedback';
 import { formatDate, titleCase } from '../lib/format';
 import type { TreatyListItem } from '../lib/types';
@@ -148,6 +149,10 @@ export function PartyDetailPage() {
             empty={<EmptyState title="No contracts" message="This party is not a counterparty on any treaty yet." icon={<FileText size={16} />} />}
           />
         </Card>
+      </div>
+
+      <div style={{ marginTop: 'var(--space-5)' }}>
+        <DocumentsPanel entityType="party" entityId={id!} />
       </div>
     </>
   );

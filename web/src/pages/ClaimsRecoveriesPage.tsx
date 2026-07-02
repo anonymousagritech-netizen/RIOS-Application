@@ -15,6 +15,7 @@ import { FormField, FormSection, Input, Select } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
 import { DefinitionList } from '../components/Feedback';
 import { formatMoney, formatDate, titleCase } from '../lib/format';
+import { DynamicForm, collectVisibleValues, type FieldGroup, type FormContext } from '../lib/formEngine';
 import shared from './shared.module.css';
 import styles from './workspace.module.css';
 import local from './ClaimsRecoveriesPage.module.css';
@@ -95,6 +96,28 @@ interface TreatyResponse {
 const RECOVERY_TYPES = ['REINSURANCE', 'SALVAGE', 'SUBROGATION'] as const;
 type RecoveryType = (typeof RECOVERY_TYPES)[number];
 
+// Adaptive cash-call detail (Dynamic Form Engine). The urgency justification is a
+// cross-field branch: it only appears once the call is flagged urgent/simultaneous.
+const CASH_CALL_GROUPS: FieldGroup[] = [
+  {
+    id: 'cashcall',
+    title: 'Cash call detail',
+    description: 'Why the advance is needed and when settlement is expected.',
+    fields: [
+      { key: 'reasonCode', label: 'Reason code', type: 'select', options: ['Large loss', 'Liquidity', 'Reinstatement', 'Court settlement', 'Other'] },
+      { key: 'urgency', label: 'Urgency', type: 'select', options: ['Normal', 'Urgent', 'Simultaneous settlement'] },
+      {
+        key: 'urgencyJustification',
+        label: 'Urgency justification',
+        type: 'textarea',
+        fullWidth: true,
+        when: (ctx) => ctx.urgency === 'Urgent' || ctx.urgency === 'Simultaneous settlement',
+      },
+      { key: 'expectedSettlementDate', label: 'Expected settlement date', type: 'date' },
+    ],
+  },
+];
+
 const TABS = [
   { id: 'recoveries', label: 'Recoveries' },
   { id: 'cashcalls', label: 'Cash calls' },
@@ -143,7 +166,7 @@ function useAddRecovery(claimId: string | undefined) {
 function useRaiseCashCall(claimId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { amount: number }) =>
+    mutationFn: (body: { amount: number; details?: Record<string, unknown> }) =>
       api<CashCallResult>(`/api/claims/${claimId}/cash-call`, { body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['claims', claimId, 'cash-calls'] }),
   });
@@ -401,8 +424,8 @@ function CashCallsTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite: boo
         open={showRaise}
         onClose={() => setShowRaise(false)}
         pending={raise.isPending}
-        onRaise={async (amount) => {
-          const res = await raise.mutateAsync({ amount });
+        onRaise={async (amount, details) => {
+          const res = await raise.mutateAsync({ amount, details: Object.keys(details).length ? details : undefined });
           setCalls((cs) => [res, ...cs]);
           toast.success('Cash call raised');
         }}
@@ -413,12 +436,18 @@ function CashCallsTab({ claim, canWrite }: { claim: ClaimPickItem; canWrite: boo
 
 function RaiseCashCallModal({ claim, open, onClose, onRaise, pending }: {
   claim: ClaimPickItem; open: boolean; onClose: () => void;
-  onRaise: (amount: number) => Promise<void>; pending: boolean;
+  onRaise: (amount: number, details: Record<string, string>) => Promise<void>; pending: boolean;
 }) {
   const [amount, setAmount] = useState('');
+  // Adaptive cash-call detail values, keyed by field key.
+  const [details, setDetails] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
-  const reset = () => { setAmount(''); setError(null); };
+  // Detail values are spread into the context so the urgency-justification
+  // cross-field `when` predicate fires as the urgency select changes.
+  const formCtx: FormContext = { ...details };
+
+  const reset = () => { setAmount(''); setDetails({}); setError(null); };
   const close = () => { reset(); onClose(); };
 
   const submit = async (e: React.FormEvent) => {
@@ -426,8 +455,9 @@ function RaiseCashCallModal({ claim, open, onClose, onRaise, pending }: {
     setError(null);
     const amt = Number(amount);
     if (Number.isNaN(amt) || amt <= 0) { setError('Enter a cash call amount.'); return; }
+    const collected = collectVisibleValues(CASH_CALL_GROUPS, formCtx, details);
     try {
-      await onRaise(amt);
+      await onRaise(amt, collected);
       close();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not raise the cash call.');
@@ -454,6 +484,12 @@ function RaiseCashCallModal({ claim, open, onClose, onRaise, pending }: {
             <Input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 100000" />
           </FormField>
         </FormSection>
+        <DynamicForm
+          groups={CASH_CALL_GROUPS}
+          ctx={formCtx}
+          values={details}
+          onChange={(key, value) => setDetails((d) => ({ ...d, [key]: value }))}
+        />
         {error && <p className={local.error} role="alert">{error}</p>}
       </form>
     </Modal>

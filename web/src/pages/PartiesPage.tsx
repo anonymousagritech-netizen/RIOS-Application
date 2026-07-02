@@ -12,6 +12,8 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { formatNumber, titleCase } from '../lib/format';
+import { DynamicForm, collectVisibleValues, type FormContext } from '../lib/formEngine';
+import { PARTY_KYC_GROUPS } from '../lib/partySchema';
 import { Users, Building2, UserRound, CheckCircle2 } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import type { PartyListItem } from '../lib/types';
@@ -158,10 +160,21 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
   const [lei, setLei] = useState('');
   const [taxId, setTaxId] = useState('');
   const [marketId, setMarketId] = useState('');
+  // Adaptive KYC / compliance detail values, keyed by field key.
+  const [details, setDetails] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
+  // The context the adaptive KYC form reshapes against: the party kind drives
+  // entity-vs-individual fields, the (upper-cased) domicile drives the sanctions
+  // group, and the detail values are spread in for cross-field `when` predicates.
+  const formCtx = useMemo<FormContext>(
+    () => ({ kind, country: country.trim().toUpperCase(), ...details }),
+    [kind, country, details],
+  );
+
   const reset = () => {
-    setLegalName(''); setShortName(''); setKind('organisation'); setCountry(''); setRoles([]); setError(null);
+    setLegalName(''); setShortName(''); setKind('organisation'); setCountry(''); setRoles([]);
+    setLei(''); setTaxId(''); setMarketId(''); setDetails({}); setError(null);
   };
 
   const toggleRole = (code: string) =>
@@ -172,6 +185,8 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
     setError(null);
     // Country is an ISO 3166-1 alpha-2 code on the wire (server enforces length 2).
     const iso = country.trim().toUpperCase();
+    // Adaptive KYC detail: only the fields visible for this kind + domicile persist.
+    const collected = collectVisibleValues(PARTY_KYC_GROUPS, formCtx, details);
     try {
       const res = await create.mutateAsync({
         legalName: legalName.trim(),
@@ -186,6 +201,7 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
         kind,
         country: iso || undefined,
         roles,
+        details: Object.keys(collected).length ? collected : undefined,
       });
       toast.success(`Party ${res.reference} created`);
       reset();
@@ -238,6 +254,13 @@ function NewPartyModal({ open, onClose }: { open: boolean; onClose: () => void }
             />
           </FormField>
         </FormSection>
+
+        <DynamicForm
+          groups={PARTY_KYC_GROUPS}
+          ctx={formCtx}
+          values={details}
+          onChange={(key, value) => setDetails((d) => ({ ...d, [key]: value }))}
+        />
 
         <FormSection title="Roles" description="A party can hold several roles at once (e.g. both cedent and reinsurer).">
           <div style={{ gridColumn: '1 / -1' }}>

@@ -27,6 +27,9 @@ const createFacultativeSchema = z.object({
   sumInsured: z.number().optional(),
   premium: z.number().optional(),
   cededShare: z.number().min(0).max(1).optional(),
+  // Metadata-driven adaptive-form data (Dynamic Form Engine) for the single-risk
+  // cession; persisted verbatim on the underlying risk row.
+  details: z.record(z.unknown()).optional(),
 });
 
 export async function facultativeModule(app: FastifyInstance): Promise<void> {
@@ -77,7 +80,7 @@ export async function facultativeModule(app: FastifyInstance): Promise<void> {
         const risks = await db.query(
           `select id, reference, description, insured_name as "insuredName",
                   line_of_business as "lineOfBusiness", sum_insured_minor as "sumInsuredMinor",
-                  currency, inception, expiry
+                  currency, inception, expiry, details as "details"
              from risk where contract_id = $1 order by created_at`,
           [req.params.id],
         );
@@ -126,9 +129,9 @@ export async function facultativeModule(app: FastifyInstance): Promise<void> {
       const sumInsuredMinor = b.sumInsured != null ? fromMajor(b.sumInsured, b.currency).amount : null;
       const riskRes = await db.query<{ id: string }>(
         `insert into risk
-           (tenant_id, contract_id, insured_name, line_of_business, sum_insured_minor, currency)
-         values ($1,$2,$3,$4,$5,$6) returning id`,
-        [ctx.tenantId, id, b.insuredName ?? null, b.lineOfBusiness ?? null, sumInsuredMinor, b.currency],
+           (tenant_id, contract_id, insured_name, line_of_business, sum_insured_minor, currency, details)
+         values ($1,$2,$3,$4,$5,$6,$7) returning id`,
+        [ctx.tenantId, id, b.insuredName ?? null, b.lineOfBusiness ?? null, sumInsuredMinor, b.currency, JSON.stringify(b.details ?? {})],
       );
       const riskId = riskRes.rows[0]!.id;
       await writeAudit(db, ctx, {

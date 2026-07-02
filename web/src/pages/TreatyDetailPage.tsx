@@ -15,6 +15,7 @@ import { Table, type Column, EmptyState } from '../components/Table';
 import { StatusPill, Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/Modal';
+import { DocumentsPanel } from '../components/DocumentsPanel';
 import { DefinitionList, ErrorState, PageLoader } from '../components/Feedback';
 import { legalTransitions } from '../lib/status';
 import { formatMoney, formatDate, formatPercent, titleCase } from '../lib/format';
@@ -30,6 +31,7 @@ const TABS = [
   { id: 'financials', label: 'Financial events' },
   { id: 'statement', label: 'Statement' },
   { id: 'claims', label: 'Claims' },
+  { id: 'documents', label: 'Documents' },
 ];
 
 export function TreatyDetailPage() {
@@ -134,6 +136,7 @@ export function TreatyDetailPage() {
           {tab === 'financials' && <FinancialsTab id={id!} currency={currency} />}
           {tab === 'statement' && <StatementTab id={id!} canPost={hasPermission('accounting:post')} />}
           {tab === 'claims' && <ClaimsTab id={id!} />}
+          {tab === 'documents' && <DocumentsPanel entityType="contract" entityId={id!} />}
         </div>
       </Card>
 

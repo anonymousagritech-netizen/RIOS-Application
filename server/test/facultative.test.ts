@@ -87,6 +87,35 @@ describe('facultative: one-screen cession with auto-accounting', () => {
     expect(ids).toContain(body.id);
   });
 
+  it('persists a metadata-driven details bag on the cession risk and returns it', async () => {
+    if (!dbUp) return;
+    const tkn = await token(app, 'admin@demo.rios');
+    const auth = { authorization: `Bearer ${tkn}` };
+    const details = { occupancy: 'Warehouse', floodZone: 'A', sprinklered: true };
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/facultative',
+      headers: auth,
+      payload: {
+        name: 'Fac Details Cession',
+        basis: 'PROPORTIONAL',
+        currency: 'USD',
+        insuredName: 'Details Corp',
+        sumInsured: 1_000_000,
+        cededShare: 0.5,
+        details,
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const id = created.json().id as string;
+
+    const detail = await app.inject({ method: 'GET', url: `/api/facultative/${id}`, headers: auth });
+    expect(detail.statusCode).toBe(200);
+    const d = detail.json();
+    expect(d.risks).toHaveLength(1);
+    expect(d.risks[0].details).toEqual(details);
+  });
+
   it('books the full premium for non-proportional facultative', async () => {
     if (!dbUp) return;
     const tkn = await token(app, 'admin@demo.rios');

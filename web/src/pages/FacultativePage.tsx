@@ -13,6 +13,8 @@ import { Modal } from '../components/Modal';
 import { FormField, FormSection, Input, Select, TextField } from '../components/Form';
 import { KpiCard } from '../components/KpiCard';
 import { formatNumber, formatPercent, titleCase } from '../lib/format';
+import { DynamicForm, collectVisibleValues, type FormContext } from '../lib/formEngine';
+import { LOB_CLASS_GROUPS } from '../lib/lobSchema';
 import { FileCheck2, Briefcase, CircleCheckBig, PenLine, Layers } from 'lucide-react';
 import shared from './shared.module.css';
 import styles from './FacultativePage.module.css';
@@ -184,6 +186,8 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
   const [sumInsured, setSumInsured] = useState('');
   const [premium, setPremium] = useState('');
   const [cededShare, setCededShare] = useState('');
+  // Adaptive class-of-business detail values, keyed by field key.
+  const [classDetails, setClassDetails] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   const currencies = ccy?.currencies ?? [];
@@ -192,10 +196,21 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
   const isProportional = basis === 'PROPORTIONAL';
   const partyName = (p: { shortName?: string | null; legalName: string }) => p.shortName || p.legalName;
 
+  // The context the adaptive class-detail form reshapes against. The LOB haystack
+  // is code + label so the engine's keyword predicates match either.
+  const formCtx = useMemo<FormContext>(() => {
+    const label = lobOptions.find((o) => o.code === lineOfBusiness)?.label ?? '';
+    return { lob: `${lineOfBusiness} ${label}`, structure: basis };
+  }, [lineOfBusiness, lobOptions, basis]);
+  const activeClass = useMemo(
+    () => LOB_CLASS_GROUPS.find((g) => !g.when || g.when(formCtx))?.id,
+    [formCtx],
+  );
+
   const reset = () => {
     setName(''); setBasis('PROPORTIONAL'); setLineOfBusiness(''); setCurrency('USD');
     setCedentPartyId(''); setInsuredName('');
-    setSumInsured(''); setPremium(''); setCededShare(''); setError(null);
+    setSumInsured(''); setPremium(''); setCededShare(''); setClassDetails({}); setError(null);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -214,6 +229,13 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
     if (isProportional) {
       const share = Number(cededShare);
       if (cededShare && !Number.isNaN(share)) body.cededShare = share;
+    }
+    // Class-specific risk detail: the engine returns only the fields visible for
+    // this LOB, so a class the user navigated away from leaves nothing behind.
+    const details = collectVisibleValues(LOB_CLASS_GROUPS, formCtx, classDetails);
+    if (Object.keys(details).length) {
+      if (activeClass) details.classOfBusiness = activeClass;
+      body.details = details;
     }
     try {
       const res = await create.mutateAsync(body);
@@ -276,6 +298,13 @@ function NewCessionModal({ open, onClose }: { open: boolean; onClose: () => void
             <TextField label="Insured name" value={insuredName} onChange={setInsuredName} placeholder="e.g. Acme Industrial Ltd" />
           </div>
         </FormSection>
+
+        <DynamicForm
+          groups={LOB_CLASS_GROUPS}
+          ctx={formCtx}
+          values={classDetails}
+          onChange={(key, value) => setClassDetails((d) => ({ ...d, [key]: value }))}
+        />
 
         <FormSection title="Sum insured & premium" description={isProportional ? 'The ceded share is applied to the premium when booking the deposit.' : 'For non-proportional cessions the full premium is booked as the ceded deposit.'}>
           <FormField label="Sum insured (major units)" hint={`In ${currency}`}>

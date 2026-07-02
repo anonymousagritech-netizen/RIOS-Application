@@ -161,4 +161,21 @@ describe('Counterparty security', () => {
     const bad = await app.inject({ method: 'POST', url: '/api/parties/screen', headers: auth, payload: { name: '' } });
     expect(bad.statusCode).toBe(400);
   });
+
+  it('persists a metadata-driven details bag on the party and returns it', async () => {
+    if (!dbUp) return;
+    const auth = { authorization: `Bearer ${await token(app, 'admin@demo.rios')}` };
+    const suffix = Date.now();
+    const details = { croReviewer: 'J. Doe', beneficialOwners: 3, pepFlag: false };
+    const create = await app.inject({
+      method: 'POST', url: '/api/parties', headers: auth,
+      payload: { legalName: `Details Re ${suffix}`, kind: 'organisation', country: 'CH', roles: [], details },
+    });
+    expect(create.statusCode).toBe(201);
+    const partyId = create.json().id as string;
+
+    const detail = await app.inject({ method: 'GET', url: `/api/parties/${partyId}`, headers: auth });
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json().details).toEqual(details);
+  });
 });
