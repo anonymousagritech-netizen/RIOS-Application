@@ -136,6 +136,23 @@ export async function bordereauxModule(app: FastifyInstance): Promise<void> {
     },
   );
 
+  // List bordereaux for the current tenant (most-recent-first, capped at 100).
+  // Used by the upload history table on the Bordereaux page.
+  app.get('/api/bordereaux', { preHandler: requirePermission('bordereaux:read') }, async (req) => {
+    const ctx = authContext(req);
+    return runAs(ctx, async (db) => {
+      const { rows } = await db.query(
+        `select id, contract_id as "contractId", kind, reference, currency, status,
+                row_count as "rowCount", error_count as "errorCount", total_minor as "totalMinor",
+                created_at as "createdAt", processed_at as "processedAt"
+           from bordereau
+           order by created_at desc
+           limit 100`,
+      );
+      return { bordereaux: rows };
+    });
+  });
+
   // Upload a bordereau: insert header + lines, validate each line, and set the
   // header status to VALIDATED (no errors) or REJECTED (one or more errors).
   app.post('/api/bordereaux', { preHandler: requirePermission('bordereaux:write') }, async (req, reply) => {
